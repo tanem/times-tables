@@ -1,0 +1,792 @@
+<title>Speaking-mode card</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@600;800&display=swap">
+<!--
+PROTOTYPE. Throwaway. Not production code.
+
+Question (Speaking-mode card, wayfinder ticket #5): what should the speaking-mode
+card look and feel like, and how do its buttons produce the three outcomes
+(fast, slow, missed) from the Drill model?
+
+Three variants of the card on one page, switchable with ?variant=A|B|C, the
+floating bar at the bottom, or the left/right arrow keys.
+
+  A  Two buttons always on screen. "Got it" means fast until the bar drains,
+     then slow. "Missed" is missed. The answer is only shown afterwards.
+  B  Tap anywhere once you've said it. The tap fixes fast or slow. Then the
+     answer is revealed and the learner confirms: Yes (kept) or No (missed).
+  C  A ring timer runs, then the answer is shown with three buttons:
+     Quick, Slow, Missed. The learner judges their own speed.
+
+The drill engine (33 facts, levels, weighted draw, 20 facts per drill) is the
+Drill model decision, held in memory only. Nothing is saved.
+-->
+<style>
+  :root {
+    --ground: #EEF3FB;
+    --card: #FFFFFF;
+    --ink: #1E2340;
+    --muted: #6B7290;
+    --line: #D6DCEC;
+    --accent: #5B4BD6;
+    --fast: #22A365;
+    --slow: #E39A1E;
+    --missed: #DE5A52;
+    --track: #DCE2F0;
+    --on-color: #FFFFFF;
+    --proto: #1E2340;
+    --proto-ink: #FFFFFF;
+    --shadow: 0 10px 30px rgba(30, 35, 64, 0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #141829;
+      --card: #1E2338;
+      --ink: #EEF0FA;
+      --muted: #9AA1C2;
+      --line: #2F3652;
+      --accent: #8C7CFF;
+      --fast: #3CC37C;
+      --slow: #F2B240;
+      --missed: #F06A62;
+      --track: #2A3049;
+      --on-color: #10131F;
+      --proto: #EEF0FA;
+      --proto-ink: #141829;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #141829;
+    --card: #1E2338;
+    --ink: #EEF0FA;
+    --muted: #9AA1C2;
+    --line: #2F3652;
+    --accent: #8C7CFF;
+    --fast: #3CC37C;
+    --slow: #F2B240;
+    --missed: #F06A62;
+    --track: #2A3049;
+    --on-color: #10131F;
+    --proto: #EEF0FA;
+    --proto-ink: #141829;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Nunito", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    font-weight: 600;
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    overflow: hidden;
+  }
+  button {
+    font: inherit;
+    color: inherit;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+
+  #app {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 16px calc(84px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+  }
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--muted);
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+  }
+  .top .quit {
+    width: 48px; height: 48px;
+    border-radius: 999px;
+    font-size: 22px;
+    color: var(--muted);
+  }
+  .top .quit:active { background: var(--line); }
+  .stage {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border-radius: 28px;
+    box-shadow: var(--shadow);
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Fact and bar: plain and legible in every variant. */
+  .fact {
+    font-family: "Fredoka", "Nunito", "Arial Rounded MT Bold", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: clamp(64px, 18vmin, 180px);
+    line-height: 1;
+    letter-spacing: 0.02em;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .fact .eq { color: var(--muted); }
+  .answer {
+    font-family: "Fredoka", "Nunito", "Arial Rounded MT Bold", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: clamp(72px, 22vmin, 220px);
+    line-height: 1;
+    text-align: center;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .bar {
+    --p: 1;
+    height: 28px;
+    width: min(100%, 560px);
+    margin: 0 auto;
+    background: var(--track);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .bar::before {
+    content: "";
+    display: block;
+    height: 100%;
+    width: calc(var(--p) * 100%);
+    background: var(--fast);
+    border-radius: inherit;
+  }
+  .bar.drained::before { width: 100%; background: var(--slow); }
+  .caption {
+    text-align: center;
+    color: var(--muted);
+    font-size: 22px;
+    min-height: 1.4em;
+  }
+  .caption.warn { color: var(--slow); }
+
+  .btnrow {
+    display: flex;
+    gap: 16px;
+    margin-top: auto;
+  }
+  .big {
+    flex: 1;
+    min-height: 110px;
+    border-radius: 24px;
+    font-size: 34px;
+    font-weight: 800;
+    color: var(--on-color);
+    box-shadow: 0 6px 0 rgba(0, 0, 0, 0.18);
+    transition: transform 0.08s ease, background-color 0.3s ease;
+  }
+  .big:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18); }
+  .big.fast { background: var(--fast); }
+  .big.slow { background: var(--slow); }
+  .big.missed { background: var(--missed); }
+  .big.neutral { background: var(--accent); }
+  .big small { display: block; font-size: 18px; font-weight: 600; opacity: 0.85; }
+
+  /* Variant layouts */
+  .v-a { display: flex; flex-direction: column; gap: 20px; height: 100%; }
+  .v-a .fact { margin-top: auto; }
+  .v-a .bar { margin-bottom: auto; }
+
+  .v-b { display: flex; flex-direction: column; gap: 20px; height: 100%; }
+  .v-b .tapzone {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 24px;
+    border-radius: 20px;
+  }
+  .v-b .tapzone:active { background: var(--ground); }
+
+  .v-c { display: flex; flex-direction: column; gap: 12px; height: 100%; }
+  .v-c .ringwrap {
+    flex: 1;
+    min-height: 0;
+    display: grid;
+    place-items: center;
+    position: relative;
+  }
+  .v-c .ring {
+    position: absolute;
+    inset: 0;
+    margin: auto;
+    width: min(100%, 70vmin);
+    height: min(100%, 70vmin);
+  }
+  .v-c .ring circle { fill: none; stroke-width: 7; stroke-linecap: round; }
+  .v-c .ring .track { stroke: var(--track); }
+  .v-c .ring .fill {
+    stroke: var(--fast);
+    transform: rotate(-90deg);
+    transform-origin: 50% 50%;
+  }
+  .v-c .ring.drained .fill { stroke: var(--slow); stroke-dashoffset: 0 !important; }
+  .v-c .ringwrap .fact { position: relative; font-size: clamp(48px, 13vmin, 140px); }
+  .v-c .ringwrap .answer { position: relative; font-size: clamp(56px, 16vmin, 160px); }
+  .v-c .btnrow .big { min-height: 96px; font-size: 28px; }
+
+  /* Feedback: the character lives here, not around the fact. */
+  .fb {
+    position: absolute;
+    inset: 0;
+    background: var(--card);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px;
+    animation: fbin 0.25s ease;
+  }
+  @keyframes fbin { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+  .fb .sum {
+    font-family: "Fredoka", "Nunito", system-ui, sans-serif;
+    font-weight: 500;
+    font-size: clamp(36px, 9vmin, 84px);
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  .fb .sum b { color: var(--ink); font-weight: 700; }
+  .fb .word {
+    font-family: "Fredoka", "Nunito", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: clamp(40px, 10vmin, 96px);
+    line-height: 1;
+  }
+  .fb.fast .word { color: var(--fast); }
+  .fb.slow .word { color: var(--slow); }
+  .fb.missed .word { color: var(--missed); }
+  .fb .charwrap { position: relative; height: clamp(100px, 24vmin, 200px); display: grid; place-items: center; }
+  .fb .char { font-size: clamp(80px, 20vmin, 170px); line-height: 1; display: inline-block; }
+  .fb.fast .char { animation: jump 0.7s ease; }
+  .fb.slow .char { animation: nod 0.9s ease; }
+  .fb.missed .char { animation: droop 0.8s ease forwards; }
+  @keyframes jump {
+    0% { transform: translateY(0); }
+    35% { transform: translateY(-14%) scale(1.12); }
+    65% { transform: translateY(0); }
+    82% { transform: translateY(-5%); }
+    100% { transform: translateY(0); }
+  }
+  @keyframes nod {
+    0%, 100% { transform: rotate(0); }
+    25% { transform: rotate(-9deg); }
+    75% { transform: rotate(9deg); }
+  }
+  @keyframes droop { to { transform: rotate(-12deg) translateY(8%); filter: saturate(0.5); } }
+  .fb .spark {
+    position: absolute;
+    font-size: clamp(24px, 6vmin, 48px);
+    opacity: 0;
+    animation: spark 0.9s ease forwards;
+  }
+  @keyframes spark {
+    0% { opacity: 0; transform: translate(0, 0) scale(0.5); }
+    30% { opacity: 1; }
+    100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.2); }
+  }
+  .fb .streak {
+    font-size: 24px;
+    color: var(--muted);
+  }
+  .fb .streak b { color: var(--slow); }
+  .fb .hint { font-size: 16px; color: var(--muted); }
+
+  /* End of drill */
+  .end {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 20px;
+    text-align: center;
+  }
+  .end h1 {
+    font-family: "Fredoka", "Nunito", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: clamp(36px, 9vmin, 80px);
+    margin: 0;
+    text-wrap: balance;
+  }
+  .end .tally { display: flex; gap: 20px; font-size: 22px; }
+  .end .tally span b { display: block; font-size: 48px; font-family: "Fredoka", system-ui, sans-serif; }
+  .end .tally .f b { color: var(--fast); }
+  .end .tally .s b { color: var(--slow); }
+  .end .tally .m b { color: var(--missed); }
+  .end .big { flex: none; min-width: 260px; }
+
+  /* Prototype chrome: not part of the design under review. */
+  #proto {
+    position: fixed;
+    left: 50%;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    background: var(--proto);
+    color: var(--proto-ink);
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 14px;
+    z-index: 20;
+    white-space: nowrap;
+    max-width: calc(100vw - 24px);
+    overflow-x: auto;
+  }
+  #proto button {
+    color: var(--proto-ink);
+    padding: 8px 12px;
+    border-radius: 999px;
+    font-family: inherit;
+    font-size: inherit;
+  }
+  #proto button:active { background: rgba(127, 127, 127, 0.35); }
+  #proto .label { padding: 0 8px; font-weight: 700; }
+  #proto .sep { width: 1px; height: 20px; background: rgba(127, 127, 127, 0.5); margin: 0 4px; }
+
+  #state {
+    position: fixed;
+    top: 12px;
+    right: 12px;
+    width: min(340px, calc(100vw - 24px));
+    max-height: calc(100vh - 110px);
+    overflow: auto;
+    background: var(--proto);
+    color: var(--proto-ink);
+    border-radius: 16px;
+    padding: 14px;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 13px;
+    line-height: 1.5;
+    z-index: 21;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  #state h2 { font-size: 13px; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; }
+  #state .levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 8px; }
+  #state .lv {
+    padding: 4px 6px;
+    border-radius: 6px;
+    background: rgba(127, 127, 127, 0.25);
+    display: flex;
+    justify-content: space-between;
+  }
+  #state .lv.l0 { background: rgba(222, 90, 82, 0.5); }
+  #state .lv.l1 { background: rgba(227, 154, 30, 0.5); }
+  #state .lv.l2 { background: rgba(227, 154, 30, 0.25); }
+  #state .lv.l3 { background: rgba(34, 163, 101, 0.35); }
+  #state .lv.l4 { background: rgba(34, 163, 101, 0.7); }
+  #state .lv.cur { outline: 2px solid var(--proto-ink); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .fb, .fb .char, .fb .spark { animation: none !important; }
+  }
+  @media (max-width: 520px) {
+    .big { min-height: 88px; font-size: 26px; }
+    .stage { padding: 16px; border-radius: 20px; }
+  }
+</style>
+
+<div id="app">
+  <div class="top">
+    <button class="quit" id="quit" aria-label="Quit drill">✕</button>
+    <div id="progress">1 / 20</div>
+    <div style="width:48px"></div>
+  </div>
+  <div class="stage" id="stage"></div>
+</div>
+
+<div id="proto" role="toolbar" aria-label="Prototype controls">
+  <button id="prev" aria-label="Previous variant">◀</button>
+  <span class="label" id="label">A</span>
+  <button id="next" aria-label="Next variant">▶</button>
+  <span class="sep"></span>
+  <button id="charBtn" title="Character">🐉</button>
+  <button id="fbBtn" title="Feedback style">char</button>
+  <button id="stateBtn" title="Show drill state">state</button>
+  <button id="restartBtn" title="Restart drill">↺</button>
+</div>
+<div id="state" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- Drill engine (Drill model, in memory only) ----------
+  var LIMIT = 3000;
+  var DRILL_LENGTH = 20;
+  var TABLES = [6, 8, 12];
+  var WEIGHTS = [8, 4, 2, 1, 1];
+
+  function buildFacts() {
+    var seen = {}, facts = [];
+    TABLES.forEach(function (t) {
+      for (var k = 1; k <= 12; k++) {
+        var a = Math.min(t, k), b = Math.max(t, k), key = a + 'x' + b;
+        if (!seen[key]) { seen[key] = true; facts.push({ a: a, b: b, key: key, level: 0 }); }
+      }
+    });
+    return facts;
+  }
+
+  var facts = buildFacts();
+  var drill;
+
+  function newDrill() {
+    drill = { index: 0, fast: 0, slow: 0, missed: 0, recent: [], streak: 0, done: false, quit: false, last: null, current: null };
+  }
+
+  function draw() {
+    var pool = facts.filter(function (f) { return drill.recent.indexOf(f.key) === -1; });
+    var total = pool.reduce(function (s, f) { return s + WEIGHTS[f.level]; }, 0);
+    var r = Math.random() * total;
+    for (var i = 0; i < pool.length; i++) {
+      r -= WEIGHTS[pool[i].level];
+      if (r < 0) return pool[i];
+    }
+    return pool[pool.length - 1];
+  }
+
+  function present() {
+    var f = draw();
+    var flip = Math.random() < 0.5;
+    drill.current = { fact: f, x: flip ? f.b : f.a, y: flip ? f.a : f.b, answer: f.a * f.b };
+    return drill.current;
+  }
+
+  function apply(outcome) {
+    var f = drill.current.fact;
+    if (outcome === 'fast') { f.level = Math.min(4, f.level + 1); drill.fast++; drill.streak++; }
+    else if (outcome === 'slow') { f.level = Math.max(0, f.level - 1); drill.slow++; drill.streak = 0; }
+    else { f.level = 0; drill.missed++; drill.streak = 0; }
+    drill.recent.push(f.key);
+    if (drill.recent.length > 3) drill.recent.shift();
+    drill.last = outcome;
+    drill.index++;
+    if (drill.index >= DRILL_LENGTH) drill.done = true;
+  }
+
+  // ---------- Timer ----------
+  function runTimer(onFrame, onDrain) {
+    var t0 = performance.now(), raf, stopped = false, drained = false;
+    function frame(now) {
+      if (stopped) return;
+      var e = now - t0, p = Math.max(0, 1 - e / LIMIT);
+      onFrame(p);
+      if (e >= LIMIT) { drained = true; onDrain(); return; }
+      raf = requestAnimationFrame(frame);
+    }
+    raf = requestAnimationFrame(frame);
+    return {
+      elapsed: function () { return performance.now() - t0; },
+      drained: function () { return drained; },
+      stop: function () { stopped = true; cancelAnimationFrame(raf); }
+    };
+  }
+
+  // ---------- Prototype settings ----------
+  var settings = { variant: 'A', character: '🐉', feedback: 'char' };
+  try {
+    var saved = JSON.parse(localStorage.getItem('proto-smc') || '{}');
+    if (saved.character) settings.character = saved.character;
+    if (saved.feedback) settings.feedback = saved.feedback;
+  } catch (e) {}
+  try {
+    var q = new URLSearchParams(location.search).get('variant');
+    if (q && ['A', 'B', 'C'].indexOf(q.toUpperCase()) !== -1) settings.variant = q.toUpperCase();
+  } catch (e) {}
+  function persist() { try { localStorage.setItem('proto-smc', JSON.stringify({ character: settings.character, feedback: settings.feedback })); } catch (e) {} }
+
+  // ---------- DOM helpers ----------
+  var stage = document.getElementById('stage');
+  var progressEl = document.getElementById('progress');
+  var activeTimer = null;
+  var pendingTimeout = null;
+
+  function el(tag, cls, html) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (html != null) n.innerHTML = html;
+    return n;
+  }
+  function factHtml(p) { return p.x + ' <span class="eq">×</span> ' + p.y; }
+  function clearStage() {
+    if (activeTimer) { activeTimer.stop(); activeTimer = null; }
+    if (pendingTimeout) { clearTimeout(pendingTimeout); pendingTimeout = null; }
+    stage.innerHTML = '';
+  }
+
+  // ---------- Variants ----------
+  // Each variant receives the presentation and a submit(outcome) callback.
+
+  var VARIANTS = {
+    A: {
+      name: 'Two buttons, always there',
+      mount: function (p, submit) {
+        var root = el('div', 'v-a');
+        var fact = el('div', 'fact', factHtml(p));
+        var bar = el('div', 'bar');
+        var cap = el('div', 'caption', 'Say it out loud');
+        var row = el('div', 'btnrow');
+        var missed = el('button', 'big missed', 'Missed');
+        var got = el('button', 'big fast', 'Got it');
+        row.appendChild(missed); row.appendChild(got);
+        root.appendChild(fact); root.appendChild(bar); root.appendChild(cap); root.appendChild(row);
+        stage.appendChild(root);
+        activeTimer = runTimer(function (pct) { bar.style.setProperty('--p', pct); }, function () {
+          bar.classList.add('drained');
+          got.classList.remove('fast'); got.classList.add('slow');
+          cap.textContent = 'Time is up. Still say it, then tap.';
+          cap.classList.add('warn');
+        });
+        got.onclick = function () { submit(activeTimer.drained() ? 'slow' : 'fast'); };
+        missed.onclick = function () { submit('missed'); };
+      }
+    },
+    B: {
+      name: 'Tap when said, then check',
+      mount: function (p, submit) {
+        var root = el('div', 'v-b');
+        var zone = el('div', 'tapzone');
+        zone.setAttribute('role', 'button');
+        zone.setAttribute('tabindex', '0');
+        zone.setAttribute('aria-label', 'Tap when you have said the answer');
+        var fact = el('div', 'fact', factHtml(p));
+        var bar = el('div', 'bar');
+        var cap = el('div', 'caption', 'Say it, then tap anywhere');
+        zone.appendChild(fact); zone.appendChild(bar); zone.appendChild(cap);
+        root.appendChild(zone);
+        stage.appendChild(root);
+        activeTimer = runTimer(function (pct) { bar.style.setProperty('--p', pct); }, function () {
+          bar.classList.add('drained');
+          cap.textContent = 'Time is up. Tap when you have said it.';
+          cap.classList.add('warn');
+        });
+        zone.onclick = function () {
+          var speed = activeTimer.drained() ? 'slow' : 'fast';
+          activeTimer.stop();
+          zone.onclick = null;
+          zone.classList.remove('tapzone');
+          zone.removeAttribute('role');
+          zone.style.flex = '1'; zone.style.display = 'flex'; zone.style.flexDirection = 'column'; zone.style.justifyContent = 'center'; zone.style.gap = '12px';
+          fact.innerHTML = factHtml(p) + ' <span class="eq">=</span>';
+          bar.remove();
+          var ans = el('div', 'answer', String(p.answer));
+          zone.insertBefore(ans, cap);
+          cap.textContent = 'Did you say ' + p.answer + '?';
+          cap.classList.remove('warn');
+          var row = el('div', 'btnrow');
+          var no = el('button', 'big missed', 'No');
+          var yes = el('button', 'big ' + speed, 'Yes');
+          row.appendChild(no); row.appendChild(yes);
+          root.appendChild(row);
+          yes.onclick = function () { submit(speed); };
+          no.onclick = function () { submit('missed'); };
+        };
+      }
+    },
+    C: {
+      name: 'Ring, then three buttons',
+      mount: function (p, submit) {
+        var root = el('div', 'v-c');
+        var wrap = el('div', 'ringwrap');
+        var C = 2 * Math.PI * 46;
+        var ring = el('div', 'ring');
+        ring.innerHTML = '<svg viewBox="0 0 100 100" width="100%" height="100%">' +
+          '<circle class="track" cx="50" cy="50" r="46"></circle>' +
+          '<circle class="fill" cx="50" cy="50" r="46" stroke-dasharray="' + C + '" stroke-dashoffset="0"></circle></svg>';
+        var fill = ring.querySelector('.fill');
+        var fact = el('div', 'fact', factHtml(p));
+        wrap.appendChild(ring); wrap.appendChild(fact);
+        var cap = el('div', 'caption', 'Say it out loud. Tap the ring to see the answer.');
+        root.appendChild(wrap); root.appendChild(cap);
+        stage.appendChild(root);
+        var revealed = false;
+        function reveal() {
+          if (revealed) return;
+          revealed = true;
+          activeTimer.stop();
+          fact.innerHTML = factHtml(p) + ' <span class="eq">=</span>';
+          var ans = el('div', 'answer', String(p.answer));
+          wrap.appendChild(ans);
+          cap.textContent = 'How did you go?';
+          cap.classList.remove('warn');
+          var row = el('div', 'btnrow');
+          var m = el('button', 'big missed', 'Missed');
+          var s = el('button', 'big slow', 'Slow');
+          var f = el('button', 'big fast', 'Quick');
+          row.appendChild(m); row.appendChild(s); row.appendChild(f);
+          root.appendChild(row);
+          f.onclick = function () { submit('fast'); };
+          s.onclick = function () { submit('slow'); };
+          m.onclick = function () { submit('missed'); };
+        }
+        activeTimer = runTimer(function (pct) { fill.style.strokeDashoffset = String(C * (1 - pct)); }, function () {
+          ring.classList.add('drained');
+          reveal();
+        });
+        wrap.onclick = reveal;
+      }
+    }
+  };
+  function VARIANT_KEYS() { return Object.keys(VARIANTS); }
+
+  // ---------- Feedback (shared: the character lives here) ----------
+  var WORDS = { fast: ['Fast!', 'Zoom!', 'Yes!'], slow: ['Got there!', 'You got it', 'Nice'], missed: ['Next time', 'Tricky one', 'Keep going'] };
+
+  function showFeedback(p, outcome, next) {
+    var fb = el('div', 'fb ' + outcome);
+    fb.appendChild(el('div', 'sum', p.x + ' × ' + p.y + ' = <b>' + p.answer + '</b>'));
+    var word = WORDS[outcome][Math.floor(Math.random() * WORDS[outcome].length)];
+    if (settings.feedback === 'char') {
+      var cw = el('div', 'charwrap');
+      cw.appendChild(el('span', 'char', settings.character));
+      if (outcome === 'fast') {
+        for (var i = 0; i < 5; i++) {
+          var s = el('span', 'spark', ['✨', '⭐', '💫'][i % 3]);
+          var ang = (i / 5) * Math.PI * 2;
+          s.style.setProperty('--dx', Math.round(Math.cos(ang) * 110) + 'px');
+          s.style.setProperty('--dy', Math.round(Math.sin(ang) * 80 - 30) + 'px');
+          s.style.animationDelay = (i * 0.05) + 's';
+          cw.appendChild(s);
+        }
+      }
+      fb.appendChild(cw);
+    }
+    fb.appendChild(el('div', 'word', word));
+    if (outcome === 'fast' && drill.streak >= 2) fb.appendChild(el('div', 'streak', '🔥 <b>' + drill.streak + '</b> in a row'));
+    fb.appendChild(el('div', 'hint', 'Tap to go on'));
+    stage.appendChild(fb);
+    var went = false;
+    function go() { if (went) return; went = true; next(); }
+    fb.onclick = go;
+    pendingTimeout = setTimeout(go, outcome === 'fast' ? 1400 : 2000);
+  }
+
+  // ---------- End screen ----------
+  function showEnd() {
+    clearStage();
+    var root = el('div', 'end');
+    root.appendChild(el('div', 'char', settings.character)).style.fontSize = '120px';
+    root.appendChild(el('h1', null, drill.quit ? 'Stopped early. Still counts!' : 'Drill done!'));
+    var t = el('div', 'tally');
+    t.innerHTML = '<span class="f"><b>' + drill.fast + '</b>fast</span><span class="s"><b>' + drill.slow + '</b>slow</span><span class="m"><b>' + drill.missed + '</b>missed</span>';
+    root.appendChild(t);
+    var again = el('button', 'big neutral', 'Go again');
+    again.onclick = function () { newDrill(); step(); };
+    root.appendChild(again);
+    stage.appendChild(root);
+    progressEl.textContent = drill.index + ' / ' + DRILL_LENGTH;
+    renderState();
+  }
+
+  // ---------- Loop ----------
+  function step() {
+    clearStage();
+    if (drill.done) return showEnd();
+    var p = present();
+    progressEl.textContent = (drill.index + 1) + ' / ' + DRILL_LENGTH;
+    renderState();
+    var submitted = false;
+    VARIANTS[settings.variant].mount(p, function (outcome) {
+      if (submitted) return;
+      submitted = true;
+      if (activeTimer) { activeTimer.stop(); activeTimer = null; }
+      apply(outcome);
+      renderState();
+      showFeedback(p, outcome, step);
+    });
+  }
+
+  document.getElementById('quit').onclick = function () {
+    if (drill.done) return;
+    drill.quit = true; drill.done = true;
+    showEnd();
+  };
+
+  // ---------- Prototype chrome ----------
+  var labelEl = document.getElementById('label');
+  var stateEl = document.getElementById('state');
+  var charBtn = document.getElementById('charBtn');
+  var fbBtn = document.getElementById('fbBtn');
+
+  function setVariant(v) {
+    settings.variant = v;
+    labelEl.textContent = v + ' · ' + VARIANTS[v].name;
+    try { history.replaceState(null, '', '?variant=' + v); } catch (e) {}
+    if (!drill.done) step();
+  }
+  function cycle(d) {
+    var keys = VARIANT_KEYS();
+    setVariant(keys[(keys.indexOf(settings.variant) + d + keys.length) % keys.length]);
+  }
+  document.getElementById('prev').onclick = function () { cycle(-1); };
+  document.getElementById('next').onclick = function () { cycle(1); };
+  document.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (e.key === 'ArrowLeft') cycle(-1);
+    if (e.key === 'ArrowRight') cycle(1);
+  });
+  charBtn.onclick = function () {
+    settings.character = settings.character === '🐉' ? '🐱' : '🐉';
+    charBtn.textContent = settings.character;
+    persist();
+  };
+  fbBtn.onclick = function () {
+    settings.feedback = settings.feedback === 'char' ? 'plain' : 'char';
+    fbBtn.textContent = settings.feedback;
+    persist();
+  };
+  document.getElementById('stateBtn').onclick = function () { stateEl.hidden = !stateEl.hidden; renderState(); };
+  document.getElementById('restartBtn').onclick = function () { newDrill(); step(); };
+
+  function renderState() {
+    if (stateEl.hidden) return;
+    var cur = drill.current ? drill.current.fact : null;
+    var html = '<h2>Drill</h2>' +
+      'variant ' + settings.variant + '<br>' +
+      'shown ' + drill.index + ' / ' + DRILL_LENGTH + (drill.done ? (drill.quit ? ' (quit)' : ' (done)') : '') + '<br>' +
+      'fast ' + drill.fast + ' · slow ' + drill.slow + ' · missed ' + drill.missed + '<br>' +
+      'last outcome: ' + (drill.last || '—') + ' · streak ' + drill.streak + '<br>' +
+      'excluded (last 3): ' + (drill.recent.join(', ') || '—') + '<br>' +
+      (cur ? 'current: ' + cur.key + ' level ' + cur.level + ' weight ' + WEIGHTS[cur.level] : '') +
+      '<h2 style="margin-top:10px">Levels (33 facts)</h2><div class="levels">';
+    facts.forEach(function (f) {
+      html += '<div class="lv l' + f.level + (cur && f.key === cur.key ? ' cur' : '') + '"><span>' + f.key + '</span><b>' + f.level + '</b></div>';
+    });
+    stateEl.innerHTML = html + '</div>';
+  }
+
+  charBtn.textContent = settings.character;
+  fbBtn.textContent = settings.feedback;
+  newDrill();
+  setVariant(settings.variant);
+})();
+</script>
