@@ -1,0 +1,1208 @@
+<title>Dragon feedback</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;700&family=Nunito:wght@600;800&display=swap">
+<!--
+PROTOTYPE. Throwaway. Not production code.
+
+Question (Dragon feedback and rewards, wayfinder ticket #12): what happens in
+the feedback around the card? The card itself, the start screen and the flow
+are fixed (settled by the Drill flow prototype, variant A) and are not
+redesigned here. Three screens are prototyped: the feedback screen shown
+after each answer in a drill, the end-of-drill screen, and the speed run end
+screen.
+
+The card stays plain: fact large and centred, a 3-second bar under it,
+Missed bottom-left and Got it bottom-right. Outcomes are fast, slow or
+missed, already implemented. What varies here is how the dragon reacts, and
+how a drill's progress accumulates and is shown back to the learner.
+
+?variant=A|B|C now picks the accumulation shown on the feedback screen and
+the end-of-drill screen (never on the card), switchable with the floating
+bar or the left/right arrow keys:
+
+  A  Streak. "N in a row" with a flame, shown on fast once the streak
+     reaches 2. Resets on slow or missed. The end screen shows the best
+     streak of the drill.
+  B  Hoard. A row of gem slots, one per fact in the drill, under the dragon.
+     Each fast drops a gem in with a small animation. The end screen shows
+     the finished row and a count.
+  C  Growing dragon. The dragon grows a step with each fast, with a size
+     word that changes at thresholds. Slow and missed do not shrink it. The
+     end screen shows the dragon at its final size.
+
+The bar also carries: amp (loud/quiet, the feedback dragon's amplitude),
+best (loud/quiet, the speed run end screen's amplitude), char/plain
+(character on or off), short (a 5-fact drill and a 5-fact speed run, for
+reaching end screens fast), and a jump menu that renders the drill-end,
+speed-run-end and feedback screens straight away with fake tallies, without
+writing progress. Variant, amp, best, char and short persist in the URL.
+
+Progress (levels, drill records, personal best) is held in memory only and
+lost on reload. The Seed button on the bar fills in fake progress so the
+start screen looks lived in.
+-->
+<style>
+  :root {
+    --ground: #EEF3FB;
+    --card: #FFFFFF;
+    --ink: #1E2340;
+    --muted: #6B7290;
+    --line: #D6DCEC;
+    --accent: #5B4BD6;
+    --accent-soft: #E6E2FA;
+    --fast: #22A365;
+    --slow: #E39A1E;
+    --missed: #DE5A52;
+    --track: #DCE2F0;
+    --on-color: #FFFFFF;
+    --proto: #1E2340;
+    --proto-ink: #FFFFFF;
+    --shadow: 0 10px 30px rgba(30, 35, 64, 0.12);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --ground: #141829;
+      --card: #1E2338;
+      --ink: #EEF0FA;
+      --muted: #9AA1C2;
+      --line: #2F3652;
+      --accent: #8C7CFF;
+      --accent-soft: #2E2A55;
+      --fast: #3CC37C;
+      --slow: #F2B240;
+      --missed: #F06A62;
+      --track: #2A3049;
+      --on-color: #10131F;
+      --proto: #EEF0FA;
+      --proto-ink: #141829;
+      --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+  }
+  :root[data-theme="dark"] {
+    --ground: #141829;
+    --card: #1E2338;
+    --ink: #EEF0FA;
+    --muted: #9AA1C2;
+    --line: #2F3652;
+    --accent: #8C7CFF;
+    --accent-soft: #2E2A55;
+    --fast: #3CC37C;
+    --slow: #F2B240;
+    --missed: #F06A62;
+    --track: #2A3049;
+    --on-color: #10131F;
+    --proto: #EEF0FA;
+    --proto-ink: #141829;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+  }
+
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0;
+    background: var(--ground);
+    color: var(--ink);
+    font-family: "Nunito", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+    font-weight: 600;
+    -webkit-text-size-adjust: 100%;
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+    overflow: hidden;
+  }
+  button {
+    font: inherit;
+    color: inherit;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    touch-action: manipulation;
+    -webkit-tap-highlight-color: transparent;
+  }
+  button:focus-visible { outline: 3px solid var(--accent); outline-offset: 3px; }
+  button[disabled] { opacity: 0.4; cursor: default; }
+
+  #app {
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    padding: 12px 16px calc(84px + env(safe-area-inset-bottom, 0px));
+    gap: 8px;
+    overflow-y: auto;
+  }
+  .top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    color: var(--muted);
+    font-size: 18px;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    flex: none;
+  }
+  .top .quit {
+    width: 48px; height: 48px;
+    border-radius: 999px;
+    font-size: 22px;
+    color: var(--muted);
+  }
+  .top .quit:active { background: var(--line); }
+  .top .clock {
+    font-family: "Fredoka", "Nunito", system-ui, sans-serif;
+    font-size: 34px;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+  .stage {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border-radius: 28px;
+    box-shadow: var(--shadow);
+    padding: 24px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stage.enter { animation: slidein 0.35s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  @keyframes slidein { from { opacity: 0; transform: translateY(40px) scale(0.97); } to { opacity: 1; transform: none; } }
+
+  /* Shared type */
+  .display {
+    font-family: "Fredoka", "Nunito", "Arial Rounded MT Bold", system-ui, sans-serif;
+    font-weight: 700;
+    line-height: 1;
+  }
+  h1 { margin: 0; text-wrap: balance; }
+  .dragon { font-size: clamp(72px, 16vmin, 150px); line-height: 1; display: inline-block; }
+  .dragonwrap { position: relative; display: inline-block; }
+  .dragon.idle { animation: bob 2.4s ease-in-out infinite; }
+  @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-6%) rotate(2deg); } }
+
+  /* Card: fact and bar stay plain. */
+  .fact {
+    font-family: "Fredoka", "Nunito", "Arial Rounded MT Bold", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: clamp(64px, 18vmin, 180px);
+    line-height: 1;
+    letter-spacing: 0.02em;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+  }
+  .fact .eq { color: var(--muted); }
+  .answer {
+    font-family: "Fredoka", "Nunito", "Arial Rounded MT Bold", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: clamp(72px, 22vmin, 220px);
+    line-height: 1;
+    text-align: center;
+    color: var(--accent);
+    font-variant-numeric: tabular-nums;
+  }
+  .bar {
+    --p: 1;
+    height: 28px;
+    width: min(100%, 560px);
+    margin: 0 auto;
+    background: var(--track);
+    border-radius: 999px;
+    overflow: hidden;
+  }
+  .bar::before {
+    content: "";
+    display: block;
+    height: 100%;
+    width: calc(var(--p) * 100%);
+    background: var(--fast);
+    border-radius: inherit;
+  }
+  .bar.drained::before { width: 100%; background: var(--slow); }
+  .caption {
+    text-align: center;
+    color: var(--muted);
+    font-size: 22px;
+    min-height: 1.4em;
+  }
+  .caption.warn { color: var(--slow); }
+  .btnrow { display: flex; gap: 16px; margin-top: auto; }
+  .big {
+    flex: 1;
+    min-height: 110px;
+    border-radius: 24px;
+    font-size: 34px;
+    font-weight: 800;
+    color: var(--on-color);
+    box-shadow: 0 6px 0 rgba(0, 0, 0, 0.18);
+    transition: transform 0.08s ease, background-color 0.3s ease;
+  }
+  .big:active { transform: translateY(4px); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.18); }
+  .big.fast { background: var(--fast); }
+  .big.slow { background: var(--slow); }
+  .big.missed { background: var(--missed); }
+  .big.neutral { background: var(--accent); }
+  .big.ghost { background: var(--card); color: var(--accent); box-shadow: inset 0 0 0 4px var(--accent); }
+  .big small { display: block; font-size: 18px; font-weight: 600; opacity: 0.85; }
+  .v-a { display: flex; flex-direction: column; gap: 20px; height: 100%; }
+  .v-a .fact { margin-top: auto; }
+  .v-a .bar { margin-bottom: auto; }
+  .reveal {
+    position: absolute; inset: 0; background: var(--card);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  }
+
+  /* Feedback: the dragon lives here. Fast/slow and missed are structurally different layouts. */
+  .fb {
+    position: absolute;
+    inset: 0;
+    background: var(--card);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    padding: 24px;
+    animation: fbin 0.25s ease;
+  }
+  @keyframes fbin { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: none; } }
+  .fb .sum { font-family: "Fredoka", system-ui, sans-serif; font-weight: 500; font-size: clamp(36px, 9vmin, 84px); color: var(--muted); font-variant-numeric: tabular-nums; }
+  .fb .sum b { color: var(--ink); font-weight: 700; }
+  .fb .word { font-family: "Fredoka", system-ui, sans-serif; font-weight: 700; font-size: clamp(40px, 10vmin, 96px); line-height: 1; }
+  .fb.fast .word { color: var(--fast); }
+  .fb.slow .word { color: var(--slow); }
+  .fb.missed .word { color: var(--missed); }
+  /* Missed: the fact and its answer are the biggest thing on screen. */
+  .fb.missed .sum { font-size: clamp(72px, 19vmin, 200px); color: var(--ink); font-weight: 700; }
+  .fb .charwrap { position: relative; height: clamp(100px, 24vmin, 200px); display: grid; place-items: center; }
+  .fb .charwrap.grow { transition: transform 0.4s ease; }
+  .fb .charwrap.corner { position: absolute; top: 18px; right: 18px; height: auto; }
+  .fb .char { font-size: clamp(80px, 20vmin, 170px); line-height: 1; display: inline-block; }
+  .fb .charwrap.corner .char { font-size: clamp(34px, 8vmin, 60px); }
+  .fb.quiet .charwrap:not(.corner) .char { font-size: clamp(60px, 15vmin, 128px); }
+  .fb .char.jump { animation: jump 0.7s ease; }
+  .fb.quiet .char.jump { animation-name: jumpSmall; }
+  .fb .char.nod { animation: nod 0.9s ease; }
+  .fb .char.shrug { animation: shrug 0.9s ease; }
+  @keyframes jump { 0% { transform: translateY(0); } 35% { transform: translateY(-14%) scale(1.12); } 65% { transform: translateY(0); } 82% { transform: translateY(-5%); } 100% { transform: translateY(0); } }
+  @keyframes jumpSmall { 0% { transform: translateY(0); } 35% { transform: translateY(-8%) scale(1.06); } 65% { transform: translateY(0); } 100% { transform: translateY(0); } }
+  @keyframes nod { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-9deg); } 75% { transform: rotate(9deg); } }
+  @keyframes shrug { 0%, 100% { transform: rotate(0) translateY(0); } 25% { transform: rotate(-10deg); } 55% { transform: rotate(7deg); } 80% { transform: rotate(-4deg); } }
+  .spark { position: absolute; font-size: clamp(24px, 6vmin, 48px); opacity: 0; animation: spark 0.9s ease forwards; }
+  @keyframes spark { 0% { opacity: 0; transform: translate(0, 0) scale(0.5); } 30% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.2); } }
+  .fb .streak { font-size: 24px; color: var(--muted); }
+  .fb .streak b { color: var(--slow); }
+  .fb .accum.compact { font-size: 15px; color: var(--muted); }
+  .fb .hint { font-size: 16px; color: var(--muted); }
+  .fb .oops {
+    position: absolute;
+    left: 14px;
+    bottom: 14px;
+    min-height: 52px;
+    padding: 10px 16px;
+    border-radius: 999px;
+    background: var(--ground);
+    color: var(--muted);
+    font-size: 14px;
+    font-weight: 800;
+    box-shadow: inset 0 0 0 2px var(--line);
+  }
+  .fb .oops:active { background: var(--line); }
+
+  /* Accumulation: streak, hoard, growing dragon. Never on the card. */
+  .hoard { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: min(100%, 480px); }
+  .hoard.wide { max-width: min(100%, 560px); gap: 8px; }
+  .gem {
+    width: 22px; height: 22px;
+    border-radius: 999px;
+    background: var(--track);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 15px;
+    line-height: 1;
+  }
+  .hoard.wide .gem { width: 30px; height: 30px; font-size: 20px; }
+  .gem.new { animation: gempop 0.4s ease; }
+  @keyframes gempop { from { transform: scale(0); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .growword { font-family: "Fredoka", system-ui, sans-serif; font-size: 22px; color: var(--muted); }
+
+  /* Particles: sparkles radiate from spark spans; confetti falls from the top. */
+  .confetti { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+  .confetti span {
+    position: absolute; top: -20px;
+    width: 10px; height: 16px;
+    opacity: 0.9;
+    animation: fall 1.6s ease-in forwards;
+  }
+  @keyframes fall { to { transform: translateY(120vh) rotate(360deg); opacity: 0; } }
+
+  /* End-screen dragon reactions: never flat or sad. */
+  .dragon.bigjump { animation: bigjump 0.8s ease; }
+  @keyframes bigjump { 0% { transform: translateY(0); } 35% { transform: translateY(-22%) scale(1.18); } 65% { transform: translateY(0); } 85% { transform: translateY(-8%); } 100% { transform: translateY(0); } }
+  .dragon.hop { animation: hop 0.7s ease; }
+  @keyframes hop { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-12%); } }
+  .dragon.wave { animation: wave 1.6s ease; }
+  @keyframes wave { 0%, 100% { transform: rotate(0); } 25% { transform: rotate(-8deg); } 50% { transform: rotate(0); } 75% { transform: rotate(8deg); } }
+  .dragon.proud { animation: proud 0.6s ease forwards; }
+  @keyframes proud { from { transform: scale(1) rotate(0); } to { transform: scale(1.18) rotate(-8deg); } }
+  .payout { font-size: 20px; color: var(--muted); display: flex; flex-direction: column; align-items: center; gap: 6px; }
+  .payout b { color: var(--ink); font-family: "Fredoka", system-ui, sans-serif; }
+
+  /* Tally, shared by end screens */
+  .tally { display: flex; gap: 28px; font-size: 22px; justify-content: center; }
+  .tally span b { display: block; font-size: 52px; font-family: "Fredoka", system-ui, sans-serif; font-weight: 700; line-height: 1.1; }
+  .tally .f b { color: var(--fast); }
+  .tally .s b { color: var(--slow); }
+  .tally .m b { color: var(--missed); }
+  .centre { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 20px; text-align: center; }
+  .centre h1 { font-family: "Fredoka", system-ui, sans-serif; font-weight: 700; font-size: clamp(36px, 9vmin, 80px); }
+  .centre .btnrow { margin-top: 8px; width: min(100%, 640px); }
+  .centre .big { min-height: 96px; font-size: 30px; }
+  .sub { color: var(--muted); font-size: 20px; }
+  .bestline { color: var(--muted); font-size: 22px; }
+  .bestline b { color: var(--ink); font-family: "Fredoka", system-ui, sans-serif; font-size: 30px; font-variant-numeric: tabular-nums; }
+  .newbest { color: var(--slow); font-family: "Fredoka", system-ui, sans-serif; font-size: clamp(30px, 7vmin, 56px); }
+  .runtime { font-family: "Fredoka", system-ui, sans-serif; font-size: clamp(64px, 18vmin, 160px); line-height: 1; font-variant-numeric: tabular-nums; color: var(--accent); }
+  .count { font-family: "Fredoka", system-ui, sans-serif; font-size: clamp(120px, 40vmin, 320px); color: var(--accent); line-height: 1; animation: pop 0.6s ease; }
+  @keyframes pop { from { transform: scale(0.4); opacity: 0; } to { transform: none; opacity: 1; } }
+
+  /* ---- Variant A: one start screen ---- */
+  .s-a { height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 22px; text-align: center; }
+  .s-a h1 { font-family: "Fredoka", system-ui, sans-serif; font-size: clamp(36px, 8vmin, 72px); }
+  .s-a .label { color: var(--muted); font-size: 22px; }
+  .tiles { display: flex; gap: 16px; width: min(100%, 560px); }
+  .tile {
+    flex: 1;
+    min-height: 120px;
+    border-radius: 24px;
+    background: var(--ground);
+    color: var(--muted);
+    box-shadow: inset 0 0 0 3px var(--line);
+    font-family: "Fredoka", system-ui, sans-serif;
+    font-weight: 700;
+    font-size: 48px;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    transition: transform 0.08s ease, background-color 0.15s ease;
+  }
+  .tile small { font-family: "Nunito", system-ui, sans-serif; font-size: 16px; font-weight: 800; letter-spacing: 0.08em; }
+  .tile[aria-pressed="true"] { background: var(--accent); color: var(--on-color); box-shadow: 0 6px 0 rgba(0, 0, 0, 0.18); }
+  .tile:active { transform: translateY(3px); }
+  .s-a .big { flex: none; width: min(100%, 560px); }
+  .s-a .big.ghost { min-height: 84px; font-size: 26px; }
+  .s-a .big.ghost small { color: var(--muted); }
+
+  /* Prototype chrome: not part of the design under review. */
+  #proto {
+    position: fixed;
+    left: 50%;
+    bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px;
+    background: var(--proto);
+    color: var(--proto-ink);
+    border-radius: 999px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 14px;
+    z-index: 20;
+    white-space: nowrap;
+    max-width: calc(100vw - 24px);
+    overflow-x: auto;
+  }
+  #proto button { color: var(--proto-ink); padding: 8px 12px; border-radius: 999px; font-family: inherit; font-size: inherit; }
+  #proto button:active { background: rgba(127, 127, 127, 0.35); }
+  #proto button[aria-pressed="true"] { background: rgba(140, 124, 255, 0.55); }
+  #proto .label { padding: 0 8px; font-weight: 700; }
+  #proto .sep { width: 1px; height: 20px; background: rgba(127, 127, 127, 0.5); margin: 0 4px; }
+  #jumpMenu {
+    position: fixed;
+    left: 50%;
+    bottom: calc(64px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%);
+    background: var(--proto);
+    color: var(--proto-ink);
+    border-radius: 16px;
+    padding: 10px;
+    z-index: 22;
+    font-family: ui-monospace, Menlo, monospace;
+    font-size: 13px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    display: flex;
+    gap: 14px;
+    max-width: calc(100vw - 24px);
+  }
+  #jumpMenu[hidden] { display: none; }
+  #jumpMenu .jgroup { display: flex; flex-direction: column; gap: 4px; align-items: stretch; }
+  #jumpMenu .jgroup span { opacity: 0.7; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
+  #jumpMenu button { color: var(--proto-ink); padding: 8px 10px; border-radius: 8px; background: rgba(127, 127, 127, 0.18); font-family: inherit; font-size: inherit; min-height: 36px; }
+  #jumpMenu button:active { background: rgba(127, 127, 127, 0.35); }
+  @media (max-width: 560px) {
+    #jumpMenu { flex-direction: column; left: 12px; right: 12px; transform: none; max-height: 55vh; overflow: auto; }
+  }
+  #state {
+    position: fixed; top: 12px; right: 12px;
+    width: min(340px, calc(100vw - 24px));
+    max-height: calc(100vh - 110px);
+    overflow: auto;
+    background: var(--proto); color: var(--proto-ink);
+    border-radius: 16px; padding: 14px;
+    font-family: ui-monospace, Menlo, monospace; font-size: 13px; line-height: 1.5;
+    z-index: 21;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  }
+  #state h2 { font-size: 13px; margin: 0 0 6px; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.7; }
+  #state .levels { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 8px; }
+  #state .lv { padding: 4px 6px; border-radius: 6px; background: rgba(127, 127, 127, 0.25); display: flex; justify-content: space-between; }
+  #state .lv.l0 { background: rgba(222, 90, 82, 0.5); }
+  #state .lv.l1 { background: rgba(227, 154, 30, 0.5); }
+  #state .lv.l2 { background: rgba(227, 154, 30, 0.25); }
+  #state .lv.l3 { background: rgba(34, 163, 101, 0.35); }
+  #state .lv.l4 { background: rgba(34, 163, 101, 0.7); }
+
+  @media (prefers-reduced-motion: reduce) {
+    /* Shorten, don't remove: every reaction still plays, briefly. */
+    .stage.enter { animation-duration: 0.12s !important; }
+    .dragon.idle { animation-duration: 4.8s !important; }
+    .fb { animation-duration: 0.12s !important; }
+    .fb .char.jump, .fb .char.nod, .fb .char.shrug { animation-duration: 0.3s !important; }
+    .spark, .confetti span { animation-duration: 0.5s !important; }
+    .dragon.bigjump, .dragon.hop, .dragon.wave, .dragon.proud { animation-duration: 0.35s !important; }
+    .count, .gem.new { animation-duration: 0.2s !important; }
+  }
+  @media (max-width: 520px) {
+    .big { min-height: 88px; font-size: 26px; }
+    .stage { padding: 16px; border-radius: 20px; }
+    .tile { min-height: 96px; font-size: 40px; }
+  }
+</style>
+
+<div id="app"></div>
+
+<div id="proto" role="toolbar" aria-label="Prototype controls">
+  <button id="prev" aria-label="Previous variant">◀</button>
+  <span class="label" id="label">A</span>
+  <button id="next" aria-label="Next variant">▶</button>
+  <span class="sep"></span>
+  <button id="ampBtn" title="Feedback amplitude">loud</button>
+  <button id="bestBtn" title="Speed run end amplitude">best: loud</button>
+  <button id="plainBtn" title="Toggle the dragon character">char</button>
+  <button id="shortBtn" title="Short mode: 5-fact drill and speed run" aria-pressed="false">short</button>
+  <span class="sep"></span>
+  <button id="jumpBtn" title="Jump straight to a screen" aria-haspopup="true" aria-expanded="false">jump</button>
+  <span class="sep"></span>
+  <button id="homeBtn" title="Back to the start screen">⌂</button>
+  <button id="seedBtn" title="Fill in fake progress">seed</button>
+  <button id="stateBtn" title="Show progress state">state</button>
+  <button id="resetBtn" title="Wipe progress">↺</button>
+</div>
+<div id="jumpMenu" hidden role="menu" aria-label="Jump to a screen">
+  <div class="jgroup"><span>Drill end</span>
+    <button type="button" data-jump="drillend" data-arg="low">low</button>
+    <button type="button" data-jump="drillend" data-arg="mid">mid</button>
+    <button type="button" data-jump="drillend" data-arg="high">high</button>
+  </div>
+  <div class="jgroup"><span>Run end</span>
+    <button type="button" data-jump="runend" data-arg="first">first</button>
+    <button type="button" data-jump="runend" data-arg="best">new best</button>
+    <button type="button" data-jump="runend" data-arg="notbest">not best</button>
+  </div>
+  <div class="jgroup"><span>Feedback</span>
+    <button type="button" data-jump="feedback" data-arg="fast">fast</button>
+    <button type="button" data-jump="feedback" data-arg="slow">slow</button>
+    <button type="button" data-jump="feedback" data-arg="missed">missed</button>
+  </div>
+</div>
+<div id="state" hidden></div>
+
+<script>
+(function () {
+  'use strict';
+
+  // ---------- Progress (Drill model + Progress storage, in memory only) ----------
+  var LIMIT = 3000;
+  var TABLES = [6, 8, 12];
+  var WEIGHTS = [8, 4, 2, 1, 1];
+  var DRAGON = '🐉';
+
+  function buildFacts() {
+    var seen = {}, facts = [];
+    TABLES.forEach(function (t) {
+      for (var k = 1; k <= 12; k++) {
+        var a = Math.min(t, k), b = Math.max(t, k), key = a + 'x' + b;
+        if (!seen[key]) { seen[key] = true; facts.push({ a: a, b: b, key: key, level: 0 }); }
+      }
+    });
+    return facts;
+  }
+
+  var facts, records, prefs;
+  function resetProgress() { facts = buildFacts(); records = []; prefs = { tables: [6, 8, 12] }; }
+  function seedProgress() {
+    facts.forEach(function (f) { f.level = Math.floor(Math.random() * 5); });
+    records.push({ mode: 'drill', tables: [6, 8, 12], fast: 12, slow: 5, missed: 3, quit: false, time: null });
+    records.push({ mode: 'speed', tables: [6, 8, 12], fast: 25, slow: 6, missed: 4, quit: false, time: 118900 });
+    records.push({ mode: 'speed', tables: [6, 8, 12], fast: 28, slow: 4, missed: 2, quit: false, time: 102300 });
+  }
+  function personalBest() {
+    var best = null;
+    records.forEach(function (r) { if (r.mode === 'speed' && !r.quit && (best === null || r.time < best)) best = r.time; });
+    return best;
+  }
+  function fmtTime(ms) {
+    var s = ms / 1000, m = Math.floor(s / 60), r = s - m * 60;
+    var rs = r.toFixed(1);
+    return m ? m + ':' + (r < 10 ? '0' : '') + rs : rs + 's';
+  }
+  function tableLabel(tables) {
+    if (tables.length === 3) return 'all three tables';
+    return tables.map(function (t) { return t + 's'; }).join(' and ');
+  }
+  function tableFrom(tables) { return tables.length === 3 ? 'all three tables' : 'the ' + tableLabel(tables); }
+  function poolFor(tables) {
+    return facts.filter(function (f) { return tables.indexOf(f.a) !== -1 || tables.indexOf(f.b) !== -1; });
+  }
+  function shuffle(arr) {
+    var a = arr.slice();
+    for (var i = a.length - 1; i > 0; i--) { var j = Math.floor(Math.random() * (i + 1)); var t = a[i]; a[i] = a[j]; a[j] = t; }
+    return a;
+  }
+  function flip(f) {
+    var r = Math.random() < 0.5;
+    return { fact: f, x: r ? f.b : f.a, y: r ? f.a : f.b, answer: f.a * f.b };
+  }
+  function grade(f, outcome) {
+    if (outcome === 'fast') f.level = Math.min(4, f.level + 1);
+    else if (outcome === 'slow') f.level = Math.max(0, f.level - 1);
+    else f.level = 0;
+  }
+
+  // ---------- Drill ----------
+  // Drill and speed run length: 5 facts each in short mode, so end screens are reachable fast.
+  function drillLen() { return settings.short ? 5 : 20; }
+  function speedLen() { return settings.short ? Math.min(5, facts.length) : facts.length; }
+  var drill = null;
+  function newDrill(tables) {
+    drill = { tables: tables.slice(), pool: poolFor(tables), index: 0, fast: 0, slow: 0, missed: 0, recent: [], streak: 0, bestStreak: 0, done: false, quit: false, recorded: false, current: null };
+  }
+  function draw() {
+    var pool = drill.pool.filter(function (f) { return drill.recent.indexOf(f.key) === -1; });
+    var total = pool.reduce(function (s, f) { return s + WEIGHTS[f.level]; }, 0);
+    var r = Math.random() * total;
+    for (var i = 0; i < pool.length; i++) { r -= WEIGHTS[pool[i].level]; if (r < 0) return pool[i]; }
+    return pool[pool.length - 1];
+  }
+  function applyOutcome(outcome) {
+    var f = drill.current.fact;
+    grade(f, outcome);
+    if (outcome === 'fast') {
+      drill.fast++; drill.streak++;
+      if (drill.streak > drill.bestStreak) drill.bestStreak = drill.streak;
+    }
+    else if (outcome === 'slow') { drill.slow++; drill.streak = 0; }
+    else { drill.missed++; drill.streak = 0; }
+    drill.recent.push(f.key);
+    if (drill.recent.length > 3) drill.recent.shift();
+    drill.index++;
+    if (drill.index >= drillLen()) drill.done = true;
+  }
+  function recordDrill() {
+    if (drill.recorded) return;
+    drill.recorded = true;
+    records.push({ mode: 'drill', tables: drill.tables, fast: drill.fast, slow: drill.slow, missed: drill.missed, quit: drill.quit, time: null });
+  }
+
+  // ---------- Timer ----------
+  function runTimer(onFrame, onDrain) {
+    var t0 = performance.now(), raf, stopped = false, drained = false;
+    function frame(now) {
+      if (stopped) return;
+      var e = now - t0, p = Math.max(0, 1 - e / LIMIT);
+      onFrame(p);
+      if (e >= LIMIT) { drained = true; onDrain(); return; }
+      raf = requestAnimationFrame(frame);
+    }
+    raf = requestAnimationFrame(frame);
+    return {
+      drained: function () { return drained; },
+      stop: function () { stopped = true; cancelAnimationFrame(raf); }
+    };
+  }
+
+  // ---------- DOM ----------
+  var app = document.getElementById('app');
+  var activeTimer = null, activeRaf = null, timeouts = [];
+  function el(tag, cls, html) {
+    var n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (html != null) n.innerHTML = html;
+    return n;
+  }
+  function later(fn, ms) { var id = setTimeout(fn, ms); timeouts.push(id); return id; }
+  function clearApp() {
+    if (activeTimer) { activeTimer.stop(); activeTimer = null; }
+    if (activeRaf) { cancelAnimationFrame(activeRaf); activeRaf = null; }
+    timeouts.forEach(clearTimeout); timeouts = [];
+    app.innerHTML = '';
+    speedRun = null;
+  }
+  function factHtml(p) { return p.x + ' <span class="eq">×</span> ' + p.y; }
+  function topBar(centre, onQuit) {
+    var top = el('div', 'top');
+    var quit = el('button', 'quit', '✕');
+    quit.setAttribute('aria-label', 'Quit');
+    quit.onclick = onQuit;
+    top.appendChild(quit);
+    top.appendChild(centre);
+    top.appendChild(el('div', null, '')).style.width = '48px';
+    return top;
+  }
+  function stageEl(enter) {
+    var s = el('div', 'stage' + (enter ? ' enter' : ''));
+    return s;
+  }
+  function tallyEl(d) {
+    return el('div', 'tally', '<span class="f"><b>' + d.fast + '</b>fast</span><span class="s"><b>' + d.slow + '</b>slow</span><span class="m"><b>' + d.missed + '</b>missed</span>');
+  }
+
+  // ---------- Accumulation: streak (A), hoard (B), growing dragon (C). Derived from the drill's tally. ----------
+  var ACCUM = {
+    A: { name: 'Streak' },
+    B: { name: 'Hoard' },
+    C: { name: 'Growing dragon' }
+  };
+  function hoardRow(count, big, justAdded) {
+    var len = drillLen();
+    var wrap = el('div', 'hoard' + (big ? ' wide' : ''));
+    for (var i = 0; i < len; i++) {
+      var filled = i < count;
+      var cls = 'gem' + (filled && i === count - 1 && justAdded ? ' new' : '');
+      wrap.appendChild(el('span', cls, filled ? '💎' : ''));
+    }
+    return wrap;
+  }
+  function growthInfo(fastCount) {
+    var len = drillLen();
+    var frac = len ? Math.min(1, fastCount / len) : 0;
+    var scale = 1 + frac * 0.8;
+    var word = frac < 0.25 ? 'Hatchling' : frac < 0.5 ? 'Young dragon' : frac < 0.85 ? 'Big dragon' : 'Mighty dragon';
+    return { scale: scale, word: word };
+  }
+  function sparkBurst(container, amp, originLeft, originTop) {
+    var n = amp === 'quiet' ? 2 : 5;
+    for (var i = 0; i < n; i++) {
+      var s = el('span', 'spark', ['✨', '⭐', '💫'][i % 3]);
+      var ang = (i / n) * Math.PI * 2;
+      var dist = amp === 'quiet' ? 70 : 110;
+      s.style.left = originLeft; s.style.top = originTop;
+      s.style.setProperty('--dx', Math.round(Math.cos(ang) * dist) + 'px');
+      s.style.setProperty('--dy', Math.round(Math.sin(ang) * (dist * 0.7) - 30) + 'px');
+      s.style.animationDelay = (i * 0.05) + 's';
+      container.appendChild(s);
+    }
+  }
+  function mouthSparkles(container, amp) {
+    var n = amp === 'quiet' ? 3 : 6;
+    for (var i = 0; i < n; i++) {
+      var s = el('span', 'spark', ['✨', '⭐', '💫'][i % 3]);
+      var dist = amp === 'quiet' ? 60 : 100;
+      s.style.left = '55%'; s.style.top = '38%';
+      s.style.setProperty('--dx', Math.round(30 + Math.random() * dist) + 'px');
+      s.style.setProperty('--dy', Math.round(-20 - Math.random() * 40) + 'px');
+      s.style.animationDelay = (i * 0.06) + 's';
+      container.appendChild(s);
+    }
+  }
+  function burstConfetti(container) {
+    var wrap = el('div', 'confetti');
+    var colors = ['var(--fast)', 'var(--accent)', 'var(--slow)', 'var(--missed)'];
+    for (var i = 0; i < 24; i++) {
+      var s = el('span');
+      s.style.left = Math.random() * 100 + '%';
+      s.style.background = colors[i % colors.length];
+      s.style.animationDelay = (Math.random() * 0.4) + 's';
+      s.style.animationDuration = (1.2 + Math.random() * 0.8) + 's';
+      wrap.appendChild(s);
+    }
+    container.appendChild(wrap);
+    later(function () { wrap.remove(); }, 2200);
+  }
+  function payoutLine(d, big) {
+    var wrap = el('div', 'payout');
+    if (settings.variant === 'A') {
+      wrap.appendChild(el('div', null, '🔥 Best streak: <b>' + d.bestStreak + '</b>'));
+    } else if (settings.variant === 'B') {
+      wrap.appendChild(hoardRow(d.fast, big, false));
+      wrap.appendChild(el('div', null, '<b>' + d.fast + '</b> gem' + (d.fast === 1 ? '' : 's')));
+    } else {
+      var gi = growthInfo(d.fast);
+      wrap.appendChild(el('div', null, 'Grew to <b>' + gi.word + '</b>'));
+    }
+    return wrap;
+  }
+
+  // ---------- Screens: one fixed start/card/end flow; ?variant= picks the accumulation shown ----------
+  var settings = { variant: 'A', amp: 'loud', bestAmp: 'loud', plain: false, short: false };
+  try {
+    var qp = new URLSearchParams(location.search);
+    var qv = qp.get('variant');
+    if (qv && ['A', 'B', 'C'].indexOf(qv.toUpperCase()) !== -1) settings.variant = qv.toUpperCase();
+    var qa = qp.get('amp');
+    if (qa === 'loud' || qa === 'quiet') settings.amp = qa;
+    var qb = qp.get('best');
+    if (qb === 'loud' || qb === 'quiet') settings.bestAmp = qb;
+    if (qp.get('char') === 'plain') settings.plain = true;
+    if (qp.get('short') === '1') settings.short = true;
+  } catch (e) {}
+
+  function showStart() {
+    clearApp();
+    var chosen = prefs.tables.slice();
+    var stage = stageEl(false);
+    var root = el('div', 's-a');
+    if (!settings.plain) root.appendChild(el('span', 'dragon idle', DRAGON));
+    root.appendChild(el('h1', null, 'Times tables'));
+    root.appendChild(el('div', 'label', 'Which tables?'));
+    var tiles = el('div', 'tiles');
+    var practise = el('button', 'big neutral', 'Practise <small>' + drillLen() + ' facts</small>');
+    function refresh() {
+      practise.disabled = chosen.length === 0;
+      practise.innerHTML = chosen.length ? 'Practise <small>' + drillLen() + ' facts from ' + tableFrom(chosen) + '</small>' : 'Practise <small>pick a table first</small>';
+    }
+    TABLES.forEach(function (t) {
+      var b = el('button', 'tile', t + '<small>TIMES</small>');
+      b.setAttribute('aria-pressed', chosen.indexOf(t) !== -1 ? 'true' : 'false');
+      b.onclick = function () {
+        var i = chosen.indexOf(t);
+        if (i === -1) chosen.push(t); else chosen.splice(i, 1);
+        chosen.sort(function (a, b) { return a - b; });
+        b.setAttribute('aria-pressed', i === -1 ? 'true' : 'false');
+        refresh();
+      };
+      tiles.appendChild(b);
+    });
+    root.appendChild(tiles);
+    refresh();
+    practise.onclick = function () { beginDrill(chosen); };
+    root.appendChild(practise);
+    var best = personalBest();
+    var sr = el('button', 'big ghost', '🏁 Speed run <small>' + (best === null ? speedLen() + ' facts, no best yet' : 'best ' + fmtTime(best)) + '</small>');
+    sr.onclick = startSpeedRun;
+    root.appendChild(sr);
+    stage.appendChild(root);
+    app.appendChild(stage);
+    renderState();
+  }
+
+  function beginDrill(tables) {
+    prefs.tables = tables.slice();
+    newDrill(tables);
+    showCard(true);
+  }
+
+  function showCard(enter) {
+    clearApp();
+    if (drill.done) return showEnd();
+    var p = flip(draw());
+    drill.current = p;
+    renderState();
+    app.appendChild(topBar(el('div', null, (drill.index + 1) + ' / ' + drillLen()), function () {
+      drill.quit = true; drill.done = true;
+      showEnd();
+    }));
+    var stage = stageEl(enter);
+    var root = el('div', 'v-a');
+    var fact = el('div', 'fact', factHtml(p));
+    var bar = el('div', 'bar');
+    var cap = el('div', 'caption', 'Say it out loud');
+    var row = el('div', 'btnrow');
+    var missed = el('button', 'big missed', 'Missed');
+    var got = el('button', 'big fast', 'Got it');
+    row.appendChild(missed); row.appendChild(got);
+    root.appendChild(fact); root.appendChild(bar); root.appendChild(cap); root.appendChild(row);
+    stage.appendChild(root);
+    app.appendChild(stage);
+    activeTimer = runTimer(function (pct) { bar.style.setProperty('--p', pct); }, function () {
+      bar.classList.add('drained');
+      got.classList.remove('fast'); got.classList.add('slow');
+      cap.textContent = 'Time is up. Still say it, then tap.';
+      cap.classList.add('warn');
+    });
+    var submitted = false;
+    function submit(outcome) {
+      if (submitted) return;
+      submitted = true;
+      activeTimer.stop(); activeTimer = null;
+      var snap = { level: p.fact.level, streak: drill.streak, bestStreak: drill.bestStreak, fast: drill.fast, slow: drill.slow };
+      applyOutcome(outcome);
+      renderState();
+      showFeedback(stage, p, outcome, function () { showCard(false); }, snap, drill);
+    }
+    got.onclick = function () { submit(activeTimer.drained() ? 'slow' : 'fast'); };
+    missed.onclick = function () { submit('missed'); };
+  }
+
+  // Hold times: loud/quiet, per outcome. Missed holds longest: it is the learning moment.
+  var HOLD = {
+    fast: { loud: 2000, quiet: 1200 },
+    slow: { loud: 2000, quiet: 1200 },
+    missed: { loud: 2500, quiet: 2000 }
+  };
+  var WORDS = { fast: ['Fast!', 'Zoom!', 'Yes!'], slow: ['Got there!', 'You got it', 'Nice'], missed: ['Next time', 'Tricky one', 'Keep going'] };
+
+  // d is the drill (or drill-like) object the accumulation is read from and, for fast/slow, can be corrected against.
+  // snap is the pre-outcome state to restore on "Oops, I was wrong"; missed feedback has no snap and no correction.
+  function showFeedback(stage, p, outcome, next, snap, d) {
+    var amp = settings.amp, plain = settings.plain;
+    var fb = el('div', 'fb ' + outcome + (plain ? ' plain' : '') + ' ' + amp);
+    var went = false;
+    function go() { if (went) return; went = true; next(); }
+
+    if (outcome === 'missed') {
+      fb.appendChild(el('div', 'sum', p.x + ' × ' + p.y + ' = <b>' + p.answer + '</b>'));
+      fb.appendChild(el('div', 'word', WORDS.missed[Math.floor(Math.random() * 3)]));
+      if (!plain) {
+        var corner = el('div', 'charwrap corner');
+        corner.appendChild(el('span', 'char shrug', DRAGON));
+        fb.appendChild(corner);
+        var accumM = el('div', 'accum compact');
+        if (settings.variant === 'B') accumM.appendChild(hoardRow(d.fast, false, false));
+        else if (settings.variant === 'C') accumM.appendChild(el('div', 'growword', growthInfo(d.fast).word));
+        if (accumM.childNodes.length) fb.appendChild(accumM);
+      }
+      fb.appendChild(el('div', 'hint', 'Tap to go on'));
+      stage.appendChild(fb);
+      fb.onclick = go;
+      later(go, HOLD.missed[amp]);
+      return;
+    }
+
+    // fast / slow: the dragon is the biggest thing on screen; the fact and answer are shown smaller.
+    fb.appendChild(el('div', 'sum', p.x + ' × ' + p.y + ' = <b>' + p.answer + '</b>'));
+    if (!plain) {
+      var cw = el('div', 'charwrap');
+      var charEl = el('span', 'char', DRAGON);
+      charEl.classList.add(outcome === 'fast' ? 'jump' : 'nod');
+      if (settings.variant === 'C') {
+        cw.classList.add('grow');
+        cw.style.transform = 'scale(' + growthInfo(d.fast).scale.toFixed(2) + ')';
+      }
+      cw.appendChild(charEl);
+      if (outcome === 'fast') sparkBurst(cw, amp, '50%', '50%');
+      fb.appendChild(cw);
+    }
+    fb.appendChild(el('div', 'word', WORDS[outcome][Math.floor(Math.random() * 3)]));
+
+    var accum = el('div', 'accum');
+    if (settings.variant === 'A' && outcome === 'fast' && d.streak >= 2) {
+      accum.appendChild(el('div', 'streak', '🔥 <b>' + d.streak + '</b> in a row'));
+    } else if (settings.variant === 'B') {
+      accum.appendChild(hoardRow(d.fast, false, outcome === 'fast'));
+    } else if (settings.variant === 'C') {
+      accum.appendChild(el('div', 'growword', growthInfo(d.fast).word));
+    }
+    if (accum.childNodes.length) fb.appendChild(accum);
+
+    fb.appendChild(el('div', 'hint', 'Tap to go on'));
+
+    if (snap) {
+      var oops = el('button', 'oops', 'Oops, I was wrong');
+      oops.onclick = function (e) { e.stopPropagation(); correct(); };
+      fb.appendChild(oops);
+    }
+
+    stage.appendChild(fb);
+    fb.onclick = go;
+    later(go, HOLD[outcome][amp]);
+
+    function correct() {
+      went = true; // the pending auto-advance must not also fire
+      var f = p.fact;
+      f.level = snap.level;
+      if (outcome === 'fast') d.fast = snap.fast; else d.slow = snap.slow;
+      d.streak = snap.streak;
+      d.bestStreak = snap.bestStreak;
+      grade(f, 'missed');
+      d.missed++;
+      d.streak = 0;
+      renderState();
+      fb.remove();
+      showFeedback(stage, p, 'missed', next, null, d);
+    }
+  }
+
+  function renderDrillEnd(d, isPreview) {
+    var stage = stageEl(false);
+    var c = el('div', 'centre');
+    var len = drillLen();
+    var frac = len ? d.fast / len : 0;
+    var reaction = d.quit ? 'wave' : frac >= 0.75 ? 'bigjump' : frac >= 0.4 ? 'hop' : 'wave';
+    if (!settings.plain) {
+      var dragonEl = c.appendChild(el('span', 'dragon ' + reaction, DRAGON));
+      if (settings.variant === 'C') dragonEl.style.fontSize = 'calc(clamp(72px, 16vmin, 150px) * ' + growthInfo(d.fast).scale.toFixed(2) + ')';
+    }
+    c.appendChild(el('h1', null, d.quit ? 'Stopped early. Still counts!' : 'Drill done!'));
+    c.appendChild(tallyEl(d));
+    c.appendChild(payoutLine(d, true));
+    var row = el('div', 'btnrow');
+    var home = el('button', 'big ghost', 'Home');
+    var again = el('button', 'big neutral', 'Go again');
+    home.onclick = showStart;
+    again.onclick = isPreview ? showStart : function () { beginDrill(d.tables); };
+    row.appendChild(home); row.appendChild(again);
+    c.appendChild(row);
+    stage.appendChild(c);
+    app.appendChild(stage);
+    if (!settings.plain && !d.quit) {
+      if (frac >= 0.75) burstConfetti(stage);
+      else if (frac >= 0.4) sparkBurst(stage, 'loud', '50%', '35%');
+    }
+  }
+
+  function showEnd() {
+    clearApp();
+    recordDrill();
+    renderState();
+    renderDrillEnd(drill, false);
+  }
+
+  // ---------- Speed run (Speed run rules; the run card and miss reveal are unchanged, no dragon on the card) ----------
+  var speedRun = null;
+  function startSpeedRun() {
+    clearApp();
+    var stage = stageEl(true);
+    var c = el('div', 'centre');
+    var n = el('div', 'count', '3');
+    c.appendChild(n);
+    c.appendChild(el('div', 'sub', 'All ' + speedLen() + ' facts. Say each one out loud.'));
+    stage.appendChild(c);
+    app.appendChild(topBar(el('div', null, 'Speed run'), showStart));
+    app.appendChild(stage);
+    later(function () { n.textContent = '2'; n.style.animation = 'none'; n.offsetHeight; n.style.animation = ''; }, 700);
+    later(function () { n.textContent = '1'; n.style.animation = 'none'; n.offsetHeight; n.style.animation = ''; }, 1400);
+    later(function () {
+      clearApp();
+      speedRun = { queue: shuffle(facts).slice(0, speedLen()), fast: 0, slow: 0, missed: 0, t0: performance.now(), shown: 0 };
+      showSpeedCard();
+    }, 2100);
+  }
+  function quitSpeedRun() {
+    if (!speedRun) return;
+    var r = speedRun;
+    records.push({ mode: 'speed', tables: [6, 8, 12], fast: r.fast, slow: r.slow, missed: r.missed, quit: true, time: null });
+    showStart();
+  }
+  function showSpeedCard() {
+    var run = speedRun;
+    if (activeRaf) { cancelAnimationFrame(activeRaf); activeRaf = null; }
+    timeouts.forEach(clearTimeout); timeouts = [];
+    app.innerHTML = '';
+    if (!run.queue.length) return endSpeedRun();
+    var f = run.queue.shift();
+    var p = flip(f);
+    run.shown++;
+    var clock = el('div', 'clock', '0.0');
+    app.appendChild(topBar(clock, quitSpeedRun));
+    var stage = stageEl(false);
+    var root = el('div', 'v-a');
+    var fact = el('div', 'fact', factHtml(p));
+    var cap = el('div', 'caption', 'Say it out loud');
+    var row = el('div', 'btnrow');
+    var missed = el('button', 'big missed', 'Missed');
+    var got = el('button', 'big fast', 'Got it');
+    row.appendChild(missed); row.appendChild(got);
+    fact.style.marginTop = 'auto'; cap.style.marginBottom = 'auto';
+    root.appendChild(fact); root.appendChild(cap); root.appendChild(row);
+    stage.appendChild(root);
+    app.appendChild(stage);
+    var shownAt = performance.now();
+    function tick(now) { clock.textContent = ((now - run.t0) / 1000).toFixed(1); activeRaf = requestAnimationFrame(tick); }
+    activeRaf = requestAnimationFrame(tick);
+    var submitted = false;
+    got.onclick = function () {
+      if (submitted) return; submitted = true;
+      var outcome = performance.now() - shownAt < LIMIT ? 'fast' : 'slow';
+      grade(f, outcome); run[outcome]++;
+      renderState();
+      showSpeedCard();
+    };
+    missed.onclick = function () {
+      if (submitted) return; submitted = true;
+      grade(f, 'missed'); run.missed++;
+      run.queue.push(f);
+      renderState();
+      var rv = el('div', 'reveal');
+      rv.appendChild(el('div', 'fact', factHtml(p) + ' <span class="eq">=</span>'));
+      rv.appendChild(el('div', 'answer', String(p.answer)));
+      stage.appendChild(rv);
+      later(showSpeedCard, 1500);
+    };
+  }
+  function renderSpeedEnd(o) {
+    app.appendChild(topBar(el('div', null, 'Speed run'), o.done));
+    var stage = stageEl(false);
+    var c = el('div', 'centre');
+    if (o.isBest) {
+      if (!settings.plain) {
+        var drWrap = c.appendChild(el('span', 'dragonwrap'));
+        var dr = drWrap.appendChild(el('span', 'dragon', DRAGON));
+        dr.classList.add(settings.bestAmp === 'loud' ? 'proud' : 'hop');
+        mouthSparkles(drWrap, settings.bestAmp);
+        if (settings.bestAmp === 'loud') burstConfetti(stage);
+      }
+      c.appendChild(el('div', 'newbest', o.isFirst ? 'Your first time!' : 'New best!'));
+      c.appendChild(el('div', 'runtime', fmtTime(o.total)));
+      if (!o.isFirst) c.appendChild(el('div', 'bestline', 'Previous best: <b>' + fmtTime(o.prev) + '</b>'));
+    } else {
+      if (!settings.plain) c.appendChild(el('span', 'dragon wave', DRAGON));
+      c.appendChild(el('div', 'runtime', fmtTime(o.total)));
+      c.appendChild(el('div', 'bestline', ((o.total - o.prev) / 1000).toFixed(1) + ' s off your best'));
+    }
+    c.appendChild(el('div', 'sub', o.missed === 0 ? 'No misses' : o.missed + (o.missed === 1 ? ' miss' : ' misses')));
+    var row = el('div', 'btnrow');
+    var done = el('button', 'big ghost', 'Done');
+    var again = el('button', 'big neutral', 'Run again');
+    done.onclick = o.done;
+    again.onclick = o.again;
+    row.appendChild(done); row.appendChild(again);
+    c.appendChild(row);
+    stage.appendChild(c);
+    app.appendChild(stage);
+  }
+  function endSpeedRun() {
+    var run = speedRun;
+    var total = Math.round(performance.now() - run.t0);
+    var prev = personalBest();
+    var isFirst = prev === null;
+    var isBest = isFirst || total < prev;
+    records.push({ mode: 'speed', tables: [6, 8, 12], fast: run.fast, slow: run.slow, missed: run.missed, quit: false, time: total });
+    clearApp();
+    renderState();
+    renderSpeedEnd({ total: total, missed: run.missed, prev: prev, isFirst: isFirst, isBest: isBest, again: startSpeedRun, done: showStart });
+  }
+  document.addEventListener('visibilitychange', function () { if (document.hidden && speedRun) quitSpeedRun(); });
+
+  // ---------- Jump menu: renders a screen straight away with fake tallies. Never writes progress. ----------
+  function previewFeedback(outcome) {
+    clearApp();
+    var fakeD = { fast: 8, slow: 3, missed: 2, streak: outcome === 'fast' ? 3 : 0, bestStreak: 4, index: 9, tables: [6, 8, 12], quit: false };
+    var p = { x: 6, y: 7, answer: 42, fact: { key: '6x7', level: 2 } };
+    var stage = stageEl(false);
+    app.appendChild(topBar(el('div', null, 'preview'), showStart));
+    app.appendChild(stage);
+    var snap = outcome !== 'missed' ? { level: 1, streak: 2, bestStreak: 4, fast: 7, slow: 3 } : null;
+    showFeedback(stage, p, outcome, showStart, snap, fakeD);
+  }
+  function previewDrillEnd(band) {
+    clearApp();
+    var len = drillLen();
+    var fast = band === 'high' ? Math.ceil(len * 0.85) : band === 'mid' ? Math.round(len * 0.55) : Math.round(len * 0.2);
+    var rest = len - fast;
+    var slow = Math.ceil(rest / 2), missed = rest - slow;
+    var fakeD = { fast: fast, slow: slow, missed: missed, streak: 0, bestStreak: Math.min(fast, 6), quit: false, tables: [6, 8, 12], index: len };
+    renderState();
+    renderDrillEnd(fakeD, true);
+  }
+  function previewRunEnd(kind) {
+    clearApp();
+    var o;
+    if (kind === 'first') o = { total: 118900, missed: 3, prev: null, isFirst: true, isBest: true, again: showStart, done: showStart };
+    else if (kind === 'best') o = { total: 96400, missed: 1, prev: 102300, isFirst: false, isBest: true, again: showStart, done: showStart };
+    else o = { total: 108700, missed: 4, prev: 96400, isFirst: false, isBest: false, again: showStart, done: showStart };
+    renderSpeedEnd(o);
+  }
+
+  // ---------- Prototype chrome ----------
+  var labelEl = document.getElementById('label');
+  var stateEl = document.getElementById('state');
+  var ampBtn = document.getElementById('ampBtn');
+  var bestBtn = document.getElementById('bestBtn');
+  var plainBtn = document.getElementById('plainBtn');
+  var shortBtn = document.getElementById('shortBtn');
+  var jumpBtn = document.getElementById('jumpBtn');
+  var jumpMenu = document.getElementById('jumpMenu');
+
+  function syncURL() {
+    var params = new URLSearchParams();
+    params.set('variant', settings.variant);
+    params.set('amp', settings.amp);
+    params.set('best', settings.bestAmp);
+    params.set('char', settings.plain ? 'plain' : 'char');
+    if (settings.short) params.set('short', '1');
+    try { history.replaceState(null, '', '?' + params.toString()); } catch (e) {}
+  }
+  function refreshChrome() {
+    ampBtn.textContent = settings.amp;
+    bestBtn.textContent = 'best: ' + settings.bestAmp;
+    plainBtn.textContent = settings.plain ? 'plain' : 'char';
+    shortBtn.textContent = settings.short ? 'short ✓' : 'short';
+    shortBtn.setAttribute('aria-pressed', settings.short ? 'true' : 'false');
+  }
+  function setVariant(v) {
+    settings.variant = v;
+    labelEl.textContent = v + ' (' + ACCUM[v].name + ')';
+    syncURL();
+    showStart();
+  }
+  function cycle(d) {
+    var keys = ['A', 'B', 'C'];
+    setVariant(keys[(keys.indexOf(settings.variant) + d + keys.length) % keys.length]);
+  }
+  document.getElementById('prev').onclick = function () { cycle(-1); };
+  document.getElementById('next').onclick = function () { cycle(1); };
+  document.addEventListener('keydown', function (e) {
+    var t = e.target;
+    if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
+    if (e.key === 'ArrowLeft') cycle(-1);
+    if (e.key === 'ArrowRight') cycle(1);
+  });
+  ampBtn.onclick = function () { settings.amp = settings.amp === 'loud' ? 'quiet' : 'loud'; refreshChrome(); syncURL(); };
+  bestBtn.onclick = function () { settings.bestAmp = settings.bestAmp === 'loud' ? 'quiet' : 'loud'; refreshChrome(); syncURL(); };
+  plainBtn.onclick = function () { settings.plain = !settings.plain; refreshChrome(); syncURL(); showStart(); };
+  shortBtn.onclick = function () { settings.short = !settings.short; refreshChrome(); syncURL(); showStart(); };
+  jumpBtn.onclick = function () {
+    jumpMenu.hidden = !jumpMenu.hidden;
+    jumpBtn.setAttribute('aria-expanded', jumpMenu.hidden ? 'false' : 'true');
+  };
+  Array.prototype.forEach.call(jumpMenu.querySelectorAll('button'), function (b) {
+    b.onclick = function () {
+      jumpMenu.hidden = true;
+      jumpBtn.setAttribute('aria-expanded', 'false');
+      var kind = b.getAttribute('data-jump'), arg = b.getAttribute('data-arg');
+      if (kind === 'drillend') previewDrillEnd(arg);
+      else if (kind === 'runend') previewRunEnd(arg);
+      else if (kind === 'feedback') previewFeedback(arg);
+    };
+  });
+  document.getElementById('homeBtn').onclick = showStart;
+  document.getElementById('seedBtn').onclick = function () { seedProgress(); showStart(); };
+  document.getElementById('resetBtn').onclick = function () { resetProgress(); showStart(); };
+  document.getElementById('stateBtn').onclick = function () { stateEl.hidden = !stateEl.hidden; renderState(); };
+
+  function renderState() {
+    if (stateEl.hidden) return;
+    var best = personalBest();
+    var html = '<h2>Progress</h2>' +
+      'variant ' + settings.variant + ' (' + ACCUM[settings.variant].name + ')<br>' +
+      'amp ' + settings.amp + ' · best ' + settings.bestAmp + ' · ' + (settings.plain ? 'plain' : 'char') + ' · ' + (settings.short ? 'short' : 'full') + '<br>' +
+      'remembered tables: ' + prefs.tables.join(', ') + '<br>' +
+      'personal best: ' + (best === null ? '—' : fmtTime(best)) + '<br>' +
+      'records: ' + records.length + '<br>';
+    records.slice(-5).reverse().forEach(function (r) {
+      html += '· ' + r.mode + ' [' + r.tables.join(',') + '] f' + r.fast + ' s' + r.slow + ' m' + r.missed + (r.quit ? ' quit' : '') + (r.time != null ? ' ' + fmtTime(r.time) : '') + '<br>';
+    });
+    if (drill && !drill.done) html += '<h2 style="margin-top:10px">Drill</h2>shown ' + drill.index + ' / ' + drillLen() + ' · f' + drill.fast + ' s' + drill.slow + ' m' + drill.missed + ' · streak ' + drill.streak + ' (best ' + drill.bestStreak + ')<br>';
+    if (speedRun) html += '<h2 style="margin-top:10px">Speed run</h2>shown ' + speedRun.shown + ' · left ' + speedRun.queue.length + ' · f' + speedRun.fast + ' s' + speedRun.slow + ' m' + speedRun.missed + '<br>';
+    html += '<h2 style="margin-top:10px">Levels (33 facts)</h2><div class="levels">';
+    facts.forEach(function (f) { html += '<div class="lv l' + f.level + '"><span>' + f.key + '</span><b>' + f.level + '</b></div>'; });
+    stateEl.innerHTML = html + '</div>';
+  }
+
+  resetProgress();
+  refreshChrome();
+  setVariant(settings.variant);
+})();
+</script>
