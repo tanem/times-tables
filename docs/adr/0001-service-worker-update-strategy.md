@@ -1,0 +1,3 @@
+# Service worker updates apply on the Start screen or at next launch
+
+The app is installed to the iPad home screen and used by a child, and every deploy ships a new service worker. vite-plugin-pwa's `autoUpdate` mode reloads the app as soon as the new worker takes over, which would end a drill in progress and lose its record, and its `prompt` mode expects a banner the learner would have to act on. The app registers in `prompt` mode with no banner: when the plugin reports a waiting update, the app applies it (skip waiting, then reload) only while the Start screen is showing, or at the next launch. The plugin documents that switching between `autoUpdate` and `prompt` after deployment is difficult, so this is settled before the first build.
