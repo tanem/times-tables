@@ -1,8 +1,11 @@
 # Glossary
 
-- **Fact**: one multiplication question, such as 6 × 7. The learner's answer to a fact is the product.
-- **Table**: the set of facts sharing one multiplier: the 6s, the 8s, or the 12s.
-- **Drill**: one sitting of practice, a sequence of facts presented one at a time.
-- **Speaking mode**: a drill where the learner says the answer aloud within a 3-second limit, then self-grades each fact as got it or missed.
-- **Weighted repetition**: choosing the next fact so that facts recently missed or answered slowly appear more often.
+- **Fact**: one multiplication pair, such as 6 × 7. The pair is unordered: 6 × 7 and 7 × 6 are the same fact. The learner's answer to a fact is the product.
+- **Presentation**: one showing of a fact in one ordering, either 6 × 7 or 7 × 6.
+- **Table**: the set of facts sharing one multiplier: the 6s, the 8s, or the 12s. A fact such as 6 × 8 belongs to two tables.
+- **Drill**: one sitting of practice, a sequence of presentations one at a time, drawn from the tables the learner chose.
+- **Speaking mode**: a drill where the learner says the answer aloud within a 3-second limit, then self-grades each fact.
+- **Outcome**: the learner's grade for one presentation: fast (got it within the limit), slow (got it after the limit), or missed.
+- **Level**: how well the learner knows a fact, from 0 (new or just missed) to 4. Outcomes move it.
+- **Weighted repetition**: choosing the next fact so that facts at a low level appear more often.
 - **Speed run**: a drill covering every fact once, in random order, timed as a whole and compared to a personal best.
