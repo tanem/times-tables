@@ -9,3 +9,5 @@
 - **Level**: how well the learner knows a fact, from 0 (new or just missed) to 4. Outcomes move it.
 - **Weighted repetition**: choosing the next fact so that facts at a low level appear more often.
 - **Speed run**: a drill covering every fact once, in random order, timed as a whole and compared to a personal best.
+- **Progress**: everything the app remembers about the learner: each fact's level and outcome counts, and the drill records.
+- **Drill record**: the one entry a drill leaves in the progress: when it ran, which tables, how many fast, slow and missed outcomes, and whether it was quit early.
