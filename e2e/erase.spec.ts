@@ -2,17 +2,13 @@ import type { Page } from '@playwright/test';
 import type { DrillRecord, Progress } from '../src/model/progress';
 import { BACKUP_KEY, PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
-import { openParent, progressHeading } from './helpers';
-
-const TILES = ['6s', '8s', '12s'];
-
-async function expectAllTablesOn(page: Page): Promise<void> {
-  for (const table of TILES) {
-    await expect(
-      page.getByRole('button', { name: table, pressed: true }),
-    ).toBeVisible();
-  }
-}
+import {
+  expectAllTablesOn,
+  openParent,
+  progressHeading,
+  startHeading,
+  storedProgress,
+} from './helpers';
 
 const OLD_RUN: DrillRecord = {
   mode: 'speed',
@@ -35,7 +31,9 @@ const NOT_FRESH: Progress = {
 };
 
 // Seeds the progress document and a backup key, as an earlier corrupt
-// document would leave behind, then opens the app on the Parent view.
+// document would leave behind, then opens the app on the Parent view. Uses
+// addInitScript, which re-seeds on every navigation, so a test that reloads
+// seeds a different way instead.
 async function openNotFreshOnParent(page: Page): Promise<void> {
   await page.addInitScript(
     ({ key, backupKey, text }) => {
@@ -56,36 +54,41 @@ function eraseButton(page: Page) {
   return page.getByRole('button', { name: 'Erase all progress' });
 }
 
-async function storedText(page: Page, key: string): Promise<string | null> {
-  return page.evaluate((k) => localStorage.getItem(k), key);
+// The backup key alone; the progress document is read with storedProgress.
+async function storedBackup(page: Page): Promise<string | null> {
+  return page.evaluate((key) => localStorage.getItem(key), BACKUP_KEY);
 }
 
 test('holding the erase control for three seconds erases progress and returns to the Start screen', async ({
   page,
 }) => {
+  let dialogShown = false;
+  page.on('dialog', (dialog) => {
+    dialogShown = true;
+    dialog.dismiss();
+  });
+
   await openNotFreshOnParent(page);
 
   await eraseButton(page).hover();
   await page.mouse.down();
-  // A little past the three-second mark, so a frame actually lands there:
-  // the ring only notices the threshold on the animation frame that hits
-  // or passes it, same as a real hold would.
+  // The control takes about three seconds to fill, and the test clock
+  // moves in whole frames, so this runs a little past that mark.
   await page.clock.runFor(3100);
 
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Times tables' }),
-  ).toBeVisible();
+  await expect(startHeading(page)).toBeVisible();
   await expectAllTablesOn(page);
   await expect(page.getByText('all 33 facts, no best yet')).toBeVisible();
-
-  const stored = await storedText(page, PROGRESS_KEY);
-  expect(stored && JSON.parse(stored)).toEqual({
+  expect(await storedProgress(page)).toEqual({
     version: 1,
     tables: [6, 8, 12],
     facts: {},
     records: [],
   });
-  expect(await storedText(page, BACKUP_KEY)).toBeNull();
+  expect(await storedBackup(page)).toBeNull();
+  expect(dialogShown).toBe(false);
+  await expect(page.getByRole('status')).toHaveCount(0);
+  await expect(page.getByRole('alert')).toHaveCount(0);
 });
 
 test('releasing before three seconds cancels with no dialog or message, and a later hold does not pick up where it left off', async ({
@@ -107,9 +110,8 @@ test('releasing before three seconds cancels with no dialog or message, and a la
   await page.clock.runFor(2000); // well past three seconds, but released
 
   await expect(progressHeading(page)).toBeVisible();
-  const stored = await storedText(page, PROGRESS_KEY);
-  expect(stored && JSON.parse(stored)).toEqual(NOT_FRESH);
-  expect(await storedText(page, BACKUP_KEY)).not.toBeNull();
+  expect(await storedProgress(page)).toEqual(NOT_FRESH);
+  expect(await storedBackup(page)).not.toBeNull();
   await expect(page.getByRole('status')).toHaveText('');
   expect(dialogShown).toBe(false);
 
@@ -120,9 +122,7 @@ test('releasing before three seconds cancels with no dialog or message, and a la
   await expect(progressHeading(page)).toBeVisible();
 
   await page.clock.runFor(1100); // carries the same hold on to three seconds
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Times tables' }),
-  ).toBeVisible();
+  await expect(startHeading(page)).toBeVisible();
 });
 
 test('holding just short of three seconds does nothing', async ({ page }) => {
@@ -134,8 +134,7 @@ test('holding just short of three seconds does nothing', async ({ page }) => {
   await page.mouse.up();
 
   await expect(progressHeading(page)).toBeVisible();
-  const stored = await storedText(page, PROGRESS_KEY);
-  expect(stored && JSON.parse(stored)).toEqual(NOT_FRESH);
+  expect(await storedProgress(page)).toEqual(NOT_FRESH);
 });
 
 test('the pointer leaving the control mid-hold cancels', async ({ page }) => {
@@ -149,8 +148,130 @@ test('the pointer leaving the control mid-hold cancels', async ({ page }) => {
   await page.mouse.up();
 
   await expect(progressHeading(page)).toBeVisible();
-  const stored = await storedText(page, PROGRESS_KEY);
-  expect(stored && JSON.parse(stored)).toEqual(NOT_FRESH);
+  expect(await storedProgress(page)).toEqual(NOT_FRESH);
+});
+
+// fastForward jumps the clock without running the frames in between, the
+// way the device sleeping or the app going to the background would stall
+// them, with no pointerup or pointercancel ever arriving.
+test('a hold stalled well past three seconds without a release does not erase', async ({
+  page,
+}) => {
+  await openNotFreshOnParent(page);
+
+  await eraseButton(page).hover();
+  await page.mouse.down();
+  await page.clock.runFor(1000);
+  await page.clock.fastForward(5000);
+  await page.clock.runFor(100);
+
+  await expect(progressHeading(page)).toBeVisible();
+  expect(await storedProgress(page)).toEqual(NOT_FRESH);
+
+  await page.mouse.up();
+});
+
+test('an erase survives a reload', async ({ page }) => {
+  await page.goto('./');
+  // A plain write, not addInitScript, so the second reload below does not
+  // seed the document straight back.
+  await page.evaluate(
+    ({ key, backupKey, text }) => {
+      localStorage.setItem(key, text);
+      localStorage.setItem(backupKey, '{"backed":"up"}');
+    },
+    {
+      key: PROGRESS_KEY,
+      backupKey: BACKUP_KEY,
+      text: JSON.stringify(NOT_FRESH),
+    },
+  );
+  await page.reload();
+  await openParent(page);
+
+  await eraseButton(page).hover();
+  await page.mouse.down();
+  await page.clock.runFor(3100);
+
+  await page.reload();
+
+  await expect(startHeading(page)).toBeVisible();
+  await expectAllTablesOn(page);
+  await expect(page.getByText('all 33 facts, no best yet')).toBeVisible();
+  expect(await storedBackup(page)).toBeNull();
+});
+
+// These tests send touch input from outside the app over CDP, which only
+// Chromium has, so they run on Chromium only.
+test.describe('touch', () => {
+  test.use({ hasTouch: true });
+
+  async function eraseCentre(page: Page): Promise<{ x: number; y: number }> {
+    const box = await eraseButton(page).boundingBox();
+    if (!box) throw new Error('the erase control is not laid out');
+    return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
+  }
+
+  test('a touch held on the control for the full hold erases', async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName !== 'chromium',
+      'touch input over CDP needs Chromium',
+    );
+    await openNotFreshOnParent(page);
+    const { x, y } = await eraseCentre(page);
+
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x, y }],
+    });
+    await page.clock.runFor(3100);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [],
+    });
+
+    await expect(startHeading(page)).toBeVisible();
+    expect(await storedProgress(page)).toEqual({
+      version: 1,
+      tables: [6, 8, 12],
+      facts: {},
+      records: [],
+    });
+  });
+
+  test('a touch that slides off the control and stays down past three seconds does not erase', async ({
+    page,
+    browserName,
+  }) => {
+    test.skip(
+      browserName !== 'chromium',
+      'touch input over CDP needs Chromium',
+    );
+    await openNotFreshOnParent(page);
+    const { x, y } = await eraseCentre(page);
+
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchStart',
+      touchPoints: [{ x, y }],
+    });
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchMove',
+      touchPoints: [{ x: 0, y: 0 }],
+    });
+    await page.clock.runFor(3100);
+    await cdp.send('Input.dispatchTouchEvent', {
+      type: 'touchEnd',
+      touchPoints: [],
+    });
+
+    await expect(progressHeading(page)).toBeVisible();
+    expect(await storedProgress(page)).toEqual(NOT_FRESH);
+  });
 });
 
 test('holding Space on the focused control for three seconds erases', async ({
@@ -162,9 +283,7 @@ test('holding Space on the focused control for three seconds erases', async ({
   await page.keyboard.down('Space');
   await page.clock.runFor(3100);
 
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Times tables' }),
-  ).toBeVisible();
+  await expect(startHeading(page)).toBeVisible();
   await expectAllTablesOn(page);
   await expect(page.getByText('all 33 facts, no best yet')).toBeVisible();
 });
@@ -181,6 +300,5 @@ test('releasing Space before three seconds cancels the keyboard hold', async ({
   await page.clock.runFor(2000);
 
   await expect(progressHeading(page)).toBeVisible();
-  const stored = await storedText(page, PROGRESS_KEY);
-  expect(stored && JSON.parse(stored)).toEqual(NOT_FRESH);
+  expect(await storedProgress(page)).toEqual(NOT_FRESH);
 });

@@ -10,6 +10,7 @@ import {
   openWithRecords,
   sparkles,
   startCountdown,
+  startHeading,
   startRun,
   storedProgress,
 } from './helpers';
@@ -347,10 +348,6 @@ async function hideApp(page: Page): Promise<void> {
     });
     document.dispatchEvent(new Event('visibilitychange'));
   });
-}
-
-function startHeading(page: Page): Locator {
-  return page.getByRole('heading', { level: 1, name: 'Times tables' });
 }
 
 // The one record of a run that was quit with the given tally.

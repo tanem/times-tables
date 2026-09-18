@@ -1,24 +1,12 @@
-import type { Page } from '@playwright/test';
 import { BACKUP_KEY, PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
-
-const TILES = ['6s', '8s', '12s'];
-
-async function expectAllTablesOn(page: Page): Promise<void> {
-  for (const table of TILES) {
-    await expect(
-      page.getByRole('button', { name: table, pressed: true }),
-    ).toBeVisible();
-  }
-}
+import { expectAllTablesOn, startHeading, TILES } from './helpers';
 
 test('the app opens onto the Start screen with all three tables on', async ({
   page,
 }) => {
   await page.goto('./');
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Times tables' }),
-  ).toBeVisible();
+  await expect(startHeading(page)).toBeVisible();
   await expect(page.getByText('Which tables?')).toBeVisible();
   await expectAllTablesOn(page);
   const practise = page.getByRole('button', { name: 'Practise', exact: true });
@@ -36,9 +24,7 @@ test('the dragon sits with the app’s name at the top of the Start screen', asy
   await expect(dragon).toBeVisible();
 
   const dragonBox = await dragon.boundingBox();
-  const nameBox = await page
-    .getByRole('heading', { level: 1, name: 'Times tables' })
-    .boundingBox();
+  const nameBox = await startHeading(page).boundingBox();
   const questionBox = await page.getByText('Which tables?').boundingBox();
   if (!dragonBox || !nameBox || !questionBox) throw new Error('not laid out');
   expect(dragonBox.y + dragonBox.height).toBeLessThanOrEqual(questionBox.y);
@@ -178,7 +164,7 @@ for (const [orientation, width, height] of [
 
     const parts = [
       page.getByRole('img', { name: 'The dragon', exact: true }),
-      page.getByRole('heading', { level: 1, name: 'Times tables' }),
+      startHeading(page),
       page.getByRole('button', { name: '6s' }),
       page.getByRole('button', { name: '12s' }),
       page.getByRole('button', { name: 'Practise', exact: true }),

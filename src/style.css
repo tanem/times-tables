@@ -686,7 +686,11 @@ button {
   border: 3px solid var(--missed);
   border-radius: 999px;
   background: white;
-  color: var(--missed);
+  /* --missed on white is only about 3.7:1, short of the 4.5:1 kept
+     elsewhere in this sheet, so the label reads in --ink instead; the
+     border and the ring's fill stay --missed so the control still reads
+     as destructive. */
+  color: var(--ink);
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: 1rem;

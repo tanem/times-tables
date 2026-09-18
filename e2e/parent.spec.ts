@@ -9,6 +9,7 @@ import {
   openParent,
   openWithRecords,
   startDrill,
+  startHeading,
   startRun,
   storedProgress,
 } from './helpers';
@@ -56,9 +57,7 @@ test('For parents opens the Parent view on one tap, and Back returns to the Star
   await openParent(page);
 
   await page.getByRole('button', { name: 'Back' }).click();
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Times tables' }),
-  ).toBeVisible();
+  await expect(startHeading(page)).toBeVisible();
 });
 
 test('a fresh document shows the empty states, an unlevelled grid and the legend', async ({

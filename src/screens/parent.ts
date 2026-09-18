@@ -9,7 +9,8 @@ import {
   type DayOf,
 } from '../model/report';
 import type { Progress } from '../model/progress';
-import { now, onFrame, type Day } from '../time';
+import type { Day } from '../time';
+import { renderErase } from './erase';
 
 export type ParentOptions = {
   progress: Progress;
@@ -21,105 +22,6 @@ export type ParentOptions = {
   onBack: () => void;
   onErase: () => void;
 };
-
-const SVG_NS = 'http://www.w3.org/2000/svg';
-
-// How long the erase control must be held before it fires.
-const HOLD = 3000;
-
-// The erase ring's radius and the stroke length it takes to go all the way
-// round, in the SVG's own units.
-const RING_RADIUS = 10;
-const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-
-// Builds the erase ring: a plain track circle and a stroke circle whose
-// dash offset renderErase moves from full circumference (empty) to zero
-// (full) as the hold runs.
-function renderRing(): { svg: SVGElement; setShare: (share: number) => void } {
-  const svg = document.createElementNS(SVG_NS, 'svg');
-  svg.setAttribute('class', 'erase-ring');
-  svg.setAttribute('viewBox', '0 0 24 24');
-  svg.setAttribute('aria-hidden', 'true');
-  svg.innerHTML = `
-    <circle class="erase-ring-track" cx="12" cy="12" r="${RING_RADIUS}" />
-    <circle class="erase-ring-fill" cx="12" cy="12" r="${RING_RADIUS}"
-      stroke-dasharray="${RING_CIRCUMFERENCE}"
-      stroke-dashoffset="${RING_CIRCUMFERENCE}" />
-  `;
-  const fill = svg.querySelector('.erase-ring-fill') as SVGElement;
-  const setShare = (share: number) => {
-    fill.style.strokeDashoffset = String(RING_CIRCUMFERENCE * (1 - share));
-  };
-  return { svg, setShare };
-}
-
-// Builds the press-and-hold erase control: a button labelled "Erase all
-// progress" with the ring as its only decoration. Holding it for HOLD
-// fires onErase exactly once; releasing early, the pointer leaving, or
-// losing focus cancels and snaps the ring back to empty. A hold never
-// picks up where an earlier one left off. The mouse, touch and keyboard
-// (Space or Enter) all drive the same hold.
-function renderErase(onErase: () => void): HTMLElement {
-  const wrap = document.createElement('div');
-  wrap.className = 'erase';
-
-  const button = document.createElement('button');
-  button.type = 'button';
-  button.className = 'erase-button';
-
-  const { svg: ring, setShare } = renderRing();
-  const label = document.createElement('span');
-  label.textContent = 'Erase all progress';
-  button.append(ring, label);
-
-  // The frame loop's own cancel, set while a hold is in progress and null
-  // otherwise; cancel() below both stops it and resets the ring.
-  let cancelFrame: (() => void) | null = null;
-
-  function start(): void {
-    if (cancelFrame) return;
-    const startedAt = now();
-    const tick = () => {
-      if (!button.isConnected) {
-        cancelFrame = null;
-        return;
-      }
-      const elapsed = now() - startedAt;
-      setShare(Math.min(elapsed / HOLD, 1));
-      if (elapsed >= HOLD) {
-        cancelFrame = null;
-        onErase();
-        return;
-      }
-      cancelFrame = onFrame(tick);
-    };
-    cancelFrame = onFrame(tick);
-  }
-
-  function cancel(): void {
-    cancelFrame?.();
-    cancelFrame = null;
-    setShare(0);
-  }
-
-  button.addEventListener('pointerdown', (event) => {
-    if (event.button === 0) start();
-  });
-  button.addEventListener('pointerup', cancel);
-  button.addEventListener('pointercancel', cancel);
-  button.addEventListener('pointerleave', cancel);
-  // The iPad's long-press callout and text selection are not wanted here.
-  button.addEventListener('contextmenu', (event) => event.preventDefault());
-  button.addEventListener('keydown', (event) => {
-    if (event.repeat) return;
-    if (event.key === ' ' || event.key === 'Enter') start();
-  });
-  button.addEventListener('keyup', cancel);
-  button.addEventListener('blur', cancel);
-
-  wrap.append(button);
-  return wrap;
-}
 
 // Builds the fact grid: three rows of twelve cells, each a toggle button
 // coloured and named by its level. Tapping a cell shows its lifetime counts
