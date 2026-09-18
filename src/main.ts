@@ -38,7 +38,12 @@ import { renderReveal } from './screens/reveal';
 import { renderRunCard } from './screens/runcard';
 import { renderRunEnd } from './screens/runend';
 import { renderStart } from './screens/start';
-import { loadProgress, saveProgress, type ProgressStore } from './storage';
+import {
+  eraseProgress,
+  loadProgress,
+  saveProgress,
+  type ProgressStore,
+} from './storage';
 import { dayOf, now, timestamp, today } from './time';
 
 // localStorage itself can be unavailable, in which case the app runs on its
@@ -47,7 +52,7 @@ function browserStore(): ProgressStore {
   try {
     return window.localStorage;
   } catch {
-    return { getItem: () => null, setItem: () => {} };
+    return { getItem: () => null, setItem: () => {}, removeItem: () => {} };
   }
 }
 
@@ -86,8 +91,9 @@ function showStart(): void {
   );
 }
 
-// The Parent view reads the document as it stands when a parent opens it;
-// it makes no changes of its own.
+// The Parent view reads the document as it stands when a parent opens it.
+// Erasing is the one change it can make; the fresh document it hands back
+// replaces the one in play before the app returns to the Start screen.
 function showParent(): void {
   show(
     renderParent({
@@ -96,6 +102,10 @@ function showParent(): void {
       dayOf,
       build: buildInfo(),
       onBack: showStart,
+      onErase: () => {
+        progress = eraseProgress(store);
+        showStart();
+      },
     }),
   );
 }

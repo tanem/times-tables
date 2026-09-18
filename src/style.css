@@ -669,6 +669,54 @@ button {
   border-bottom: 1px solid var(--track);
 }
 
+/* Set apart from the read-only content above it, so a stray tap near the
+   best line cannot land on it by accident. */
+.erase {
+  display: flex;
+  justify-content: center;
+  padding-top: 20px;
+  border-top: 1px solid var(--track);
+}
+
+.erase-button {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 24px;
+  border: 3px solid var(--missed);
+  border-radius: 999px;
+  background: white;
+  color: var(--missed);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: 1rem;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.erase-ring {
+  flex: none;
+  width: 24px;
+  height: 24px;
+  /* Starts the fill at the top of the ring rather than the right. */
+  transform: rotate(-90deg);
+}
+
+.erase-ring-track {
+  fill: none;
+  stroke: var(--track);
+  stroke-width: 3;
+}
+
+.erase-ring-fill {
+  fill: none;
+  stroke: var(--missed);
+  stroke-width: 3;
+  stroke-linecap: round;
+}
+
 .parent .foot {
   margin: 8px 0 0;
   color: var(--muted);

@@ -6,20 +6,12 @@ import {
   advance,
   answerCard,
   getEveryFact,
+  openParent,
   openWithRecords,
   startDrill,
   startRun,
   storedProgress,
 } from './helpers';
-
-function progressHeading(page: Page): Locator {
-  return page.getByRole('heading', { level: 1, name: 'Progress' });
-}
-
-async function openParent(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'For parents' }).click();
-  await expect(progressHeading(page)).toBeVisible();
-}
 
 // A grid cell, by its fact and the level it should show.
 function cell(page: Page, label: string, level: number): Locator {
