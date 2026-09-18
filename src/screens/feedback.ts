@@ -30,11 +30,15 @@ export type FeedbackOptions = {
   // Consecutive fast outcomes, this one included.
   streak: number;
   onAdvance: () => void;
+  // Called when the learner owns up to a wrong answer. The caller gives it
+  // only where a correction is allowed: a got outcome in a drill.
+  onCorrect?: () => void;
 };
 
 // Builds the feedback screen: the fact with its answer, a word, and the
 // streak from two fast answers in a row. It holds for a moment, and a tap
-// anywhere moves on at once.
+// anywhere moves on at once. Given onCorrect, a small button bottom-left
+// lets the learner correct the answer to missed instead.
 export function renderFeedback(options: FeedbackOptions): HTMLElement {
   const { presentation, outcome } = options;
 
@@ -66,15 +70,31 @@ export function renderFeedback(options: FeedbackOptions): HTMLElement {
   hint.textContent = 'Tap to go on';
   screen.append(hint);
 
-  let advanced = false;
-  const advance = () => {
-    if (advanced) return;
-    advanced = true;
+  // The screen leaves once, by the hold, a tap or a correction.
+  let left = false;
+  const leave = (act: () => void) => {
+    if (left) return;
+    left = true;
     cancel();
-    options.onAdvance();
+    act();
   };
+  const advance = () => leave(options.onAdvance);
   const cancel = schedule(advance, HOLD[outcome]);
   screen.addEventListener('click', advance);
+
+  const { onCorrect } = options;
+  if (onCorrect) {
+    const correction = document.createElement('button');
+    correction.type = 'button';
+    correction.className = 'correction';
+    correction.textContent = 'Oops, I was wrong';
+    correction.addEventListener('click', (event) => {
+      // The tap on the button is not the tap anywhere that moves on.
+      event.stopPropagation();
+      leave(onCorrect);
+    });
+    screen.append(correction);
+  }
 
   return screen;
 }

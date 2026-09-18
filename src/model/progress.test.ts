@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   addRecord,
   applyOutcome,
+  correctOutcome,
   factLevel,
   freshProgress,
   parseProgress,
@@ -223,6 +224,44 @@ describe('applyOutcome', () => {
     const after = applyOutcome(valid, '6x7', 'missed');
     expect(after.facts['8x12']).toEqual(valid.facts['8x12']);
     expect(valid).toEqual(before);
+  });
+});
+
+describe('correctOutcome', () => {
+  it('moves a fast outcome to missed and sets the level to 0', () => {
+    const after = correctOutcome(
+      applyOutcome(valid, '6x7', 'fast'),
+      '6x7',
+      'fast',
+    );
+    expect(after.facts['6x7']).toEqual({
+      level: 0,
+      fast: 12,
+      slow: 3,
+      missed: 3,
+    });
+  });
+
+  it('moves a slow outcome to missed', () => {
+    const after = correctOutcome(
+      applyOutcome(valid, '6x9', 'slow'),
+      '6x9',
+      'slow',
+    );
+    expect(after.facts['6x9']).toEqual({
+      level: 0,
+      fast: 0,
+      slow: 0,
+      missed: 1,
+    });
+  });
+
+  it('leaves the other facts and the given document as they were', () => {
+    const answered = applyOutcome(valid, '6x7', 'fast');
+    const before = JSON.parse(JSON.stringify(answered));
+    const after = correctOutcome(answered, '6x7', 'fast');
+    expect(after.facts['8x12']).toEqual(valid.facts['8x12']);
+    expect(answered).toEqual(before);
   });
 });
 

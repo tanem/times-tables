@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DRILL_LENGTH,
   answer,
+  correct,
   drawFact,
   drillRecord,
   isComplete,
@@ -236,5 +237,61 @@ describe('drillRecord', () => {
 describe('the fact set', () => {
   it('is the source of the drill pool', () => {
     expect(startDrill([6, 8, 12], levels({}), () => 0).pool).toEqual(FACTS);
+  });
+});
+
+describe('correct', () => {
+  // A drill of the 6s with the given outcomes answered and moved on from,
+  // then one more answered and left on the feedback.
+  function answeredAfter(
+    outcomes: Array<'fast' | 'slow' | 'missed'>,
+    outcome: 'fast' | 'slow' | 'missed',
+  ): Drill {
+    return answer(drillAfter(outcomes), outcome);
+  }
+
+  it('re-grades a fast answer as missed and resets the streak', () => {
+    const drill = correct(answeredAfter(['fast', 'slow'], 'fast'));
+    expect(drill).toMatchObject({
+      fast: 1,
+      slow: 1,
+      missed: 1,
+      answered: 3,
+      streak: 0,
+    });
+  });
+
+  it('re-grades a slow answer as missed', () => {
+    const drill = correct(answeredAfter(['fast'], 'slow'));
+    expect(drill).toMatchObject({ fast: 1, slow: 0, missed: 1, answered: 2 });
+  });
+
+  it('restores the best streak from before the corrected answer', () => {
+    const third = answeredAfter(['fast', 'fast'], 'fast');
+    expect(third.bestStreak).toBe(3);
+    const drill = correct(third);
+    expect(drill.streak).toBe(0);
+    expect(drill.bestStreak).toBe(2);
+  });
+
+  it('keeps a best streak set earlier in the drill', () => {
+    const drill = correct(
+      answeredAfter(['fast', 'fast', 'fast', 'missed', 'fast'], 'fast'),
+    );
+    expect(drill.bestStreak).toBe(3);
+  });
+
+  it('cannot turn a missed answer into a got one', () => {
+    expect(() => correct(answeredAfter(['fast'], 'missed'))).toThrow();
+  });
+
+  it('cannot correct a presentation still on the card', () => {
+    expect(() => correct(drillAfter(['fast']))).toThrow();
+    expect(() => correct(correct(answeredAfter([], 'fast')))).toThrow();
+  });
+
+  it('leaves the corrected fact in the recent facts', () => {
+    const drill = correct(answeredAfter([], 'fast'));
+    expect(drill.recent).toEqual([drill.current.fact.key]);
   });
 });

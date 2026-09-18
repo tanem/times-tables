@@ -4,6 +4,10 @@ export type Level = 0 | 1 | 2 | 3 | 4;
 // The learner's grade for one presentation.
 export type Outcome = 'fast' | 'slow' | 'missed';
 
+// An outcome where the learner got the answer: the ones a correction can
+// re-grade as missed.
+export type GotOutcome = Exclude<Outcome, 'missed'>;
+
 // The draw weight of a fact at each level, so that low-level facts come round
 // more often and no fact is ever retired.
 const WEIGHTS: Readonly<Record<Level, number>> = {
