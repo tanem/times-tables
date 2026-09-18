@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import type { Progress } from '../src/model/progress';
 import { PROGRESS_KEY } from '../src/storage';
 
@@ -27,4 +27,17 @@ export async function storedProgress(page: Page): Promise<Progress> {
   );
   if (text === null) throw new Error('nothing stored');
   return JSON.parse(text);
+}
+
+// The dragon doing the given thing, as its accessible name says.
+export function dragon(page: Page, doing: string): Locator {
+  return page.getByRole('img', { name: `The dragon ${doing}`, exact: true });
+}
+
+export function sparkles(page: Page): Locator {
+  return page.getByRole('img', { name: 'Sparkles' });
+}
+
+export function confetti(page: Page): Locator {
+  return page.getByRole('img', { name: 'Confetti' });
 }

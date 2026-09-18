@@ -1,5 +1,6 @@
 import type { CompletedRun } from '../model/progress';
 import { formatGap, formatTime } from '../model/speedrun';
+import { renderConfetti, renderDragon } from './dragon';
 
 export type RunEndOptions = {
   record: CompletedRun;
@@ -10,25 +11,45 @@ export type RunEndOptions = {
   onAgain: () => void;
 };
 
-// What the end screen says of the time: a first completed run, a run faster
-// than the best, or the gap to the best.
-function runHeading(time: number, previousBest: number | null): string {
-  if (previousBest === null) return 'Your first time!';
-  if (time < previousBest) return 'New best!';
-  return `${formatGap(time, previousBest)} off your best`;
+// How a completed run stands against the personal best before it: the first
+// completed run, a new best, or a slower run, with the best it was up
+// against. A run that ties the best is a slower run.
+type Standing =
+  | { kind: 'first' }
+  | { kind: 'new-best'; previousBest: number }
+  | { kind: 'slower'; previousBest: number };
+
+function standingOf(time: number, previousBest: number | null): Standing {
+  if (previousBest === null) return { kind: 'first' };
+  if (time < previousBest) return { kind: 'new-best', previousBest };
+  return { kind: 'slower', previousBest };
 }
 
-// Builds the end screen of a completed speed run: the heading, the time
-// large, the miss count, the best the run was up against small below, then
-// Done and Run again.
+// Builds the end screen of a completed speed run: the dragon, the heading,
+// the time large, the miss count, the best the run was up against small
+// below, then Done and Run again. After a first completed run or a new best
+// the dragon stands proud and holds the pose, breathing sparkles, under
+// confetti. After a slower run the dragon waves and the heading is the gap
+// to the best.
 export function renderRunEnd(options: RunEndOptions): HTMLElement {
-  const { record, previousBest } = options;
+  const { record } = options;
+  const standing = standingOf(record.time, options.previousBest);
 
   const screen = document.createElement('main');
   screen.className = 'end';
 
+  const dragon =
+    standing.kind === 'slower'
+      ? renderDragon({ pose: 'wave' })
+      : renderDragon({ pose: 'proud', sparkles: 'breath' });
+
   const heading = document.createElement('h1');
-  heading.textContent = runHeading(record.time, previousBest);
+  heading.textContent =
+    standing.kind === 'first'
+      ? 'Your first time!'
+      : standing.kind === 'new-best'
+        ? 'New best!'
+        : `${formatGap(record.time, standing.previousBest)} off your best`;
 
   const time = document.createElement('p');
   time.className = 'time';
@@ -38,14 +59,14 @@ export function renderRunEnd(options: RunEndOptions): HTMLElement {
   misses.className = 'misses';
   misses.textContent = `${record.missed} missed`;
 
-  screen.append(heading, time, misses);
+  screen.append(dragon, heading, time, misses);
 
-  if (previousBest !== null) {
-    // After a faster run the best it beat is no longer the best.
-    const label = record.time < previousBest ? 'Previous best' : 'Your best';
+  if (standing.kind !== 'first') {
+    // After a new best the best it beat is no longer the best.
+    const label = standing.kind === 'new-best' ? 'Previous best' : 'Your best';
     const previous = document.createElement('p');
     previous.className = 'previous';
-    previous.textContent = `${label} ${formatTime(previousBest)}`;
+    previous.textContent = `${label} ${formatTime(standing.previousBest)}`;
     screen.append(previous);
   }
 
@@ -66,5 +87,6 @@ export function renderRunEnd(options: RunEndOptions): HTMLElement {
 
   actions.append(done, again);
   screen.append(actions);
+  if (standing.kind !== 'slower') screen.append(renderConfetti());
   return screen;
 }

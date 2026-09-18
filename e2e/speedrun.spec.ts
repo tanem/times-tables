@@ -2,7 +2,14 @@ import type { Locator, Page } from '@playwright/test';
 import type { DrillRecord } from '../src/model/progress';
 import { PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
-import { factOnScreen, keyOnScreen, storedProgress } from './helpers';
+import {
+  confetti,
+  dragon,
+  factOnScreen,
+  keyOnScreen,
+  sparkles,
+  storedProgress,
+} from './helpers';
 
 function speedRunButton(page: Page): Locator {
   return page.getByRole('button', { name: 'Speed run' });
@@ -21,6 +28,11 @@ test('before any completed run the Speed run button says what it is', async ({
 // The running clock at the top of the run card.
 function clock(page: Page): Locator {
   return page.getByRole('timer', { name: 'Time' });
+}
+
+// The dragon, whatever it is doing.
+function anyDragon(page: Page): Locator {
+  return page.getByRole('img', { name: /^The dragon/ });
 }
 
 // Taps Speed run and lands on the countdown.
@@ -67,6 +79,18 @@ test('a run counts down 3-2-1 and then shows the clock in tenths in place of the
 
   await page.clock.runFor(1250);
   await expect(clock(page)).toHaveText('0:01.2');
+});
+
+test('the dragon stays off the run card and the miss reveal', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await startRun(page);
+  await expect(anyDragon(page)).toHaveCount(0);
+
+  await page.getByRole('button', { name: 'Missed' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('=');
+  await expect(anyDragon(page)).toHaveCount(0);
 });
 
 test('Got it never turns amber in a run', async ({ page }) => {
@@ -153,6 +177,11 @@ test('each answer is timed against 3 seconds and moves the stored level and coun
     .toEqual({ level: 0, fast: 0, slow: 0, missed: 1 });
 });
 
+// The sparkles the dragon breathes out at a new best.
+function breath(page: Page): Locator {
+  return page.getByRole('img', { name: 'Sparkle breath' });
+}
+
 // Gets every fact left in the run, taking the given time over each, and
 // lands on the end screen.
 async function getEveryFact(page: Page, msPerFact: number): Promise<void> {
@@ -162,6 +191,35 @@ async function getEveryFact(page: Page, msPerFact: number): Promise<void> {
     await got.click();
   }
   await expect(page.getByRole('button', { name: 'Run again' })).toBeVisible();
+}
+
+// What a first completed run and a new best get: the dragon stands proud
+// breathing sparkles under confetti. The sparkles and the confetti go; the
+// dragon stays.
+async function expectProudCelebration(page: Page): Promise<void> {
+  const proud = dragon(page, 'stands proud');
+  await expect(proud).toBeVisible();
+  await expect(breath(page)).toBeVisible();
+  await expect(confetti(page)).toBeVisible();
+
+  await page.clock.runFor(2400);
+  await expect(breath(page)).toHaveCount(0);
+  await expect(confetti(page)).toHaveCount(0);
+  await expect(proud).toBeVisible();
+}
+
+// How tall the learner sees the part once it has stopped moving, in pixels.
+async function heightAtRest(page: Page, part: Locator): Promise<number> {
+  let still = 0;
+  let last = await part.boundingBox();
+  for (let look = 0; look < 100 && still < 3; look++) {
+    await page.waitForTimeout(50);
+    const next = await part.boundingBox();
+    still = JSON.stringify(next) === JSON.stringify(last) ? still + 1 : 0;
+    last = next;
+  }
+  if (!last || still < 3) throw new Error('never came to rest');
+  return last.height;
 }
 
 // A completed speed run with the given time, as the stored document has it.
@@ -220,6 +278,7 @@ test('a first run shows every fact, brings a missed fact back, and ends on its t
   await expect(page.getByText('0:35.5')).toBeVisible();
   await expect(page.getByText('1 missed')).toBeVisible();
   await expect(page.getByText(/best/i)).toHaveCount(0);
+  await expectProudCelebration(page);
 
   const { records, facts } = await storedProgress(page);
   expect(records).toEqual([
@@ -254,6 +313,7 @@ test('a faster run is a new best over the previous one, and Run again counts dow
   await expect(page.getByText('0:16.5', { exact: true })).toBeVisible();
   await expect(page.getByText('0 missed')).toBeVisible();
   await expect(page.getByText('Previous best 0:20.0')).toBeVisible();
+  await expectProudCelebration(page);
 
   await page.getByRole('button', { name: 'Run again' }).click();
   await expect(
@@ -261,7 +321,40 @@ test('a faster run is a new best over the previous one, and Run again counts dow
   ).toBeVisible();
 });
 
-test('a slower run shows its gap to the best', async ({ page }) => {
+test('the dragon holds the proud pose, puffed up bigger than it stands after a wave', async ({
+  page,
+}) => {
+  await openWithRecords(page, [completedRun(20000)]);
+  await startRun(page);
+  await getEveryFact(page, 700);
+  const waved = await heightAtRest(page, dragon(page, 'waves'));
+
+  await page.getByRole('button', { name: 'Run again' }).click();
+  await page.clock.runFor(3000);
+  await getEveryFact(page, 500);
+  await page.clock.runFor(5000);
+
+  const proud = await heightAtRest(page, dragon(page, 'stands proud'));
+  expect(proud).toBeGreaterThan(1.1 * waved);
+});
+
+test('a run that ties the best is a slower run', async ({ page }) => {
+  await openWithRecords(page, [completedRun(16500)]);
+  await startRun(page);
+  await getEveryFact(page, 500);
+
+  await expect(
+    page.getByRole('heading', { level: 1, name: '0.0 s off your best' }),
+  ).toBeVisible();
+  await expect(page.getByText('Your best 0:16.5')).toBeVisible();
+  await expect(dragon(page, 'waves')).toBeVisible();
+  await expect(breath(page)).toHaveCount(0);
+  await expect(confetti(page)).toHaveCount(0);
+});
+
+test('a slower run shows its gap to the best with a warm wave', async ({
+  page,
+}) => {
   await openWithRecords(page, [completedRun(14100)]);
   await startRun(page);
   await getEveryFact(page, 500);
@@ -270,7 +363,12 @@ test('a slower run shows its gap to the best', async ({ page }) => {
     page.getByRole('heading', { level: 1, name: '2.4 s off your best' }),
   ).toBeVisible();
   await expect(page.getByText('0:16.5', { exact: true })).toBeVisible();
+  await expect(page.getByText('0 missed')).toBeVisible();
   await expect(page.getByText('Your best 0:14.1')).toBeVisible();
+  await expect(dragon(page, 'waves')).toBeVisible();
+  await expect(breath(page)).toHaveCount(0);
+  await expect(sparkles(page)).toHaveCount(0);
+  await expect(confetti(page)).toHaveCount(0);
 
   await page.getByRole('button', { name: 'Done' }).click();
   await expect(speedRunButton(page)).toHaveAccessibleDescription('Best 0:14.1');
@@ -421,6 +519,31 @@ for (const [orientation, width, height] of [
     }
   });
 
+  test(`the end of a new best fits an iPad in ${orientation}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await openWithRecords(page, [completedRun(20000)]);
+    await startRun(page);
+    await getEveryFact(page, 500);
+
+    // The dragon is measured once it has puffed up into the pose.
+    const proud = dragon(page, 'stands proud');
+    await heightAtRest(page, proud);
+    const parts = [
+      proud,
+      page.getByRole('heading', { level: 1, name: 'New best!' }),
+      page.getByText('0:16.5', { exact: true }),
+      page.getByText('0 missed'),
+      page.getByText('Previous best 0:20.0'),
+      page.getByRole('button', { name: 'Done' }),
+      page.getByRole('button', { name: 'Run again' }),
+    ];
+    for (const part of parts) {
+      await expect(part).toBeInViewport({ ratio: 1 });
+    }
+  });
+
   test(`the end of a run fits an iPad in ${orientation}`, async ({ page }) => {
     await page.setViewportSize({ width, height });
     await openWithRecords(page, [completedRun(14100)]);
@@ -428,6 +551,7 @@ for (const [orientation, width, height] of [
     await getEveryFact(page, 500);
 
     const parts = [
+      dragon(page, 'waves'),
       page.getByRole('heading', { level: 1 }),
       page.getByText('0:16.5', { exact: true }),
       page.getByText('0 missed'),

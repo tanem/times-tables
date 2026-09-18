@@ -66,7 +66,7 @@ export function renderFeedback(options: FeedbackOptions): HTMLElement {
   // top corner and the sum is the biggest thing.
   const dragon = renderDragon({
     pose: POSES[outcome],
-    sparkles: outcome === 'fast',
+    sparkles: outcome === 'fast' ? 'burst' : undefined,
   });
   screen.append(sum, dragon, word);
 
