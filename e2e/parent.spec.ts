@@ -6,20 +6,13 @@ import {
   advance,
   answerCard,
   getEveryFact,
+  openParent,
   openWithRecords,
   startDrill,
+  startHeading,
   startRun,
   storedProgress,
 } from './helpers';
-
-function progressHeading(page: Page): Locator {
-  return page.getByRole('heading', { level: 1, name: 'Progress' });
-}
-
-async function openParent(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'For parents' }).click();
-  await expect(progressHeading(page)).toBeVisible();
-}
 
 // A grid cell, by its fact and the level it should show.
 function cell(page: Page, label: string, level: number): Locator {
@@ -64,9 +57,7 @@ test('For parents opens the Parent view on one tap, and Back returns to the Star
   await openParent(page);
 
   await page.getByRole('button', { name: 'Back' }).click();
-  await expect(
-    page.getByRole('heading', { level: 1, name: 'Times tables' }),
-  ).toBeVisible();
+  await expect(startHeading(page)).toBeVisible();
 });
 
 test('a fresh document shows the empty states, an unlevelled grid and the legend', async ({

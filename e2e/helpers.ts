@@ -3,6 +3,34 @@ import type { Outcome } from '../src/model/level';
 import type { DrillRecord, Progress } from '../src/model/progress';
 import { PROGRESS_KEY } from '../src/storage';
 
+// The Progress heading, as the Parent view titles itself.
+export function progressHeading(page: Page): Locator {
+  return page.getByRole('heading', { level: 1, name: 'Progress' });
+}
+
+// The Start screen's own heading, "Times tables".
+export function startHeading(page: Page): Locator {
+  return page.getByRole('heading', { level: 1, name: 'Times tables' });
+}
+
+// Taps "For parents" and lands on the Parent view.
+export async function openParent(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'For parents' }).click();
+  await expect(progressHeading(page)).toBeVisible();
+}
+
+export const TILES = ['6s', '8s', '12s'];
+
+// All three table tiles pressed, as the Start screen shows with nothing
+// toggled off.
+export async function expectAllTablesOn(page: Page): Promise<void> {
+  for (const table of TILES) {
+    await expect(
+      page.getByRole('button', { name: table, pressed: true }),
+    ).toBeVisible();
+  }
+}
+
 // The fact on the card or the feedback, read the way the learner reads it.
 export async function factOnScreen(
   page: Page,

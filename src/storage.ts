@@ -10,6 +10,7 @@ export const BACKUP_KEY = 'times-tables.progress.backup';
 export type ProgressStore = {
   getItem: (key: string) => string | null;
   setItem: (key: string, value: string) => void;
+  removeItem: (key: string) => void;
 };
 
 // Reads the document once, at launch. An empty store starts fresh. A corrupt
@@ -28,6 +29,20 @@ export function loadProgress(store: ProgressStore): Progress {
 // in-memory state carries on.
 export function saveProgress(store: ProgressStore, progress: Progress): void {
   write(store, PROGRESS_KEY, JSON.stringify(progress));
+}
+
+// Erases everything: the backup key is removed and a fresh document is
+// written under the progress key. A store that throws is ignored, as
+// saveProgress ignores it, and the fresh document is returned regardless.
+export function eraseProgress(store: ProgressStore): Progress {
+  try {
+    store.removeItem(BACKUP_KEY);
+  } catch {
+    // Storage may be blocked; the in-memory state is what counts.
+  }
+  const fresh = freshProgress();
+  saveProgress(store, fresh);
+  return fresh;
 }
 
 function write(store: ProgressStore, key: string, value: string): void {

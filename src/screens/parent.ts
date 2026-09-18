@@ -10,6 +10,7 @@ import {
 } from '../model/report';
 import type { Progress } from '../model/progress';
 import type { Day } from '../time';
+import { renderErase } from './erase';
 
 export type ParentOptions = {
   progress: Progress;
@@ -19,6 +20,7 @@ export type ParentOptions = {
   dayOf: DayOf;
   build: BuildInfo;
   onBack: () => void;
+  onErase: () => void;
 };
 
 // Builds the fact grid: three rows of twelve cells, each a toggle button
@@ -121,9 +123,10 @@ function renderRecent(
 }
 
 // Builds the Parent view: the fact grid with its legend and tap-for-
-// counts, this week's practice, the recent list, the personal best, and
-// the build version in the foot. Read-only: plain typography, no dragon,
-// no animation.
+// counts, this week's practice, the recent list, the personal best, the
+// press-and-hold erase control, and the build version in the foot.
+// Read-only otherwise: plain typography, no dragon, and the erase ring is
+// the screen's only animation.
 export function renderParent(options: ParentOptions): HTMLElement {
   const { progress, today, dayOf, build } = options;
 
@@ -163,6 +166,8 @@ export function renderParent(options: ParentOptions): HTMLElement {
   best.className = 'best';
   best.textContent = bestLine(progress, dayOf, today);
 
+  const erase = renderErase(options.onErase);
+
   const foot = document.createElement('p');
   foot.className = 'foot';
   foot.textContent = `Version ${build.version} (${build.commit})`;
@@ -176,6 +181,7 @@ export function renderParent(options: ParentOptions): HTMLElement {
     recentHeading,
     recent,
     best,
+    erase,
     foot,
   );
   return screen;
