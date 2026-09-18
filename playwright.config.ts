@@ -11,6 +11,9 @@ export default defineConfig({
   use: {
     baseURL,
     trace: 'on-first-retry',
+    // Fixes the date wording on the Progress screen to the same day on
+    // every machine.
+    timezoneId: 'UTC',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

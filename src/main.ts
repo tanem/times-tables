@@ -1,4 +1,5 @@
 import './style.css';
+import { buildInfo } from './build';
 import {
   answer,
   correct,
@@ -32,12 +33,13 @@ import { renderCard } from './screens/card';
 import { renderCountdown } from './screens/countdown';
 import { renderEnd } from './screens/end';
 import { renderFeedback } from './screens/feedback';
+import { renderParent } from './screens/parent';
 import { renderReveal } from './screens/reveal';
 import { renderRunCard } from './screens/runcard';
 import { renderRunEnd } from './screens/runend';
 import { renderStart } from './screens/start';
 import { loadProgress, saveProgress, type ProgressStore } from './storage';
-import { now, timestamp } from './time';
+import { dayOf, now, timestamp, today } from './time';
 
 // localStorage itself can be unavailable, in which case the app runs on its
 // in-memory state alone.
@@ -79,6 +81,21 @@ function showStart(): void {
       onPractise: beginDrill,
       best: bestTime(),
       onSpeedRun: beginRun,
+      onParents: showParent,
+    }),
+  );
+}
+
+// The Progress screen reads the document as it stands when a parent opens
+// it; it makes no changes of its own.
+function showParent(): void {
+  show(
+    renderParent({
+      progress,
+      today: today(),
+      dayOf,
+      build: buildInfo(),
+      onBack: showStart,
     }),
   );
 }

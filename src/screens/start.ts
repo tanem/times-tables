@@ -12,6 +12,7 @@ export type StartOptions = {
   // The personal best in milliseconds, or null before any completed run.
   best: number | null;
   onSpeedRun: () => void;
+  onParents: () => void;
 };
 
 // What the Practise caption says for a selection: the drill's length and
@@ -104,7 +105,15 @@ export function renderStart(options: StartOptions): HTMLElement {
 
   speed.append(speedRun, best);
 
+  // A small text link, out of the way of the learner's own buttons, for a
+  // parent to reach the Progress screen on a plain tap.
+  const parents = document.createElement('button');
+  parents.type = 'button';
+  parents.className = 'parents-link';
+  parents.textContent = 'For parents';
+  parents.addEventListener('click', options.onParents);
+
   update();
-  screen.append(masthead, question, tiles, practise, caption, speed);
+  screen.append(masthead, question, tiles, practise, caption, speed, parents);
   return screen;
 }

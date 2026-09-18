@@ -3,6 +3,7 @@ import {
   addRecord,
   applyOutcome,
   correctOutcome,
+  factCounts,
   factLevel,
   freshProgress,
   parseProgress,
@@ -196,6 +197,16 @@ describe('factLevel', () => {
 
   it('reads an absent fact as level 0', () => {
     expect(factLevel(valid, '6x9')).toBe(0);
+  });
+});
+
+describe('factCounts', () => {
+  it('reads the lifetime counts of a fact the document holds', () => {
+    expect(factCounts(valid, '6x7')).toEqual({ fast: 12, slow: 3, missed: 2 });
+  });
+
+  it('reads an absent fact as no counts', () => {
+    expect(factCounts(valid, '6x9')).toEqual({ fast: 0, slow: 0, missed: 0 });
   });
 });
 

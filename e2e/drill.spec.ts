@@ -3,31 +3,16 @@ import { TABLES } from '../src/model/facts';
 import type { Outcome } from '../src/model/level';
 import { expect, test } from './fixtures';
 import {
+  advance,
+  answerCard,
   confetti,
   dragon,
   factOnScreen,
   keyOnScreen,
   sparkles,
+  startDrill,
   storedProgress,
 } from './helpers';
-
-async function startDrill(page: Page): Promise<void> {
-  await page.goto('./');
-  await page.getByRole('button', { name: 'Practise', exact: true }).click();
-}
-
-// Answers the card the given way and lands on the feedback.
-async function answerCard(page: Page, outcome: Outcome): Promise<void> {
-  if (outcome === 'slow') await page.clock.runFor(3000);
-  const button = outcome === 'missed' ? 'Missed' : 'Got it';
-  await page.getByRole('button', { name: button }).click();
-  await expect(page.getByRole('heading', { level: 1 })).toContainText('=');
-}
-
-// Taps the feedback to move on.
-async function advance(page: Page): Promise<void> {
-  await page.getByText('Tap to go on').click();
-}
 
 // The feedback's button for owning up to a wrong answer.
 function correction(page: Page): Locator {
