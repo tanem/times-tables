@@ -355,6 +355,23 @@ test('hiding the app during a run quits it', async ({ page }) => {
   expect(records).toEqual([quitRecord('2026-01-01T09:00:03.000Z', 1, 0)]);
 });
 
+test('hiding the app during the miss reveal quits the run', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await startRun(page);
+  await page.getByRole('button', { name: 'Missed' }).click();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('=');
+
+  await hideApp(page);
+  await expect(startHeading(page)).toBeVisible();
+  await page.clock.runFor(1500);
+
+  await expect(startHeading(page)).toBeVisible();
+  const { records } = await storedProgress(page);
+  expect(records).toEqual([quitRecord('2026-01-01T09:00:03.000Z', 0, 1)]);
+});
+
 test('hiding the app during the countdown quits the run before it starts', async ({
   page,
 }) => {

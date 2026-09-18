@@ -1,5 +1,6 @@
 import type { Presentation } from '../model/drill';
 import { schedule } from '../time';
+import { topBar } from './cardframe';
 import { runClock } from './clock';
 
 // How long the reveal holds, in milliseconds.
@@ -23,21 +24,8 @@ export function renderReveal(options: RevealOptions): HTMLElement {
   const screen = document.createElement('main');
   screen.className = 'reveal';
 
-  const top = document.createElement('header');
-  top.className = 'top';
-
-  const quit = document.createElement('button');
-  quit.type = 'button';
-  quit.className = 'quit';
-  quit.setAttribute('aria-label', 'Quit');
-  quit.textContent = '✕';
+  const { top, quit } = topBar(runClock(options.startedAt));
   quit.addEventListener('click', options.onQuit);
-
-  // Keeps the clock centred by balancing the quit cross.
-  const spacer = document.createElement('span');
-  spacer.className = 'spacer';
-
-  top.append(quit, runClock(options.startedAt), spacer);
 
   const sum = document.createElement('h1');
   sum.className = 'sum';

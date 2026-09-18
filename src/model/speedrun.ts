@@ -97,13 +97,14 @@ export function speedRunRecord(
   };
 }
 
-const TENTH = 100;
+// A tenth of a second, in milliseconds.
+const TENTH_MS = 100;
 
 // A time as minutes, seconds and tenths, such as 2:41.3. The tenths are cut
 // short, not rounded, so that a running clock never shows a time it has not
 // reached.
 export function formatTime(ms: number): string {
-  const tenths = Math.floor(ms / TENTH);
+  const tenths = Math.floor(ms / TENTH_MS);
   const minutes = Math.floor(tenths / 600);
   const seconds = String(Math.floor(tenths / 10) % 60).padStart(2, '0');
   return `${minutes}:${seconds}.${tenths % 10}`;
@@ -112,6 +113,6 @@ export function formatTime(ms: number): string {
 // How far a time is behind the best, in seconds and tenths, such as 2.4 s.
 // It is the gap between the two times as formatTime shows them.
 export function formatGap(time: number, best: number): string {
-  const tenths = Math.floor(time / TENTH) - Math.floor(best / TENTH);
+  const tenths = Math.floor(time / TENTH_MS) - Math.floor(best / TENTH_MS);
   return `${(tenths / 10).toFixed(1)} s`;
 }

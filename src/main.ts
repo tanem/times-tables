@@ -65,6 +65,9 @@ function show(screen: HTMLElement): void {
 
 const levelOf = (key: string) => factLevel(progress, key);
 
+// The personal best in milliseconds, or null before any completed run.
+const bestTime = () => personalBest(progress)?.time ?? null;
+
 function showStart(): void {
   show(
     renderStart({
@@ -74,7 +77,7 @@ function showStart(): void {
         saveProgress(store, progress);
       },
       onPractise: beginDrill,
-      best: personalBest(progress)?.time ?? null,
+      best: bestTime(),
       onSpeedRun: beginRun,
     }),
   );
@@ -169,15 +172,17 @@ function showRunCard(startedAt: number): void {
 
 // The outcome moves the fact's level and counts as a drill answer does, and
 // the document is written back before anything else shows. A got fact goes
-// straight to the next one; a missed fact shows its answer first.
+// straight to the next one; a missed fact shows its answer first. The clock
+// is read on the tap, before any of that, in case this is the last fact.
 function recordRunAnswer(startedAt: number, outcome: Outcome): void {
   if (!runInPlay) return;
+  const time = now() - startedAt;
   const presentation = cardOf(runInPlay);
   progress = applyOutcome(progress, presentation.fact.key, outcome);
   saveProgress(store, progress);
   runInPlay = answerRun(runInPlay, outcome, random);
   if (isRunComplete(runInPlay)) {
-    endRun(speedRunRecord(runInPlay, timestamp(), now() - startedAt));
+    endRun(speedRunRecord(runInPlay, timestamp(), time));
   } else if (outcome === 'missed') {
     show(
       renderReveal({
@@ -194,7 +199,7 @@ function recordRunAnswer(startedAt: number, outcome: Outcome): void {
 // and the end screen compares the time with the best as it stood before.
 function endRun(record: CompletedRun): void {
   runInPlay = null;
-  const previousBest = personalBest(progress)?.time ?? null;
+  const previousBest = bestTime();
   progress = addRecord(progress, record);
   saveProgress(store, progress);
   show(

@@ -13,6 +13,8 @@
 - **Correction**: the learner re-grading the presentation just answered from fast or slow to missed, from the feedback, when the answer shown is not what they said. One way only: missed cannot become got.
 - **Streak**: consecutive fast outcomes within a drill; a slow or missed outcome, or a correction, resets it. The best streak of a drill is shown on its end screen. Nothing accumulates across drills.
 - **Speed run**: a drill covering every fact, in random order, where a missed fact returns until it is got, timed as a whole and compared to the personal best.
+- **Run card**: the card of a speed run: the drill card with the running clock in place of the 3-second bar and the position.
+- **Miss reveal**: the screen that replaces the run card after a missed outcome, showing the fact with its answer briefly while the clock runs.
 - **Personal best**: the shortest time of any completed speed run.
 - **Progress**: everything the app remembers about the learner: each fact's level and outcome counts, and the drill records.
 - **Drill record**: the one entry a drill leaves in the progress: when it ran, which tables, how many fast, slow and missed outcomes, and whether it was quit early.

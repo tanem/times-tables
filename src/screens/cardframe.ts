@@ -18,16 +18,12 @@ export type CardFrame = {
   got: HTMLButtonElement;
 };
 
-// Builds what the drill card and the run card share: the quit cross in the
-// top bar, the fact in its ordering, the caption, and Missed and Got it in
-// the thumb zone. The answer is never shown. Only the first tap on Got it,
-// Missed or the quit cross acts.
-export function cardFrame(options: CardFrameOptions): CardFrame {
-  const { presentation } = options;
-
-  const screen = document.createElement('main');
-  screen.className = options.entering ? 'card entering' : 'card';
-
+// Builds the top bar of a card: the quit cross on the left and the given
+// element in the middle.
+export function topBar(middle: HTMLElement): {
+  top: HTMLElement;
+  quit: HTMLButtonElement;
+} {
   const top = document.createElement('header');
   top.className = 'top';
 
@@ -41,7 +37,21 @@ export function cardFrame(options: CardFrameOptions): CardFrame {
   const spacer = document.createElement('span');
   spacer.className = 'spacer';
 
-  top.append(quit, options.middle, spacer);
+  top.append(quit, middle, spacer);
+  return { top, quit };
+}
+
+// Builds what the drill card and the run card share: the quit cross in the
+// top bar, the fact in its ordering, the caption, and Missed and Got it in
+// the thumb zone. The answer is never shown. Only the first tap on Got it,
+// Missed or the quit cross acts.
+export function cardFrame(options: CardFrameOptions): CardFrame {
+  const { presentation } = options;
+
+  const screen = document.createElement('main');
+  screen.className = options.entering ? 'card entering' : 'card';
+
+  const { top, quit } = topBar(options.middle);
 
   const fact = document.createElement('h1');
   fact.className = 'fact';
