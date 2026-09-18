@@ -1,5 +1,6 @@
 import { DRILL_LENGTH } from '../model/drill';
-import { TABLES, type Table } from '../model/facts';
+import { FACTS, TABLES, type Table } from '../model/facts';
+import { formatTime } from '../model/speedrun';
 
 export type StartOptions = {
   tables: readonly Table[];
@@ -7,6 +8,9 @@ export type StartOptions = {
   onTablesChange: (tables: Table[]) => void;
   // Called with the selection when the learner taps Practise.
   onPractise: (tables: Table[]) => void;
+  // The personal best in milliseconds, or null before any completed run.
+  best: number | null;
+  onSpeedRun: () => void;
 };
 
 // What the Practise caption says for a selection: the drill's length and
@@ -21,7 +25,8 @@ function practiseCaption(tables: readonly Table[]): string {
 }
 
 // Builds the Start screen. The tiles keep the selection and the Practise
-// button follows it.
+// button follows it. The Speed run button takes no notice of the selection
+// and has the personal best beside it.
 export function renderStart(options: StartOptions): HTMLElement {
   const selected = new Set<Table>(options.tables);
   const selection = () => TABLES.filter((table) => selected.has(table));
@@ -74,7 +79,27 @@ export function renderStart(options: StartOptions): HTMLElement {
     tiles.append(tile);
   }
 
+  const speed = document.createElement('div');
+  speed.className = 'speed';
+
+  const speedRun = document.createElement('button');
+  speedRun.type = 'button';
+  speedRun.className = 'speed-run';
+  speedRun.textContent = 'Speed run';
+  speedRun.setAttribute('aria-describedby', 'speed-run-caption');
+  speedRun.addEventListener('click', options.onSpeedRun);
+
+  const best = document.createElement('p');
+  best.id = 'speed-run-caption';
+  best.className = 'caption';
+  best.textContent =
+    options.best === null
+      ? `all ${FACTS.length} facts, no best yet`
+      : `Best ${formatTime(options.best)}`;
+
+  speed.append(speedRun, best);
+
   update();
-  screen.append(title, question, tiles, practise, caption);
+  screen.append(title, question, tiles, practise, caption, speed);
   return screen;
 }

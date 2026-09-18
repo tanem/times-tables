@@ -1,18 +1,8 @@
 import type { Locator, Page } from '@playwright/test';
 import { TABLES } from '../src/model/facts';
 import type { Outcome } from '../src/model/level';
-import type { Progress } from '../src/model/progress';
-import { PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
-
-// The fact on the card or the feedback, read the way the learner reads it.
-async function factOnScreen(page: Page): Promise<{ x: number; y: number }> {
-  const heading = page.getByRole('heading', { level: 1 });
-  const text = (await heading.textContent()) ?? '';
-  const match = /^(\d+) × (\d+)/.exec(text);
-  if (!match) throw new Error(`no fact on screen, saw "${text}"`);
-  return { x: Number(match[1]), y: Number(match[2]) };
-}
+import { factOnScreen, keyOnScreen, storedProgress } from './helpers';
 
 async function startDrill(page: Page): Promise<void> {
   await page.goto('./');
@@ -32,24 +22,9 @@ async function advance(page: Page): Promise<void> {
   await page.getByText('Tap to go on').click();
 }
 
-// The key of the fact on screen, as the stored document has it.
-async function keyOnScreen(page: Page): Promise<string> {
-  const { x, y } = await factOnScreen(page);
-  return `${Math.min(x, y)}x${Math.max(x, y)}`;
-}
-
 // The feedback's button for owning up to a wrong answer.
 function correction(page: Page): Locator {
   return page.getByRole('button', { name: 'Oops, I was wrong' });
-}
-
-async function storedProgress(page: Page): Promise<Progress> {
-  const text = await page.evaluate(
-    (key) => localStorage.getItem(key),
-    PROGRESS_KEY,
-  );
-  if (text === null) throw new Error('nothing stored');
-  return JSON.parse(text);
 }
 
 test('Practise shows the first fact at once with the bar, the position and both buttons', async ({

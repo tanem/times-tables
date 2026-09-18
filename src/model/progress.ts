@@ -89,6 +89,25 @@ export function addRecord(progress: Progress, record: DrillRecord): Progress {
   return { ...progress, records: [...progress.records, record] };
 }
 
+// A speed run that ran to its end, and so has a time.
+export type CompletedRun = DrillRecord & { mode: 'speed'; time: number };
+
+function isCompletedRun(record: DrillRecord): record is CompletedRun {
+  return record.mode === 'speed' && !record.quit && record.time !== null;
+}
+
+// The personal best: the completed speed run with the shortest time, the
+// earlier one where two tie, or null before any. It is derived from the
+// records each time and stored nowhere.
+export function personalBest(progress: Progress): CompletedRun | null {
+  let best: CompletedRun | null = null;
+  for (const record of progress.records) {
+    if (!isCompletedRun(record)) continue;
+    if (!best || record.time < best.time) best = record;
+  }
+  return best;
+}
+
 // Reads a stored document. Reading is strict: anything that is not a
 // well-formed version 1 document is corrupt and reads as null.
 export function parseProgress(text: string): Progress | null {

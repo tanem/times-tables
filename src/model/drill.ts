@@ -71,7 +71,7 @@ export function drawFact(
 }
 
 // A drawn fact in one of its two orderings, chosen at random.
-function presentation(fact: Fact, random: Random): Presentation {
+export function presentation(fact: Fact, random: Random): Presentation {
   return random() < 0.5
     ? { fact, x: fact.a, y: fact.b }
     : { fact, x: fact.b, y: fact.a };

@@ -8,6 +8,17 @@ export type Outcome = 'fast' | 'slow' | 'missed';
 // re-grade as missed.
 export type GotOutcome = Exclude<Outcome, 'missed'>;
 
+// How long the learner has to answer fast, in milliseconds.
+export const TIME_LIMIT = 3000;
+
+// The outcome of an answer timed from its presentation appearing: got inside
+// the limit is fast, got at the limit or after it is slow, and not got is
+// missed whatever the time.
+export function timedOutcome(got: boolean, elapsed: number): Outcome {
+  if (!got) return 'missed';
+  return elapsed < TIME_LIMIT ? 'fast' : 'slow';
+}
+
 // The draw weight of a fact at each level, so that low-level facts come round
 // more often and no fact is ever retired.
 const WEIGHTS: Readonly<Record<Level, number>> = {
