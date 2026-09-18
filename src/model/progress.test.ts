@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { freshProgress, parseProgress, type Progress } from './progress';
+import {
+  addRecord,
+  applyOutcome,
+  factLevel,
+  freshProgress,
+  parseProgress,
+  type DrillRecord,
+  type Progress,
+} from './progress';
 
 const valid: Progress = {
   version: 1,
@@ -176,5 +184,62 @@ describe('parseProgress on a document with extra fields', () => {
       facts: { '6x7': { level: 3, fast: 12, slow: 3, missed: 2 } },
       records: [valid.records[0]],
     });
+  });
+});
+
+describe('factLevel', () => {
+  it('reads the level of a fact the document holds', () => {
+    expect(factLevel(valid, '6x7')).toBe(3);
+  });
+
+  it('reads an absent fact as level 0', () => {
+    expect(factLevel(valid, '6x9')).toBe(0);
+  });
+});
+
+describe('applyOutcome', () => {
+  it('moves the level and counts the outcome on a fact the document holds', () => {
+    const after = applyOutcome(valid, '6x7', 'fast');
+    expect(after.facts['6x7']).toEqual({
+      level: 4,
+      fast: 13,
+      slow: 3,
+      missed: 2,
+    });
+  });
+
+  it('starts an absent fact from level 0 and zero counts', () => {
+    const after = applyOutcome(valid, '6x9', 'slow');
+    expect(after.facts['6x9']).toEqual({
+      level: 0,
+      fast: 0,
+      slow: 1,
+      missed: 0,
+    });
+  });
+
+  it('leaves the other facts and the given document as they were', () => {
+    const before = JSON.parse(JSON.stringify(valid));
+    const after = applyOutcome(valid, '6x7', 'missed');
+    expect(after.facts['8x12']).toEqual(valid.facts['8x12']);
+    expect(valid).toEqual(before);
+  });
+});
+
+describe('addRecord', () => {
+  it('appends the record after the ones already held', () => {
+    const record: DrillRecord = {
+      mode: 'drill',
+      at: '2026-01-03T09:00:00.000Z',
+      tables: [8],
+      fast: 3,
+      slow: 0,
+      missed: 1,
+      quit: true,
+      time: null,
+    };
+    const after = addRecord(valid, record);
+    expect(after.records).toEqual([...valid.records, record]);
+    expect(valid.records).toHaveLength(2);
   });
 });
