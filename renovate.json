@@ -10,8 +10,14 @@
     ":semanticCommits"
   ],
   "lockFileMaintenance": {
-    "enabled": true,
-    "minimumReleaseAge": null
+    "enabled": true
   },
-  "minimumReleaseAge": "3 days"
+  "minimumReleaseAge": "3 days",
+  "packageRules": [
+    {
+      "description": "Lock file maintenance, pin and replacement updates have no release timestamp, so requiring one would hold them as pending forever. The 3-day age still applies to the npm install that writes the lock file.",
+      "matchUpdateTypes": ["lockFileMaintenance", "pin", "replacement"],
+      "minimumReleaseAgeBehaviour": "timestamp-optional"
+    }
+  ]
 }
