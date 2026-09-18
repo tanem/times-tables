@@ -1,4 +1,5 @@
 import './style.css';
+import { registerSW } from 'virtual:pwa-register';
 import { buildInfo } from './build';
 import {
   answer,
@@ -45,6 +46,7 @@ import {
   type ProgressStore,
 } from './storage';
 import { dayOf, now, timestamp, today } from './time';
+import { createUpdater } from './update';
 
 // localStorage itself can be unavailable, in which case the app runs on its
 // in-memory state alone.
@@ -65,9 +67,30 @@ let progress = loadProgress(store);
 
 const app = document.querySelector('#app');
 
+// A service worker update is taken up on the Start screen alone, per
+// docs/adr/0001, so that neither half of it can end a drill or a speed run.
+const updater = createUpdater({
+  // The returned updateSW only posts skip-waiting to the waiting worker; its
+  // argument is ignored. The worker takes over a moment later, and the
+  // reload below is what puts the new files on screen.
+  apply: () => void updateSW(),
+  reload: () => window.location.reload(),
+});
+
+// Registered in prompt mode with no banner. Without onNeedReload the plugin
+// reloads the page itself the moment the worker takes over, which another
+// tab of the app applying the update would do here in the middle of a
+// drill; with it the reload is the updater's to time.
+const updateSW = registerSW({
+  onNeedRefresh: () => updater.workerWaiting(),
+  onNeedReload: () => updater.workerTookOver(),
+});
+
 // Screens are swapped by in-app state: one screen at a time, no routing.
-function show(screen: HTMLElement): void {
+// onStart marks the Start screen, the one screen an update may reload on.
+function show(screen: HTMLElement, { onStart = false } = {}): void {
   app?.replaceChildren(screen);
+  updater.screenShown(onStart);
 }
 
 const levelOf = (key: string) => factLevel(progress, key);
@@ -88,6 +111,7 @@ function showStart(): void {
       onSpeedRun: beginRun,
       onParents: showParent,
     }),
+    { onStart: true },
   );
 }
 

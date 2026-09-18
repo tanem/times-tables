@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="The dragon">
+  <title>Times tables</title>
+  <!-- The app's icon: the dragon's head, taken from src/screens/dragon.ts, on
+       the app's paper colour. The background is opaque because iOS drops
+       transparency on a home screen icon, and the head sits inside the
+       maskable safe zone (a circle of 80% of the width) so that a platform
+       that crops the icon still shows all of it. -->
+  <rect width="512" height="512" fill="#fffaf0"/>
+  <g transform="translate(256 256) scale(2.9) translate(-100 -68)">
+    <path fill="#ff9f5a" stroke="#d9773a" stroke-width="3" stroke-linejoin="round" d="M86 40 L93 22 L100 36 L107 22 L114 40 Z"/>
+    <path fill="#ffe8a3" stroke="#e8c877" stroke-width="3" stroke-linejoin="round" d="M64 50 Q58 28 70 20 Q80 32 80 44 Z"/>
+    <path fill="#ffe8a3" stroke="#e8c877" stroke-width="3" stroke-linejoin="round" d="M136 50 Q142 28 130 20 Q120 32 120 44 Z"/>
+    <ellipse cx="100" cy="76" rx="47" ry="40" fill="#4cb87a" stroke="#2f8f5b" stroke-width="3"/>
+    <ellipse cx="100" cy="92" rx="30" ry="18" fill="#7fd6a4"/>
+    <circle cx="66" cy="88" r="7" fill="#ff9aa2" opacity="0.7"/>
+    <circle cx="134" cy="88" r="7" fill="#ff9aa2" opacity="0.7"/>
+    <circle cx="80" cy="64" r="12" fill="#ffffff" stroke="#2f8f5b" stroke-width="2"/>
+    <circle cx="120" cy="64" r="12" fill="#ffffff" stroke="#2f8f5b" stroke-width="2"/>
+    <circle cx="82" cy="65" r="6.5" fill="#2b2d42"/>
+    <circle cx="118" cy="65" r="6.5" fill="#2b2d42"/>
+    <circle cx="84.5" cy="62.5" r="2.2" fill="#ffffff"/>
+    <circle cx="120.5" cy="62.5" r="2.2" fill="#ffffff"/>
+    <circle cx="91" cy="86" r="2.5" fill="#2f8f5b"/>
+    <circle cx="109" cy="86" r="2.5" fill="#2f8f5b"/>
+    <path fill="none" stroke="#2b2d42" stroke-width="3" stroke-linecap="round" d="M86 96 Q100 108 114 96"/>
+  </g>
+</svg>
