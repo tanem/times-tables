@@ -22,6 +22,8 @@ Node 24, as pinned in `.nvmrc`. Install the dependencies with `npm ci`, then ins
 
 The end-to-end tests cover the manifest, the precache list and an offline reload, but they run in a desktop browser. A deploy that touches the manifest or the service worker also needs the manual check on an iPad: add the app to the home screen from Safari, then launch it from the icon with the network off and confirm it opens.
 
+Renovate opens dependency update pull requests, including majors, waits until a release is 3 days old, and merges them with a merge commit once the `check` job passes, so the Playwright suite is the gate. Its pull requests carry the `internal` label, and the dependency dashboard issue lists what is pending.
+
 ## Deployment
 
 Pushes to `main` that pass the checks deploy to GitHub Pages at https://tanem.github.io/times-tables/.

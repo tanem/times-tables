@@ -1,0 +1,17 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "automergeStrategy": "merge-commit",
+  "extends": [
+    "config:js-app",
+    ":automergeAll",
+    ":label(internal)",
+    ":dependencyDashboard",
+    ":enableVulnerabilityAlerts",
+    ":semanticCommits"
+  ],
+  "lockFileMaintenance": {
+    "enabled": true,
+    "minimumReleaseAge": null
+  },
+  "minimumReleaseAge": "3 days"
+}
