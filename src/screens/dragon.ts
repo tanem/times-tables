@@ -59,11 +59,8 @@ const DRAGON = `
   </g>
 `;
 
-// How many sparkles a burst and a breath have, and how long either stays
-// before it is taken away, in milliseconds. The styles have the last sparkle
-// faded by then.
-const BURST_COUNT = 5;
-const BREATH_COUNT = 6;
+// How long sparkles stay before they are taken away, in milliseconds. The
+// styles have the last sparkle faded by then.
 const SPARKLES_STAY = 1300;
 
 // How many pieces of confetti fall, and how long the confetti stays before
@@ -71,36 +68,56 @@ const SPARKLES_STAY = 1300;
 const CONFETTI_COUNT = 24;
 const CONFETTI_STAY = 2400;
 
+// How the dragon's sparkles fly: a burst all round it, or a breath out to
+// one side.
+export type SparkleKind = 'burst' | 'breath';
+
 // Where a sparkle ends up from the middle of the dragon, as fractions of the
 // dragon's size.
 type Offset = { dx: number; dy: number };
 
-// Evenly round the dragon from straight up, wider than tall and lifted a
-// little so that each sparkle ends clear of it.
-function burstOffset(i: number): Offset {
-  const angle = (i / BURST_COUNT - 0.25) * Math.PI * 2;
-  return { dx: Math.cos(angle) * 0.8, dy: Math.sin(angle) * 0.6 - 0.1 };
-}
+type Sparkles = {
+  // What the sparkles are called, for a learner who cannot see them.
+  label: string;
+  count: number;
+  // Where sparkle i of count ends up.
+  offset: (i: number, count: number) => Offset;
+};
 
-// Out of the mouth to one side and a little up, as breath. The sparkles are
-// spread by their index, not at random, as the confetti is.
-function breathOffset(i: number): Offset {
-  return { dx: 0.45 + ((i * 5) % 6) * 0.1, dy: -0.1 - ((i * 7) % 6) * 0.05 };
-}
+const SPARKLES: Readonly<Record<SparkleKind, Sparkles>> = {
+  // Evenly round the dragon from straight up, wider than tall and lifted a
+  // little so that each sparkle ends clear of it.
+  burst: {
+    label: 'Sparkles',
+    count: 5,
+    offset: (i, count) => {
+      const angle = (i / count - 0.25) * Math.PI * 2;
+      return { dx: Math.cos(angle) * 0.8, dy: Math.sin(angle) * 0.6 - 0.1 };
+    },
+  },
+  // Out to one side and up, each later sparkle a little higher and the
+  // distances mixed. Like the confetti's pieces, the sparkles are spread by
+  // their index and not at random.
+  breath: {
+    label: 'Sparkle breath',
+    count: 6,
+    offset: (i, count) => ({
+      dx: 0.45 + (((i * 5) % count) / count) * 0.6,
+      dy: -0.1 - (i / count) * 0.3,
+    }),
+  },
+};
 
 // Sparkles flying out from the middle of the dragon, where its mouth is.
 // They take themselves away once they have faded.
-function renderSparkles(
-  label: string,
-  count: number,
-  offset: (i: number) => Offset,
-): HTMLElement {
+function renderSparkles(kind: SparkleKind): HTMLElement {
+  const { label, count, offset } = SPARKLES[kind];
   const sparkles = document.createElement('div');
   sparkles.className = 'sparkles';
   sparkles.setAttribute('role', 'img');
   sparkles.setAttribute('aria-label', label);
   for (let i = 0; i < count; i++) {
-    const { dx, dy } = offset(i);
+    const { dx, dy } = offset(i, count);
     const sparkle = document.createElement('span');
     sparkle.className = 'sparkle';
     sparkle.style.setProperty('--i', String(i));
@@ -114,10 +131,8 @@ function renderSparkles(
 
 export type DragonOptions = {
   pose: DragonPose;
-  // Whether the dragon bursts with sparkles.
-  sparkles?: boolean;
-  // Whether the dragon breathes sparkles out to one side.
-  breath?: boolean;
+  // The sparkles the dragon gives off, if any.
+  sparkles?: SparkleKind;
 };
 
 // Builds the dragon in the given pose, inside a box the screen's styles
@@ -134,12 +149,7 @@ export function renderDragon(options: DragonOptions): HTMLElement {
   dragon.innerHTML = DRAGON;
 
   stage.append(dragon);
-  if (options.sparkles) {
-    stage.append(renderSparkles('Sparkles', BURST_COUNT, burstOffset));
-  }
-  if (options.breath) {
-    stage.append(renderSparkles('Sparkle breath', BREATH_COUNT, breathOffset));
-  }
+  if (options.sparkles) stage.append(renderSparkles(options.sparkles));
   return stage;
 }
 

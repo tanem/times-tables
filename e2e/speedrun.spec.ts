@@ -193,10 +193,10 @@ async function getEveryFact(page: Page, msPerFact: number): Promise<void> {
   await expect(page.getByRole('button', { name: 'Run again' })).toBeVisible();
 }
 
-// The loudest celebration in the app: the dragon stands proud breathing
-// sparkles under confetti. The sparkles and the confetti go; the dragon
-// holds the pose.
-async function expectLoudCelebration(page: Page): Promise<void> {
+// What a first completed run and a new best get: the dragon stands proud
+// breathing sparkles under confetti. The sparkles and the confetti go; the
+// dragon stays.
+async function expectProudCelebration(page: Page): Promise<void> {
   const proud = dragon(page, 'stands proud');
   await expect(proud).toBeVisible();
   await expect(breath(page)).toBeVisible();
@@ -206,16 +206,20 @@ async function expectLoudCelebration(page: Page): Promise<void> {
   await expect(breath(page)).toHaveCount(0);
   await expect(confetti(page)).toHaveCount(0);
   await expect(proud).toBeVisible();
+}
 
-  // Once the dragon has stopped moving it is still in the pose, not back
-  // at rest.
-  const held = await proud.evaluate(async (svg) => {
-    await Promise.all(
-      svg.getAnimations().map((animation) => animation.finished),
-    );
-    return getComputedStyle(svg).transform;
-  });
-  expect(held).not.toBe('none');
+// How tall the learner sees the part once it has stopped moving, in pixels.
+async function heightAtRest(page: Page, part: Locator): Promise<number> {
+  let still = 0;
+  let last = await part.boundingBox();
+  for (let look = 0; look < 100 && still < 3; look++) {
+    await page.waitForTimeout(50);
+    const next = await part.boundingBox();
+    still = JSON.stringify(next) === JSON.stringify(last) ? still + 1 : 0;
+    last = next;
+  }
+  if (!last || still < 3) throw new Error('never came to rest');
+  return last.height;
 }
 
 // A completed speed run with the given time, as the stored document has it.
@@ -274,7 +278,7 @@ test('a first run shows every fact, brings a missed fact back, and ends on its t
   await expect(page.getByText('0:35.5')).toBeVisible();
   await expect(page.getByText('1 missed')).toBeVisible();
   await expect(page.getByText(/best/i)).toHaveCount(0);
-  await expectLoudCelebration(page);
+  await expectProudCelebration(page);
 
   const { records, facts } = await storedProgress(page);
   expect(records).toEqual([
@@ -309,12 +313,43 @@ test('a faster run is a new best over the previous one, and Run again counts dow
   await expect(page.getByText('0:16.5', { exact: true })).toBeVisible();
   await expect(page.getByText('0 missed')).toBeVisible();
   await expect(page.getByText('Previous best 0:20.0')).toBeVisible();
-  await expectLoudCelebration(page);
+  await expectProudCelebration(page);
 
   await page.getByRole('button', { name: 'Run again' }).click();
   await expect(
     page.getByRole('heading', { level: 1, name: '3' }),
   ).toBeVisible();
+});
+
+test('the dragon holds the proud pose, puffed up bigger than it stands after a wave', async ({
+  page,
+}) => {
+  await openWithRecords(page, [completedRun(20000)]);
+  await startRun(page);
+  await getEveryFact(page, 700);
+  const waved = await heightAtRest(page, dragon(page, 'waves'));
+
+  await page.getByRole('button', { name: 'Run again' }).click();
+  await page.clock.runFor(3000);
+  await getEveryFact(page, 500);
+  await page.clock.runFor(5000);
+
+  const proud = await heightAtRest(page, dragon(page, 'stands proud'));
+  expect(proud).toBeGreaterThan(1.1 * waved);
+});
+
+test('a run that ties the best is a slower run', async ({ page }) => {
+  await openWithRecords(page, [completedRun(16500)]);
+  await startRun(page);
+  await getEveryFact(page, 500);
+
+  await expect(
+    page.getByRole('heading', { level: 1, name: '0.0 s off your best' }),
+  ).toBeVisible();
+  await expect(page.getByText('Your best 0:16.5')).toBeVisible();
+  await expect(dragon(page, 'waves')).toBeVisible();
+  await expect(breath(page)).toHaveCount(0);
+  await expect(confetti(page)).toHaveCount(0);
 });
 
 test('a slower run shows its gap to the best with a warm wave', async ({
@@ -494,9 +529,7 @@ for (const [orientation, width, height] of [
 
     // The dragon is measured once it has puffed up into the pose.
     const proud = dragon(page, 'stands proud');
-    await proud.evaluate((svg) =>
-      Promise.all(svg.getAnimations().map((animation) => animation.finished)),
-    );
+    await heightAtRest(page, proud);
     const parts = [
       proud,
       page.getByRole('heading', { level: 1, name: 'New best!' }),

@@ -35,7 +35,7 @@ export function dragon(page: Page, doing: string): Locator {
 }
 
 export function sparkles(page: Page): Locator {
-  return page.getByRole('img', { name: 'Sparkles', exact: true });
+  return page.getByRole('img', { name: 'Sparkles' });
 }
 
 export function confetti(page: Page): Locator {

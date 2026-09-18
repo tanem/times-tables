@@ -1,17 +1,22 @@
 import { bandOf, type Band, type Drill } from '../model/drill';
-import { renderConfetti, renderDragon, type DragonPose } from './dragon';
+import {
+  renderConfetti,
+  renderDragon,
+  type DragonPose,
+  type SparkleKind,
+} from './dragon';
 
 // How each band celebrates: what the dragon does, and what goes with it.
 type Celebration = {
   pose: DragonPose;
-  sparkles: boolean;
+  sparkles?: SparkleKind;
   confetti: boolean;
 };
 
 const CELEBRATIONS: Readonly<Record<Band, Celebration>> = {
-  top: { pose: 'big-jump', sparkles: false, confetti: true },
-  middle: { pose: 'hop', sparkles: true, confetti: false },
-  low: { pose: 'wave', sparkles: false, confetti: false },
+  top: { pose: 'big-jump', confetti: true },
+  middle: { pose: 'hop', sparkles: 'burst', confetti: false },
+  low: { pose: 'wave', confetti: false },
 };
 
 export type EndOptions = {
