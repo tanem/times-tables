@@ -16,7 +16,8 @@ export default defineConfig({
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
     { name: 'webkit', use: { ...devices['Desktop Safari'] } },
   ],
-  // vite preview serves dist, so the build runs before the tests.
+  // vite preview serves dist, so run `npm run build` first; `npm run check`
+  // and the workflow do.
   webServer: {
     command: 'npm run preview',
     url: baseURL,

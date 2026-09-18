@@ -18,8 +18,8 @@ const seedRandom = (seed: number) => {
   };
 };
 
-export const test = base.extend<{ controlled: void }>({
-  controlled: [
+export const test = base.extend<{ fixedRandomAndClock: void }>({
+  fixedRandomAndClock: [
     async ({ page }, use) => {
       await page.addInitScript(seedRandom, SEED);
       // Puts Date, the timers, performance and animation frames under the

@@ -1,7 +1,7 @@
 /* Fredoka for headings and words, Nunito for body text, self-hosted from the
    @fontsource packages. The rules are written out here rather than importing
-   the packages' latin-*.css because those also list a woff2 fallback in woff
-   format, and the build ships woff2 only. */
+   the packages' latin-*.css because those also list a woff fallback, and the
+   build ships woff2 only. */
 
 @font-face {
   font-family: 'Fredoka';

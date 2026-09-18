@@ -12,15 +12,24 @@ export type Fact = {
 
 export const TABLES = [6, 8, 12] as const satisfies readonly Table[];
 
+// The two factors of a pair, smaller first.
+function ordered(a: number, b: number): [number, number] {
+  return a <= b ? [a, b] : [b, a];
+}
+
+// The key of a pair whose factors are already ordered.
+function keyOf(smaller: number, larger: number): string {
+  return `${smaller}x${larger}`;
+}
+
 // The key of the fact both orderings of a pair share.
 export function factKey(a: number, b: number): string {
-  return a <= b ? `${a}x${b}` : `${b}x${a}`;
+  return keyOf(...ordered(a, b));
 }
 
 function fact(table: Table, other: number): Fact {
-  const a = Math.min(table, other);
-  const b = Math.max(table, other);
-  return { key: factKey(a, b), a, b, product: a * b };
+  const [a, b] = ordered(table, other);
+  return { key: keyOf(a, b), a, b, product: a * b };
 }
 
 function buildFacts(): readonly Fact[] {
