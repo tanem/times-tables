@@ -10,7 +10,7 @@ import {
   type Drill,
 } from './model/drill';
 import type { Table } from './model/facts';
-import type { Outcome } from './model/level';
+import type { GotOutcome, Outcome } from './model/level';
 import {
   addRecord,
   applyOutcome,
@@ -92,7 +92,7 @@ function recordAnswer(before: Drill, outcome: Outcome): void {
 // A correction re-grades the answer just given as missed, in the document
 // and the drill alike, and shows the missed feedback in place of the one
 // that was up.
-function correctAnswer(drill: Drill, outcome: 'fast' | 'slow'): void {
+function correctAnswer(drill: Drill, outcome: GotOutcome): void {
   progress = correctOutcome(progress, drill.current.fact.key, outcome);
   saveProgress(store, progress);
   showFeedback(correct(drill), 'missed');

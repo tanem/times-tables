@@ -1,5 +1,5 @@
 import { FACTS, TABLES, type Table } from './facts';
-import { grade, type Level, type Outcome } from './level';
+import { grade, type GotOutcome, type Level, type Outcome } from './level';
 
 // How many of each outcome, for one fact over its lifetime or for one drill.
 export type OutcomeCounts = {
@@ -44,39 +44,44 @@ export function factLevel(progress: Progress, key: string): Level {
   return (progress.facts[key] ?? UNSEEN).level;
 }
 
+// The document with one fact changed. The given document is left as it was.
+function updateFact(
+  progress: Progress,
+  key: string,
+  change: (before: FactProgress) => FactProgress,
+): Progress {
+  const after = change(progress.facts[key] ?? UNSEEN);
+  return { ...progress, facts: { ...progress.facts, [key]: after } };
+}
+
 // The document after one outcome on a fact: its level moved and the
-// outcome's lifetime count up by one. The given document is left as it was.
+// outcome's lifetime count up by one.
 export function applyOutcome(
   progress: Progress,
   key: string,
   outcome: Outcome,
 ): Progress {
-  const before = progress.facts[key] ?? UNSEEN;
-  const after: FactProgress = {
+  return updateFact(progress, key, (before) => ({
     ...before,
     level: grade(before.level, outcome),
     [outcome]: before[outcome] + 1,
-  };
-  return { ...progress, facts: { ...progress.facts, [key]: after } };
+  }));
 }
 
-// The document after a fast or slow outcome on a fact is corrected to
-// missed: that outcome's count goes back down, the missed count goes up and
-// the level goes to 0. The outcome must be the one just applied to the fact.
-// The given document is left as it was.
+// The document after a got outcome on a fact is corrected to missed: that
+// outcome's count goes back down, the missed count goes up and the level
+// goes to 0. The outcome must be the one just applied to the fact.
 export function correctOutcome(
   progress: Progress,
   key: string,
-  outcome: 'fast' | 'slow',
+  outcome: GotOutcome,
 ): Progress {
-  const before = progress.facts[key] ?? UNSEEN;
-  const after: FactProgress = {
+  return updateFact(progress, key, (before) => ({
     ...before,
     level: grade(before.level, 'missed'),
     [outcome]: before[outcome] - 1,
     missed: before.missed + 1,
-  };
-  return { ...progress, facts: { ...progress.facts, [key]: after } };
+  }));
 }
 
 // The document with a record appended. The given document is left as it was.

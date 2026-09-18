@@ -1,4 +1,4 @@
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { TABLES } from '../src/model/facts';
 import type { Outcome } from '../src/model/level';
 import type { Progress } from '../src/model/progress';
@@ -39,7 +39,7 @@ async function keyOnScreen(page: Page): Promise<string> {
 }
 
 // The feedback's button for owning up to a wrong answer.
-function correction(page: Page) {
+function correction(page: Page): Locator {
   return page.getByRole('button', { name: 'Oops, I was wrong' });
 }
 

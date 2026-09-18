@@ -30,15 +30,15 @@ export type FeedbackOptions = {
   // Consecutive fast outcomes, this one included.
   streak: number;
   onAdvance: () => void;
-  // Called when the learner owns up to a wrong answer. Given only where a
-  // correction is allowed: a fast or slow answer in a drill.
+  // Called when the learner owns up to a wrong answer. The caller gives it
+  // only where a correction is allowed: a got outcome in a drill.
   onCorrect?: () => void;
 };
 
 // Builds the feedback screen: the fact with its answer, a word, and the
 // streak from two fast answers in a row. It holds for a moment, and a tap
-// anywhere moves on at once. After a fast or slow answer a small button
-// bottom-left lets the learner correct the answer to missed instead.
+// anywhere moves on at once. Given onCorrect, a small button bottom-left
+// lets the learner correct the answer to missed instead.
 export function renderFeedback(options: FeedbackOptions): HTMLElement {
   const { presentation, outcome } = options;
 
@@ -83,7 +83,7 @@ export function renderFeedback(options: FeedbackOptions): HTMLElement {
   screen.addEventListener('click', advance);
 
   const { onCorrect } = options;
-  if (onCorrect && outcome !== 'missed') {
+  if (onCorrect) {
     const correction = document.createElement('button');
     correction.type = 'button';
     correction.className = 'correction';

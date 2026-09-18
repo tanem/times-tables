@@ -21,11 +21,10 @@ export type Presentation = {
   readonly y: number;
 };
 
-// The answer given to the current presentation, with the streak and best
-// streak as they were before it, so that a correction can undo it.
-export type Answer = {
+// The outcome given to the current presentation, with the best streak as it
+// was before it, so that a correction can restore it.
+export type LastOutcome = {
   readonly outcome: Outcome;
-  readonly streak: number;
   readonly bestStreak: number;
 };
 
@@ -36,8 +35,9 @@ export type Drill = Readonly<OutcomeCounts> & {
   readonly pool: readonly Fact[];
   // The presentation on the card, or the one just answered.
   readonly current: Presentation;
-  // The answer to the current presentation, or null while it is on the card.
-  readonly last: Answer | null;
+  // The outcome given to the current presentation, or null while it is on
+  // the card.
+  readonly last: LastOutcome | null;
   readonly answered: number;
   // Consecutive fast outcomes, and the longest run of them in this drill.
   readonly streak: number;
@@ -126,18 +126,18 @@ export function answer(drill: Drill, outcome: Outcome): Drill {
     streak,
     bestStreak: Math.max(drill.bestStreak, streak),
     recent: [...drill.recent, drill.current.fact.key].slice(-RECENT_LENGTH),
-    last: { outcome, streak: drill.streak, bestStreak: drill.bestStreak },
+    last: { outcome, bestStreak: drill.bestStreak },
   };
 }
 
 // The drill with the answer to the current presentation re-graded as
 // missed: the tally moves from the outcome given to missed, the best streak
-// goes back to what it was before the answer, and the streak resets. Only a
-// fast or slow answer can be corrected.
+// goes back to what it was before the outcome, and the streak resets. Only a
+// got outcome can be corrected.
 export function correct(drill: Drill): Drill {
   const { last } = drill;
   if (!last || last.outcome === 'missed') {
-    throw new Error('there is no fast or slow answer to correct');
+    throw new Error('there is no got outcome to correct');
   }
   return {
     ...drill,
