@@ -1,0 +1,79 @@
+import { TABLES, type Table } from '../model/facts';
+
+// The number of presentations in a drill.
+const DRILL_LENGTH = 20;
+
+export type StartOptions = {
+  tables: readonly Table[];
+  // Called with the new selection, in table order, after every toggle.
+  onTablesChange: (tables: Table[]) => void;
+};
+
+// What the Practise caption says for a selection: the drill's length and
+// tables, or a prompt when nothing is on.
+export function practiseCaption(tables: readonly Table[]): string {
+  if (tables.length === 0) return 'Pick a table to practise';
+  if (tables.length === TABLES.length) {
+    return `${DRILL_LENGTH} facts from all three tables`;
+  }
+  const names = tables.map((table) => `${table}s`).join(' and ');
+  return `${DRILL_LENGTH} facts from the ${names}`;
+}
+
+// Builds the Start screen. The tiles keep the selection and the Practise
+// button follows it; Practise itself does nothing yet.
+export function renderStart(options: StartOptions): HTMLElement {
+  const selected = new Set<Table>(options.tables);
+  const selection = () => TABLES.filter((table) => selected.has(table));
+
+  const screen = document.createElement('main');
+  screen.className = 'start';
+
+  const title = document.createElement('h1');
+  title.textContent = 'Times tables';
+
+  const question = document.createElement('h2');
+  question.id = 'which-tables';
+  question.textContent = 'Which tables?';
+
+  const tiles = document.createElement('div');
+  tiles.className = 'tiles';
+  tiles.setAttribute('role', 'group');
+  tiles.setAttribute('aria-labelledby', question.id);
+
+  const practise = document.createElement('button');
+  practise.type = 'button';
+  practise.className = 'practise';
+  practise.textContent = 'Practise';
+  practise.setAttribute('aria-describedby', 'practise-caption');
+
+  const caption = document.createElement('p');
+  caption.id = 'practise-caption';
+  caption.className = 'caption';
+
+  const update = () => {
+    const tables = selection();
+    caption.textContent = practiseCaption(tables);
+    practise.disabled = tables.length === 0;
+  };
+
+  for (const table of TABLES) {
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = 'tile';
+    tile.textContent = `${table}s`;
+    tile.setAttribute('aria-pressed', String(selected.has(table)));
+    tile.addEventListener('click', () => {
+      if (selected.has(table)) selected.delete(table);
+      else selected.add(table);
+      tile.setAttribute('aria-pressed', String(selected.has(table)));
+      update();
+      options.onTablesChange(selection());
+    });
+    tiles.append(tile);
+  }
+
+  update();
+  screen.append(title, question, tiles, practise, caption);
+  return screen;
+}
