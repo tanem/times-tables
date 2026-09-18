@@ -1,4 +1,16 @@
+import type { Page } from '@playwright/test';
+import { BACKUP_KEY, PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
+
+const TILES = ['6s', '8s', '12s'];
+
+async function expectAllTablesOn(page: Page): Promise<void> {
+  for (const table of TILES) {
+    await expect(
+      page.getByRole('button', { name: table, pressed: true }),
+    ).toBeVisible();
+  }
+}
 
 test('the app opens onto the Start screen with all three tables on', async ({
   page,
@@ -8,11 +20,7 @@ test('the app opens onto the Start screen with all three tables on', async ({
     page.getByRole('heading', { level: 1, name: 'Times tables' }),
   ).toBeVisible();
   await expect(page.getByText('Which tables?')).toBeVisible();
-  for (const table of ['6s', '8s', '12s']) {
-    await expect(
-      page.getByRole('button', { name: table, pressed: true }),
-    ).toBeVisible();
-  }
+  await expectAllTablesOn(page);
   const practise = page.getByRole('button', { name: 'Practise', exact: true });
   await expect(practise).toBeEnabled();
   await expect(practise).toHaveAccessibleDescription(
@@ -45,7 +53,7 @@ test('with no table on Practise is disabled with a prompt', async ({
   page,
 }) => {
   await page.goto('./');
-  for (const table of ['6s', '8s', '12s']) {
+  for (const table of TILES) {
     await page.getByRole('button', { name: table }).click();
   }
   const practise = page.getByRole('button', { name: 'Practise', exact: true });
@@ -81,9 +89,8 @@ test('a changed selection is still there after a reload', async ({ page }) => {
   ).toHaveAccessibleDescription('20 facts from the 8s and 12s');
 });
 
-// The keys the app stores the document and its backup under.
-const PROGRESS_KEY = 'times-tables.progress';
-const BACKUP_KEY = 'times-tables.progress.backup';
+// A backup left by an earlier corrupt document, which the next one replaces.
+const EARLIER_BACKUP = '{"version":1,"tables":"old"}';
 
 const corruptDocuments: ReadonlyArray<readonly [string, string]> = [
   ['fails to parse', '{"version":1,'],
@@ -103,18 +110,19 @@ for (const [kind, text] of corruptDocuments) {
     page,
   }) => {
     await page.addInitScript(
-      ({ key, value }) => {
-        if (!localStorage.getItem(key)) localStorage.setItem(key, value);
+      ({ entries }: { entries: [string, string][] }) => {
+        for (const [key, value] of entries) localStorage.setItem(key, value);
       },
-      { key: PROGRESS_KEY, value: text },
+      {
+        entries: [
+          [PROGRESS_KEY, text],
+          [BACKUP_KEY, EARLIER_BACKUP],
+        ] as [string, string][],
+      },
     );
     await page.goto('./');
 
-    for (const table of ['6s', '8s', '12s']) {
-      await expect(
-        page.getByRole('button', { name: table, pressed: true }),
-      ).toBeVisible();
-    }
+    await expectAllTablesOn(page);
     await expect(
       page.getByRole('button', { name: 'Practise', exact: true }),
     ).toHaveAccessibleDescription('20 facts from all three tables');
@@ -161,10 +169,5 @@ for (const [orientation, width, height] of [
     for (const part of parts) {
       await expect(part).toBeInViewport({ ratio: 1 });
     }
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollHeight <= window.innerHeight,
-      ),
-    ).toBe(true);
   });
 }

@@ -5,7 +5,8 @@ import { freshProgress, parseProgress, type Progress } from './model/progress';
 export const PROGRESS_KEY = 'times-tables.progress';
 export const BACKUP_KEY = 'times-tables.progress.backup';
 
-// The part of localStorage the app uses, so that a test can pass a stand-in.
+// The part of localStorage the app uses. It is passed in because localStorage
+// itself can be unavailable, in which case main.ts supplies an empty store.
 export type ProgressStore = {
   getItem: (key: string) => string | null;
   setItem: (key: string, value: string) => void;
@@ -15,12 +16,7 @@ export type ProgressStore = {
 // document is copied to the backup key, overwriting any earlier backup, and
 // the app starts fresh. Either happens silently.
 export function loadProgress(store: ProgressStore): Progress {
-  let text: string | null;
-  try {
-    text = store.getItem(PROGRESS_KEY);
-  } catch {
-    return freshProgress();
-  }
+  const text = store.getItem(PROGRESS_KEY);
   if (text === null) return freshProgress();
   const progress = parseProgress(text);
   if (progress) return progress;

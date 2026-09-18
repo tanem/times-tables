@@ -1,7 +1,5 @@
+import { DRILL_LENGTH } from '../model/drill';
 import { TABLES, type Table } from '../model/facts';
-
-// The number of presentations in a drill.
-const DRILL_LENGTH = 20;
 
 export type StartOptions = {
   tables: readonly Table[];
@@ -11,7 +9,7 @@ export type StartOptions = {
 
 // What the Practise caption says for a selection: the drill's length and
 // tables, or a prompt when nothing is on.
-export function practiseCaption(tables: readonly Table[]): string {
+function practiseCaption(tables: readonly Table[]): string {
   if (tables.length === 0) return 'Pick a table to practise';
   if (tables.length === TABLES.length) {
     return `${DRILL_LENGTH} facts from all three tables`;
