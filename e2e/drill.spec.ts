@@ -32,6 +32,17 @@ async function advance(page: Page): Promise<void> {
   await page.getByText('Tap to go on').click();
 }
 
+// The key of the fact on screen, as the stored document has it.
+async function keyOnScreen(page: Page): Promise<string> {
+  const { x, y } = await factOnScreen(page);
+  return `${Math.min(x, y)}x${Math.max(x, y)}`;
+}
+
+// The feedback's button for owning up to a wrong answer.
+function correction(page: Page) {
+  return page.getByRole('button', { name: 'Oops, I was wrong' });
+}
+
 async function storedProgress(page: Page): Promise<Progress> {
   const text = await page.evaluate(
     (key) => localStorage.getItem(key),
@@ -351,6 +362,114 @@ test('a drill carries on after a write that throws', async ({ page }) => {
   await expect(page.getByText('2 Fast')).toBeVisible();
 });
 
+test('the correction button shows on fast and slow feedback and not on missed', async ({
+  page,
+}) => {
+  await startDrill(page);
+  await answerCard(page, 'fast');
+  await expect(correction(page)).toBeVisible();
+  await advance(page);
+
+  await answerCard(page, 'slow');
+  await expect(correction(page)).toBeVisible();
+  await advance(page);
+
+  await answerCard(page, 'missed');
+  await expect(page.getByText('Next time')).toBeVisible();
+  await expect(correction(page)).toHaveCount(0);
+});
+
+test('correcting a fast answer shows the missed feedback for the same fact and holds 2.5 seconds', async ({
+  page,
+}) => {
+  await startDrill(page);
+  const { x, y } = await factOnScreen(page);
+  const key = await keyOnScreen(page);
+  await answerCard(page, 'fast');
+  await expect(page.getByText('Fast!')).toBeVisible();
+
+  await correction(page).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: `${x} × ${y} = ${x * y}` }),
+  ).toBeVisible();
+  await expect(page.getByText('Next time')).toBeVisible();
+  await expect(correction(page)).toHaveCount(0);
+  expect((await storedProgress(page)).facts[key]).toEqual({
+    level: 0,
+    fast: 0,
+    slow: 0,
+    missed: 1,
+  });
+
+  // The fast feedback's own 2-second move-on no longer fires.
+  await page.clock.runFor(2499);
+  await expect(page.getByText('Next time')).toBeVisible();
+  await page.clock.runFor(1);
+  await expect(page.getByText('2 / 20')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Quit' }).click();
+  await expect(page.getByText('0 Fast')).toBeVisible();
+  await expect(page.getByText('0 Slow')).toBeVisible();
+  await expect(page.getByText('1 Missed')).toBeVisible();
+  expect((await storedProgress(page)).records[0]).toMatchObject({
+    fast: 0,
+    slow: 0,
+    missed: 1,
+  });
+});
+
+test('correcting a slow answer counts it as missed in the tally and the stored fact', async ({
+  page,
+}) => {
+  await startDrill(page);
+  await answerCard(page, 'fast');
+  await advance(page);
+  const key = await keyOnScreen(page);
+  await answerCard(page, 'slow');
+  await expect(page.getByText('Got there!')).toBeVisible();
+
+  await correction(page).click();
+  await expect(page.getByText('Next time')).toBeVisible();
+  expect((await storedProgress(page)).facts[key]).toEqual({
+    level: 0,
+    fast: 0,
+    slow: 0,
+    missed: 1,
+  });
+  await advance(page);
+
+  await page.getByRole('button', { name: 'Quit' }).click();
+  await expect(page.getByText('1 Fast')).toBeVisible();
+  await expect(page.getByText('0 Slow')).toBeVisible();
+  await expect(page.getByText('1 Missed')).toBeVisible();
+  expect((await storedProgress(page)).records[0]).toMatchObject({
+    fast: 1,
+    slow: 0,
+    missed: 1,
+  });
+});
+
+test('a correction on the third fast in a row leaves the best streak at 2', async ({
+  page,
+}) => {
+  await startDrill(page);
+  for (const _ of [1, 2]) {
+    await answerCard(page, 'fast');
+    await advance(page);
+  }
+  await answerCard(page, 'fast');
+  await expect(page.getByText('3 in a row')).toBeVisible();
+
+  await correction(page).click();
+  await expect(page.getByText('in a row')).toHaveCount(0);
+  await advance(page);
+
+  await page.getByRole('button', { name: 'Quit' }).click();
+  await expect(page.getByText('2 Fast')).toBeVisible();
+  await expect(page.getByText('1 Missed')).toBeVisible();
+  await expect(page.getByText('Best streak: 2')).toBeVisible();
+});
+
 for (const [orientation, width, height] of [
   ['portrait', 820, 1180],
   ['landscape', 1180, 820],
@@ -366,6 +485,22 @@ for (const [orientation, width, height] of [
       page.getByRole('progressbar', { name: 'Time left' }),
       page.getByRole('button', { name: 'Missed' }),
       page.getByRole('button', { name: 'Got it' }),
+    ];
+    for (const part of parts) {
+      await expect(part).toBeInViewport({ ratio: 1 });
+    }
+  });
+
+  test(`the feedback fits an iPad in ${orientation}`, async ({ page }) => {
+    await page.setViewportSize({ width, height });
+    await startDrill(page);
+    await answerCard(page, 'fast');
+
+    const parts = [
+      page.getByRole('heading', { level: 1 }),
+      page.getByText('Fast!'),
+      page.getByText('Tap to go on'),
+      correction(page),
     ];
     for (const part of parts) {
       await expect(part).toBeInViewport({ ratio: 1 });

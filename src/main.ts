@@ -1,6 +1,7 @@
 import './style.css';
 import {
   answer,
+  correct,
   drillRecord,
   isComplete,
   present,
@@ -10,7 +11,12 @@ import {
 } from './model/drill';
 import type { Table } from './model/facts';
 import type { Outcome } from './model/level';
-import { addRecord, applyOutcome, factLevel } from './model/progress';
+import {
+  addRecord,
+  applyOutcome,
+  correctOutcome,
+  factLevel,
+} from './model/progress';
 import { random } from './random';
 import { renderCard } from './screens/card';
 import { renderEnd } from './screens/end';
@@ -78,13 +84,24 @@ function showCard(drill: Drill, entering: boolean): void {
 // document is written back before the feedback shows. The next fact is
 // drawn when the feedback moves on, with the levels as they now are.
 function recordAnswer(before: Drill, outcome: Outcome): void {
-  const presentation = before.current;
-  progress = applyOutcome(progress, presentation.fact.key, outcome);
+  progress = applyOutcome(progress, before.current.fact.key, outcome);
   saveProgress(store, progress);
-  const drill = answer(before, outcome);
+  showFeedback(answer(before, outcome), outcome);
+}
+
+// A correction re-grades the answer just given as missed, in the document
+// and the drill alike, and shows the missed feedback in place of the one
+// that was up.
+function correctAnswer(drill: Drill, outcome: 'fast' | 'slow'): void {
+  progress = correctOutcome(progress, drill.current.fact.key, outcome);
+  saveProgress(store, progress);
+  showFeedback(correct(drill), 'missed');
+}
+
+function showFeedback(drill: Drill, outcome: Outcome): void {
   show(
     renderFeedback({
-      presentation,
+      presentation: drill.current,
       outcome,
       nth: drill[outcome],
       streak: drill.streak,
@@ -92,6 +109,8 @@ function recordAnswer(before: Drill, outcome: Outcome): void {
         if (isComplete(drill)) endDrill(drill);
         else showCard(present(drill, levelOf, random), false);
       },
+      onCorrect:
+        outcome === 'missed' ? undefined : () => correctAnswer(drill, outcome),
     }),
   );
 }
