@@ -8,7 +8,7 @@ Open https://tanem.github.io/times-tables/ in Safari, tap the Share button, choo
 
 Open the app once from its icon while the iPad is online. The installed app has its own storage, separate from the Safari tab it was added from, so its first launch needs a network to save itself. After that it works with no network at all.
 
-Updates arrive on their own: when the app is opened with a network it fetches the new version in the background and applies it on the Start screen, never in the middle of a drill or a speed run. The version and build a launch is running are shown at the bottom of the "For parents" screen, which is the way to tell an update has landed.
+Updates arrive on their own: when the app is opened with a network it fetches the new version in the background and applies it on the Start screen, never in the middle of a drill or a speed run. The version and build a launch is running are shown at the bottom of the Parent view, reached from "For parents" on the Start screen, which is the way to tell an update has landed.
 
 The progress lives only inside the installed app on that iPad. Deleting the icon erases it, moving to a new iPad does not carry it over, and there is no export.
 

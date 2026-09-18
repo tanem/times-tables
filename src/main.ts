@@ -67,25 +67,28 @@ let progress = loadProgress(store);
 
 const app = document.querySelector('#app');
 
-// A waiting service worker is applied on the Start screen alone, per
-// docs/adr/0001, so that a reload cannot end a drill or a speed run.
-const updater = createUpdater(() => {
-  // The app stops taking taps before the update is applied: skip-waiting is
-  // posted here and the reload follows once the new worker takes control, so
-  // a tap in between could start a drill that the reload then ends.
-  app?.setAttribute('inert', '');
-  void updateSW();
+// A service worker update is taken up on the Start screen alone, per
+// docs/adr/0001, so that neither half of it can end a drill or a speed run.
+const updater = createUpdater({
+  // The returned updateSW only posts skip-waiting to the waiting worker; its
+  // argument is ignored. The worker takes over a moment later, and the
+  // reload below is what puts the new files on screen.
+  apply: () => void updateSW(),
+  reload: () => window.location.reload(),
 });
 
-// Registered in prompt mode with no banner: a waiting worker is reported to
-// the updater, which decides when it is applied.
+// Registered in prompt mode with no banner. Without onNeedReload the plugin
+// reloads the page itself the moment the worker takes over, which another
+// tab of the app applying the update would do here in the middle of a
+// drill; with it the reload is the updater's to time.
 const updateSW = registerSW({
   onNeedRefresh: () => updater.workerWaiting(),
+  onNeedReload: () => updater.workerTookOver(),
 });
 
 // Screens are swapped by in-app state: one screen at a time, no routing.
 // onStart marks the Start screen, the one screen an update may reload on.
-function show(screen: HTMLElement, onStart = false): void {
+function show(screen: HTMLElement, { onStart = false } = {}): void {
   app?.replaceChildren(screen);
   updater.screenShown(onStart);
 }
@@ -108,7 +111,7 @@ function showStart(): void {
       onSpeedRun: beginRun,
       onParents: showParent,
     }),
-    true,
+    { onStart: true },
   );
 }
 

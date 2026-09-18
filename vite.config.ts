@@ -30,8 +30,8 @@ function shortCommit(): string {
   }
 }
 
-// The app's paper colour, as src/style.css sets --paper. It is the colour
-// iOS paints round the app before the page draws.
+// The app's paper colour, as src/style.css sets --paper. The manifest gives
+// it as both the background and the theme colour.
 const PAPER = '#fffaf0';
 
 export default defineConfig({
@@ -47,8 +47,8 @@ export default defineConfig({
       // prompt, per docs/adr/0001: src/main.ts decides when a waiting worker
       // is applied. skipWaiting and clientsClaim stay off for that reason.
       registerType: 'prompt',
-      // src/main.ts imports virtual:pwa-register, so nothing is injected
-      // into index.html; a second registration would fight the first.
+      // Nothing is injected into index.html: src/main.ts imports
+      // virtual:pwa-register and registers the worker itself.
       injectRegister: null,
       // The manifest's own URL sits under the base, so a relative start URL
       // and scope resolve to the app wherever it is served from.
@@ -72,9 +72,13 @@ export default defineConfig({
           },
         ],
       },
+      // The glob below already names the manifest's icons, so the plugin is
+      // told not to add them again.
+      includeManifestIcons: false,
       workbox: {
         // Everything the app needs offline: the index, the hashed JS and
-        // CSS, the self-hosted fonts and the icons.
+        // CSS, the self-hosted fonts and the icons. The plugin adds the
+        // manifest itself on top of these.
         globPatterns: ['**/*.{html,js,css,woff2,png,ico,svg}'],
       },
     }),

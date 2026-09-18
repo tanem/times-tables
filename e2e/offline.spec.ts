@@ -1,8 +1,5 @@
-// The service worker's own tests. These import Playwright's test directly
-// rather than the fixtures in fixtures.ts: those install a paused clock in
-// the page, and workbox-window measures registration with the clock it
-// finds, so a worker would never be reported as ready.
-import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
+import { expect, test } from './fixtures';
 import { startHeading } from './helpers';
 
 // The URLs the worker precaches, read out of the generated sw.js.
@@ -10,11 +7,19 @@ function precachedUrls(source: string): string[] {
   return [...source.matchAll(/url:"([^"]+)"/g)].map((match) => match[1] ?? '');
 }
 
+// A URL the page asks for, as the precache list names it: relative to the
+// app's root, so that no base path is written down here.
+function precacheName(page: Page, url: string): string {
+  const root = new URL('./', page.url()).pathname;
+  const path = new URL(url, page.url()).pathname;
+  if (!path.startsWith(root)) throw new Error(`${path} is not under ${root}`);
+  return path.slice(root.length);
+}
+
 // Chromium alone: Playwright routes service worker network traffic in
 // Chromium only, and in WebKit an offline reload of a page the worker
-// controls fails with "WebKit encountered an internal error" every time (run
-// five times with --repeat-each 5). The other two tests here read the served
-// files and pass in both browsers.
+// controls fails with "WebKit encountered an internal error". The other two
+// tests here read the served files and pass in both browsers.
 test('the app opens and works with no network once the worker is active', async ({
   page,
   context,
@@ -91,8 +96,8 @@ test('the worker precaches everything the app needs offline', async ({
 
   expect(urls).toContain('index.html');
   expect(urls).toContain('manifest.webmanifest');
-  expect(urls).toContain(script.replace(/^.*\/times-tables\//, ''));
-  expect(urls).toContain(stylesheet.replace(/^.*\/times-tables\//, ''));
+  expect(urls).toContain(precacheName(page, script));
+  expect(urls).toContain(precacheName(page, stylesheet));
   // The fonts and the chunk the registration imports, matched by pattern
   // because each carries a build hash.
   for (const pattern of [
@@ -102,4 +107,7 @@ test('the worker precaches everything the app needs offline', async ({
   ]) {
     expect(urls.some((url) => pattern.test(url))).toBe(true);
   }
+  // Every file is named once, so nothing is fetched and stored twice on
+  // install.
+  expect(urls).toEqual([...new Set(urls)]);
 });
