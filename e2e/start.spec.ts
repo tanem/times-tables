@@ -28,6 +28,23 @@ test('the app opens onto the Start screen with all three tables on', async ({
   );
 });
 
+test('the dragon sits with the app’s name at the top of the Start screen', async ({
+  page,
+}) => {
+  await page.goto('./');
+  const dragon = page.getByRole('img', { name: 'The dragon', exact: true });
+  await expect(dragon).toBeVisible();
+
+  const dragonBox = await dragon.boundingBox();
+  const nameBox = await page
+    .getByRole('heading', { level: 1, name: 'Times tables' })
+    .boundingBox();
+  const questionBox = await page.getByText('Which tables?').boundingBox();
+  if (!dragonBox || !nameBox || !questionBox) throw new Error('not laid out');
+  expect(dragonBox.y + dragonBox.height).toBeLessThanOrEqual(questionBox.y);
+  expect(nameBox.y + nameBox.height).toBeLessThanOrEqual(questionBox.y);
+});
+
 test('toggling tiles updates the Practise caption', async ({ page }) => {
   await page.goto('./');
   const practise = page.getByRole('button', { name: 'Practise', exact: true });
@@ -160,6 +177,7 @@ for (const [orientation, width, height] of [
     await page.goto('./');
 
     const parts = [
+      page.getByRole('img', { name: 'The dragon', exact: true }),
       page.getByRole('heading', { level: 1, name: 'Times tables' }),
       page.getByRole('button', { name: '6s' }),
       page.getByRole('button', { name: '12s' }),

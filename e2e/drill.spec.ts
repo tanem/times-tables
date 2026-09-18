@@ -27,6 +27,26 @@ function correction(page: Page): Locator {
   return page.getByRole('button', { name: 'Oops, I was wrong' });
 }
 
+// The dragon doing the given thing, as its accessible name says.
+function dragon(page: Page, doing: string): Locator {
+  return page.getByRole('img', { name: `The dragon ${doing}`, exact: true });
+}
+
+function sparkles(page: Page): Locator {
+  return page.getByRole('img', { name: 'Sparkles' });
+}
+
+function confetti(page: Page): Locator {
+  return page.getByRole('img', { name: 'Confetti' });
+}
+
+// How tall the learner sees the part, in pixels.
+async function heightOf(part: Locator): Promise<number> {
+  const box = await part.boundingBox();
+  if (!box) throw new Error('the part is not laid out');
+  return box.height;
+}
+
 test('Practise shows the first fact at once with the bar, the position and both buttons', async ({
   page,
 }) => {
@@ -109,6 +129,56 @@ test('a miss shows the answer with a word and holds 2.5 seconds', async ({
   await expect(page.getByText('Next time')).toBeVisible();
   await page.clock.runFor(1);
   await expect(page.getByText('2 / 20')).toBeVisible();
+});
+
+test('on fast the dragon is the biggest thing on screen, jumps and bursts with sparkles', async ({
+  page,
+}) => {
+  await startDrill(page);
+  await answerCard(page, 'fast');
+
+  await expect(dragon(page, 'jumps')).toBeVisible();
+  await expect(sparkles(page)).toBeVisible();
+  const dragonHeight = await heightOf(dragon(page, 'jumps'));
+  const sum = page.getByRole('heading', { level: 1 });
+  expect(dragonHeight).toBeGreaterThan(2 * (await heightOf(sum)));
+  expect(dragonHeight).toBeGreaterThan(
+    2 * (await heightOf(page.getByText('Fast!'))),
+  );
+
+  // The burst fades and goes while the feedback is still up.
+  await page.clock.runFor(1300);
+  await expect(sparkles(page)).toHaveCount(0);
+  await expect(page.getByText('Fast!')).toBeVisible();
+});
+
+test('on slow the dragon nods with no sparkles', async ({ page }) => {
+  await startDrill(page);
+  await answerCard(page, 'slow');
+
+  await expect(dragon(page, 'nods')).toBeVisible();
+  await expect(sparkles(page)).toHaveCount(0);
+});
+
+test('on missed the fact and answer are the biggest thing on screen and the dragon shrugs small in the top corner', async ({
+  page,
+}) => {
+  await startDrill(page);
+  await answerCard(page, 'missed');
+
+  const shrugging = dragon(page, 'shrugs');
+  await expect(shrugging).toBeVisible();
+  await expect(sparkles(page)).toHaveCount(0);
+
+  const sumBox = await page.getByRole('heading', { level: 1 }).boundingBox();
+  const dragonBox = await shrugging.boundingBox();
+  const viewport = page.viewportSize();
+  if (!sumBox || !dragonBox || !viewport) throw new Error('not laid out');
+  expect(sumBox.height).toBeGreaterThan(dragonBox.height);
+  expect(sumBox.width).toBeGreaterThan(3 * dragonBox.width);
+  // The top right corner, clear of the sum.
+  expect(dragonBox.x).toBeGreaterThan(viewport.width / 2);
+  expect(dragonBox.y + dragonBox.height).toBeLessThan(sumBox.y);
 });
 
 test('the words rotate through each outcome’s set', async ({ page }) => {
@@ -226,6 +296,75 @@ test('after 20 presentations the end screen shows the heading, the tally and the
   expect(facts.reduce((sum, fact) => sum + fact.fast, 0)).toBe(14);
   expect(facts.reduce((sum, fact) => sum + fact.slow, 0)).toBe(4);
   expect(facts.reduce((sum, fact) => sum + fact.missed, 0)).toBe(2);
+});
+
+// Runs a whole drill with the given number of fast answers and the rest
+// missed, and lands on the end screen.
+async function finishDrill(page: Page, fast: number): Promise<void> {
+  await startDrill(page);
+  for (let index = 0; index < 20; index++) {
+    await answerCard(page, index < fast ? 'fast' : 'missed');
+    await advance(page);
+  }
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Drill done!' }),
+  ).toBeVisible();
+}
+
+test('a drill with 15 fast answers ends with confetti and a big jump', async ({
+  page,
+}) => {
+  await finishDrill(page, 15);
+
+  await expect(dragon(page, 'jumps high')).toBeVisible();
+  await expect(confetti(page)).toBeVisible();
+  await expect(sparkles(page)).toHaveCount(0);
+
+  // The confetti falls once and goes.
+  await page.clock.runFor(2400);
+  await expect(confetti(page)).toHaveCount(0);
+  await expect(dragon(page, 'jumps high')).toBeVisible();
+});
+
+for (const fast of [14, 8]) {
+  test(`a drill with ${fast} fast answers ends with sparkles and a hop`, async ({
+    page,
+  }) => {
+    await finishDrill(page, fast);
+
+    await expect(dragon(page, 'hops')).toBeVisible();
+    await expect(sparkles(page)).toBeVisible();
+    await expect(confetti(page)).toHaveCount(0);
+  });
+}
+
+test('a drill with 7 fast answers ends with a warm wave', async ({ page }) => {
+  await finishDrill(page, 7);
+
+  await expect(dragon(page, 'waves')).toBeVisible();
+  await expect(sparkles(page)).toHaveCount(0);
+  await expect(confetti(page)).toHaveCount(0);
+});
+
+test('a quit drill ends with a warm wave however many answers were fast', async ({
+  page,
+}) => {
+  await startDrill(page);
+  for (let index = 0; index < 15; index++) {
+    await answerCard(page, 'fast');
+    await advance(page);
+  }
+  await page.getByRole('button', { name: 'Quit' }).click();
+
+  await expect(
+    page.getByRole('heading', {
+      level: 1,
+      name: 'Stopped early. Still counts!',
+    }),
+  ).toBeVisible();
+  await expect(dragon(page, 'waves')).toBeVisible();
+  await expect(sparkles(page)).toHaveCount(0);
+  await expect(confetti(page)).toHaveCount(0);
 });
 
 test('the stored document holds the updated level and counts after each answer', async ({
@@ -473,9 +612,48 @@ for (const [orientation, width, height] of [
 
     const parts = [
       page.getByRole('heading', { level: 1 }),
+      dragon(page, 'jumps'),
       page.getByText('Fast!'),
       page.getByText('Tap to go on'),
       correction(page),
+    ];
+    for (const part of parts) {
+      await expect(part).toBeInViewport({ ratio: 1 });
+    }
+  });
+
+  test(`the missed feedback fits an iPad in ${orientation}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await startDrill(page);
+    await answerCard(page, 'missed');
+
+    const parts = [
+      page.getByRole('heading', { level: 1 }),
+      dragon(page, 'shrugs'),
+      page.getByText('Next time'),
+      page.getByText('Tap to go on'),
+    ];
+    for (const part of parts) {
+      await expect(part).toBeInViewport({ ratio: 1 });
+    }
+  });
+
+  test(`the end of a drill fits an iPad in ${orientation}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await startDrill(page);
+    await page.getByRole('button', { name: 'Quit' }).click();
+
+    const parts = [
+      dragon(page, 'waves'),
+      page.getByRole('heading', { level: 1 }),
+      page.getByText('0 Fast'),
+      page.getByText('Best streak: 0'),
+      page.getByRole('button', { name: 'Home' }),
+      page.getByRole('button', { name: 'Go again' }),
     ];
     for (const part of parts) {
       await expect(part).toBeInViewport({ ratio: 1 });

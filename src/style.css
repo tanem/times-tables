@@ -12,6 +12,7 @@
   --slow: #e39a1e;
   --missed: #de5a52;
   --track: #dce2f0;
+  --sparkle: #ffc93c;
 }
 
 * {
@@ -51,6 +52,25 @@ button {
   justify-content: center;
   gap: clamp(16px, 3vmin, 32px);
   text-align: center;
+}
+
+/* The dragon sits over the app's name, and beside it in landscape, where
+   height is short. */
+.masthead {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(4px, 1vmin, 12px) clamp(12px, 3vmin, 32px);
+}
+
+@media (orientation: landscape) {
+  .masthead {
+    flex-direction: row;
+  }
+}
+
+.start .dragon-stage {
+  --size: clamp(88px, 18vmin, 170px);
 }
 
 .start h1 {
@@ -283,14 +303,26 @@ button {
   font-variant-numeric: tabular-nums;
 }
 
-/* The feedback: the sum and the word in the middle, and a miss makes the sum
-   the biggest thing on screen. */
+/* The feedback: the sum, the dragon and the word in the middle. After a got
+   outcome the dragon is the biggest thing on screen; a miss makes the sum
+   the biggest and puts the dragon small in the top corner. */
 .feedback {
   position: relative;
   justify-content: center;
   gap: clamp(12px, 3vmin, 32px);
   -webkit-user-select: none;
   user-select: none;
+}
+
+.feedback .dragon-stage {
+  --size: clamp(120px, 34vmin, 320px);
+}
+
+.feedback.missed .dragon-stage {
+  --size: clamp(48px, 10vmin, 88px);
+  position: absolute;
+  top: 16px;
+  right: 16px;
 }
 
 .feedback .sum {
@@ -355,6 +387,10 @@ button {
 .end {
   justify-content: center;
   gap: clamp(16px, 3vmin, 32px);
+}
+
+.end .dragon-stage {
+  --size: clamp(96px, 24vmin, 220px);
 }
 
 .end h1 {
@@ -445,4 +481,339 @@ button {
   border: none;
   background: var(--go);
   color: white;
+}
+
+/* The dragon: a square box the screen sizes through --size, holding the SVG
+   and any sparkles. */
+.dragon-stage {
+  --size: 120px;
+  position: relative;
+  flex: none;
+  width: var(--size);
+  height: var(--size);
+}
+
+.dragon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+
+/* The parts that move turn about their own box: the head about the neck,
+   an arm about its shoulder, a wing about where it joins the body. */
+.dragon .head,
+.dragon .arm-left,
+.dragon .arm-right,
+.dragon .wing {
+  transform-box: fill-box;
+}
+
+.dragon .head {
+  transform-origin: 50% 90%;
+}
+
+.dragon .arm-left,
+.dragon .arm-right {
+  transform-origin: 60% 10%;
+}
+
+.dragon .wing {
+  transform-origin: 100% 85%;
+}
+
+.dragon.sit {
+  animation: bob 2.4s ease-in-out infinite;
+}
+
+.dragon.jump {
+  animation: jump 0.7s ease;
+}
+
+.dragon.big-jump {
+  animation: big-jump 0.8s ease;
+}
+
+.dragon.hop {
+  animation: hop 0.7s ease;
+}
+
+.dragon.jump .wing,
+.dragon.big-jump .wing,
+.dragon.hop .wing {
+  animation: flap 0.35s ease-in-out 2;
+}
+
+.dragon.nod .head {
+  animation: nod 0.9s ease;
+}
+
+.dragon.shrug {
+  animation: sway 0.9s ease;
+}
+
+.dragon.shrug .head {
+  animation: tilt 0.9s ease;
+}
+
+.dragon.shrug .arm-left,
+.dragon.shrug .arm-right {
+  animation: lift 0.9s ease;
+}
+
+.dragon.wave {
+  animation: sway 1.6s ease;
+}
+
+.dragon.wave .arm-right {
+  animation: wave 1.6s ease;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-6%) rotate(2deg);
+  }
+}
+
+@keyframes jump {
+  0% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-14%) scale(1.12);
+  }
+  65% {
+    transform: translateY(0);
+  }
+  82% {
+    transform: translateY(-5%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes big-jump {
+  0% {
+    transform: translateY(0);
+  }
+  35% {
+    transform: translateY(-22%) scale(1.18);
+  }
+  65% {
+    transform: translateY(0);
+  }
+  85% {
+    transform: translateY(-8%);
+  }
+  100% {
+    transform: translateY(0);
+  }
+}
+
+@keyframes hop {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  45% {
+    transform: translateY(-12%);
+  }
+}
+
+@keyframes flap {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  50% {
+    transform: rotate(28deg);
+  }
+}
+
+/* The head dips twice. */
+@keyframes nod {
+  0%,
+  50%,
+  100% {
+    transform: translateY(0);
+  }
+  25%,
+  75% {
+    transform: translateY(9%) scaleY(0.94);
+  }
+}
+
+@keyframes sway {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  30% {
+    transform: rotate(-4deg);
+  }
+  70% {
+    transform: rotate(4deg);
+  }
+}
+
+@keyframes tilt {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  30%,
+  70% {
+    transform: rotate(-9deg);
+  }
+}
+
+/* Both arms go up and out, hold, and come back down. */
+@keyframes lift {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  30%,
+  70% {
+    transform: rotate(70deg);
+  }
+}
+
+/* The arm goes up and swings to and fro. */
+@keyframes wave {
+  0%,
+  100% {
+    transform: rotate(0);
+  }
+  15%,
+  45%,
+  75% {
+    transform: rotate(150deg);
+  }
+  30%,
+  60% {
+    transform: rotate(110deg);
+  }
+}
+
+/* Sparkles fly out from the middle of the dragon, each a four-pointed star.
+   --dx and --dy are fractions of the dragon's size. */
+.sparkles {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.sparkle {
+  position: absolute;
+  left: 40%;
+  top: 40%;
+  width: 20%;
+  height: 20%;
+  background: var(--sparkle);
+  clip-path: polygon(
+    50% 0,
+    62% 38%,
+    100% 50%,
+    62% 62%,
+    50% 100%,
+    38% 62%,
+    0 50%,
+    38% 38%
+  );
+  opacity: 0;
+  animation: sparkle 0.9s ease forwards;
+  animation-delay: calc(var(--i) * 0.05s);
+}
+
+.sparkle:nth-child(3n + 2) {
+  background: var(--tile);
+}
+
+.sparkle:nth-child(3n) {
+  background: var(--missed);
+}
+
+@keyframes sparkle {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(0.5);
+  }
+  30% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translate(
+        calc(var(--size) * var(--dx)),
+        calc(var(--size) * var(--dy))
+      )
+      scale(1.2) rotate(90deg);
+  }
+}
+
+/* Confetti falls once from above the top edge over the whole screen. */
+.confetti {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.piece {
+  position: absolute;
+  top: -20px;
+  width: 10px;
+  height: 16px;
+  opacity: 0.9;
+  /* Each piece carries its own delay and duration. */
+  animation-name: fall;
+  animation-timing-function: ease-in;
+  animation-fill-mode: forwards;
+}
+
+.piece.colour-0 {
+  background: var(--fast);
+}
+
+.piece.colour-1 {
+  background: var(--tile);
+}
+
+.piece.colour-2 {
+  background: var(--slow);
+}
+
+.piece.colour-3 {
+  background: var(--missed);
+}
+
+@keyframes fall {
+  to {
+    transform: translateY(120vh) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* Reduced motion stops the endless bob and shortens every reaction; no
+   reaction is taken away. */
+@media (prefers-reduced-motion: reduce) {
+  .dragon.sit {
+    animation: none;
+  }
+
+  .dragon:not(.sit),
+  .dragon:not(.sit) * {
+    animation-duration: 0.3s;
+  }
+
+  .sparkle,
+  .piece {
+    animation-duration: 0.5s !important;
+  }
 }

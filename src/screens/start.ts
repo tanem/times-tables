@@ -1,6 +1,7 @@
 import { DRILL_LENGTH } from '../model/drill';
 import { FACTS, TABLES, type Table } from '../model/facts';
 import { formatTime } from '../model/speedrun';
+import { renderDragon } from './dragon';
 
 export type StartOptions = {
   tables: readonly Table[];
@@ -24,9 +25,10 @@ function practiseCaption(tables: readonly Table[]): string {
   return `${DRILL_LENGTH} facts from the ${names}`;
 }
 
-// Builds the Start screen. The tiles keep the selection and the Practise
-// button follows it. The Speed run button takes no notice of the selection
-// and has the personal best beside it.
+// Builds the Start screen. The dragon sits with the app's name at the top.
+// The tiles keep the selection and the Practise button follows it. The
+// Speed run button takes no notice of the selection and has the personal
+// best beside it.
 export function renderStart(options: StartOptions): HTMLElement {
   const selected = new Set<Table>(options.tables);
   const selection = () => TABLES.filter((table) => selected.has(table));
@@ -34,8 +36,11 @@ export function renderStart(options: StartOptions): HTMLElement {
   const screen = document.createElement('main');
   screen.className = 'start';
 
+  const masthead = document.createElement('header');
+  masthead.className = 'masthead';
   const title = document.createElement('h1');
   title.textContent = 'Times tables';
+  masthead.append(renderDragon({ pose: 'sit' }), title);
 
   const question = document.createElement('h2');
   question.id = 'which-tables';
@@ -100,6 +105,6 @@ export function renderStart(options: StartOptions): HTMLElement {
   speed.append(speedRun, best);
 
   update();
-  screen.append(title, question, tiles, practise, caption, speed);
+  screen.append(masthead, question, tiles, practise, caption, speed);
   return screen;
 }

@@ -1,4 +1,18 @@
-import type { Drill } from '../model/drill';
+import { bandOf, type Band, type Drill } from '../model/drill';
+import { renderConfetti, renderDragon, type DragonPose } from './dragon';
+
+// How each band celebrates: what the dragon does, and what goes with it.
+type Celebration = {
+  pose: DragonPose;
+  sparkles: boolean;
+  confetti: boolean;
+};
+
+const CELEBRATIONS: Readonly<Record<Band, Celebration>> = {
+  top: { pose: 'big-jump', sparkles: false, confetti: true },
+  middle: { pose: 'hop', sparkles: true, confetti: false },
+  low: { pose: 'wave', sparkles: false, confetti: false },
+};
 
 export type EndOptions = {
   drill: Drill;
@@ -6,13 +20,17 @@ export type EndOptions = {
   onAgain: () => void;
 };
 
-// Builds the end screen: a heading, the tally of fast, slow and missed, the
-// best streak, then Home and Go again.
+// Builds the end screen: the dragon, a heading, the tally of fast, slow and
+// missed, the best streak, then Home and Go again. The dragon celebrates by
+// the drill's band.
 export function renderEnd(options: EndOptions): HTMLElement {
   const { drill } = options;
 
   const screen = document.createElement('main');
   screen.className = 'end';
+
+  const celebration = CELEBRATIONS[bandOf(drill)];
+  const dragon = renderDragon(celebration);
 
   const heading = document.createElement('h1');
   heading.textContent = drill.quit
@@ -54,6 +72,7 @@ export function renderEnd(options: EndOptions): HTMLElement {
   again.addEventListener('click', options.onAgain);
 
   actions.append(home, again);
-  screen.append(heading, tally, best, actions);
+  screen.append(dragon, heading, tally, best, actions);
+  if (celebration.confetti) screen.append(renderConfetti());
   return screen;
 }
