@@ -10,7 +10,8 @@
 - **Outcome**: the learner's grade for one presentation: fast (got it within the limit), slow (got it after the limit), or missed.
 - **Level**: how well the learner knows a fact, from 0 (new or just missed) to 4. Outcomes move it.
 - **Weighted repetition**: choosing the next fact so that facts at a low level appear more often.
-- **Streak**: consecutive fast outcomes within a drill; a slow or missed outcome resets it. The best streak of a drill is shown on its end screen. Nothing accumulates across drills.
+- **Correction**: the learner re-grading the presentation just answered from fast or slow to missed, from the feedback, when the answer shown is not what they said. One way only: missed cannot become got.
+- **Streak**: consecutive fast outcomes within a drill; a slow or missed outcome, or a correction, resets it. The best streak of a drill is shown on its end screen. Nothing accumulates across drills.
 - **Speed run**: a drill covering every fact, in random order, where a missed fact returns until it is got, timed as a whole and compared to the personal best.
 - **Personal best**: the shortest time of any completed speed run.
 - **Progress**: everything the app remembers about the learner: each fact's level and outcome counts, and the drill records.

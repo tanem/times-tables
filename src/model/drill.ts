@@ -21,6 +21,14 @@ export type Presentation = {
   readonly y: number;
 };
 
+// The answer given to the current presentation, with the streak and best
+// streak as they were before it, so that a correction can undo it.
+export type Answer = {
+  readonly outcome: Outcome;
+  readonly streak: number;
+  readonly bestStreak: number;
+};
+
 // One sitting of practice. Every function here returns a new drill and
 // leaves the given one as it was.
 export type Drill = Readonly<OutcomeCounts> & {
@@ -28,6 +36,8 @@ export type Drill = Readonly<OutcomeCounts> & {
   readonly pool: readonly Fact[];
   // The presentation on the card, or the one just answered.
   readonly current: Presentation;
+  // The answer to the current presentation, or null while it is on the card.
+  readonly last: Answer | null;
   readonly answered: number;
   // Consecutive fast outcomes, and the longest run of them in this drill.
   readonly streak: number;
@@ -83,6 +93,7 @@ export function startDrill(
     streak: 0,
     bestStreak: 0,
     recent: [],
+    last: null,
     quit: false,
   };
   return { ...drill, current: draw(drill, levelOf, random) };
@@ -100,7 +111,7 @@ function draw(
 // The drill with the next fact drawn and on the card. The levels are read
 // afresh so that the answer just given weighs on the draw.
 export function present(drill: Drill, levelOf: LevelOf, random: Random): Drill {
-  return { ...drill, current: draw(drill, levelOf, random) };
+  return { ...drill, current: draw(drill, levelOf, random), last: null };
 }
 
 // The drill after the learner's outcome on the current presentation: the
@@ -115,6 +126,26 @@ export function answer(drill: Drill, outcome: Outcome): Drill {
     streak,
     bestStreak: Math.max(drill.bestStreak, streak),
     recent: [...drill.recent, drill.current.fact.key].slice(-RECENT_LENGTH),
+    last: { outcome, streak: drill.streak, bestStreak: drill.bestStreak },
+  };
+}
+
+// The drill with the answer to the current presentation re-graded as
+// missed: the tally moves from the outcome given to missed, the best streak
+// goes back to what it was before the answer, and the streak resets. Only a
+// fast or slow answer can be corrected.
+export function correct(drill: Drill): Drill {
+  const { last } = drill;
+  if (!last || last.outcome === 'missed') {
+    throw new Error('there is no fast or slow answer to correct');
+  }
+  return {
+    ...drill,
+    [last.outcome]: drill[last.outcome] - 1,
+    missed: drill.missed + 1,
+    streak: 0,
+    bestStreak: last.bestStreak,
+    last: { ...last, outcome: 'missed' },
   };
 }
 

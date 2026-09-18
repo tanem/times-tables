@@ -60,6 +60,25 @@ export function applyOutcome(
   return { ...progress, facts: { ...progress.facts, [key]: after } };
 }
 
+// The document after a fast or slow outcome on a fact is corrected to
+// missed: that outcome's count goes back down, the missed count goes up and
+// the level goes to 0. The outcome must be the one just applied to the fact.
+// The given document is left as it was.
+export function correctOutcome(
+  progress: Progress,
+  key: string,
+  outcome: 'fast' | 'slow',
+): Progress {
+  const before = progress.facts[key] ?? UNSEEN;
+  const after: FactProgress = {
+    ...before,
+    level: grade(before.level, 'missed'),
+    [outcome]: before[outcome] - 1,
+    missed: before.missed + 1,
+  };
+  return { ...progress, facts: { ...progress.facts, [key]: after } };
+}
+
 // The document with a record appended. The given document is left as it was.
 export function addRecord(progress: Progress, record: DrillRecord): Progress {
   return { ...progress, records: [...progress.records, record] };
