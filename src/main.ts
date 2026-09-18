@@ -16,14 +16,28 @@ import {
   applyOutcome,
   correctOutcome,
   factLevel,
+  personalBest,
+  type CompletedRun,
 } from './model/progress';
+import {
+  answerRun,
+  cardOf,
+  isRunComplete,
+  speedRunRecord,
+  startRun,
+  type SpeedRun,
+} from './model/speedrun';
 import { random } from './random';
 import { renderCard } from './screens/card';
+import { renderCountdown } from './screens/countdown';
 import { renderEnd } from './screens/end';
 import { renderFeedback } from './screens/feedback';
+import { renderReveal } from './screens/reveal';
+import { renderRunCard } from './screens/runcard';
+import { renderRunEnd } from './screens/runend';
 import { renderStart } from './screens/start';
 import { loadProgress, saveProgress, type ProgressStore } from './storage';
-import { timestamp } from './time';
+import { now, timestamp } from './time';
 
 // localStorage itself can be unavailable, in which case the app runs on its
 // in-memory state alone.
@@ -60,6 +74,8 @@ function showStart(): void {
         saveProgress(store, progress);
       },
       onPractise: beginDrill,
+      best: personalBest(progress)?.time ?? null,
+      onSpeedRun: beginRun,
     }),
   );
 }
@@ -127,5 +143,84 @@ function endDrill(drill: Drill): void {
     }),
   );
 }
+
+// The speed run in play, from the countdown to the last fact, and null at
+// any other time. It is kept here so that hiding the app can quit it.
+let runInPlay: SpeedRun | null = null;
+
+// A speed run begins with the countdown, and its clock starts when the
+// first fact appears.
+function beginRun(): void {
+  runInPlay = startRun(random);
+  show(renderCountdown({ onDone: () => showRunCard(now()) }));
+}
+
+function showRunCard(startedAt: number): void {
+  if (!runInPlay) return;
+  show(
+    renderRunCard({
+      presentation: cardOf(runInPlay),
+      startedAt,
+      onAnswer: (outcome) => recordRunAnswer(startedAt, outcome),
+      onQuit: quitRun,
+    }),
+  );
+}
+
+// The outcome moves the fact's level and counts as a drill answer does, and
+// the document is written back before anything else shows. A got fact goes
+// straight to the next one; a missed fact shows its answer first.
+function recordRunAnswer(startedAt: number, outcome: Outcome): void {
+  if (!runInPlay) return;
+  const presentation = cardOf(runInPlay);
+  progress = applyOutcome(progress, presentation.fact.key, outcome);
+  saveProgress(store, progress);
+  runInPlay = answerRun(runInPlay, outcome, random);
+  if (isRunComplete(runInPlay)) {
+    endRun(speedRunRecord(runInPlay, timestamp(), now() - startedAt));
+  } else if (outcome === 'missed') {
+    show(
+      renderReveal({
+        presentation,
+        startedAt,
+        onDone: () => showRunCard(startedAt),
+        onQuit: quitRun,
+      }),
+    );
+  } else showRunCard(startedAt);
+}
+
+// The clock stops on the tap that gets the last fact. The record is written
+// and the end screen compares the time with the best as it stood before.
+function endRun(record: CompletedRun): void {
+  runInPlay = null;
+  const previousBest = personalBest(progress)?.time ?? null;
+  progress = addRecord(progress, record);
+  saveProgress(store, progress);
+  show(
+    renderRunEnd({
+      record,
+      previousBest,
+      onDone: showStart,
+      onAgain: beginRun,
+    }),
+  );
+}
+
+// A quit keeps the level and count changes, leaves a record flagged quit
+// with no time, and goes straight to the Start screen.
+function quitRun(): void {
+  if (!runInPlay) return;
+  progress = addRecord(progress, speedRunRecord(runInPlay, timestamp(), null));
+  saveProgress(store, progress);
+  runInPlay = null;
+  showStart();
+}
+
+// Hiding the app during the countdown or the run quits the run, so that the
+// clock cannot be stopped by leaving.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') quitRun();
+});
 
 showStart();

@@ -165,6 +165,8 @@ for (const [orientation, width, height] of [
       page.getByRole('button', { name: '12s' }),
       page.getByRole('button', { name: 'Practise', exact: true }),
       page.getByText('20 facts from all three tables'),
+      page.getByRole('button', { name: 'Speed run' }),
+      page.getByText('all 33 facts, no best yet'),
     ];
     for (const part of parts) {
       await expect(part).toBeInViewport({ ratio: 1 });
