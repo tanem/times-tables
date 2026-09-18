@@ -1,5 +1,6 @@
 import type { CompletedRun } from '../model/progress';
 import { formatGap, formatTime } from '../model/speedrun';
+import { renderConfetti, renderDragon } from './dragon';
 
 export type RunEndOptions = {
   record: CompletedRun;
@@ -27,6 +28,13 @@ export function renderRunEnd(options: RunEndOptions): HTMLElement {
   const screen = document.createElement('main');
   screen.className = 'end';
 
+  // A first completed run and a new best get the loudest celebration in the
+  // app; a slower run gets a warm wave.
+  const best = previousBest === null || record.time < previousBest;
+  const dragon = best
+    ? renderDragon({ pose: 'proud', breath: true })
+    : renderDragon({ pose: 'wave' });
+
   const heading = document.createElement('h1');
   heading.textContent = runHeading(record.time, previousBest);
 
@@ -38,7 +46,7 @@ export function renderRunEnd(options: RunEndOptions): HTMLElement {
   misses.className = 'misses';
   misses.textContent = `${record.missed} missed`;
 
-  screen.append(heading, time, misses);
+  screen.append(dragon, heading, time, misses);
 
   if (previousBest !== null) {
     // After a faster run the best it beat is no longer the best.
@@ -66,5 +74,6 @@ export function renderRunEnd(options: RunEndOptions): HTMLElement {
 
   actions.append(done, again);
   screen.append(actions);
+  if (best) screen.append(renderConfetti());
   return screen;
 }

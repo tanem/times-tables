@@ -2,7 +2,14 @@ import type { Locator, Page } from '@playwright/test';
 import { TABLES } from '../src/model/facts';
 import type { Outcome } from '../src/model/level';
 import { expect, test } from './fixtures';
-import { factOnScreen, keyOnScreen, storedProgress } from './helpers';
+import {
+  confetti,
+  dragon,
+  factOnScreen,
+  keyOnScreen,
+  sparkles,
+  storedProgress,
+} from './helpers';
 
 async function startDrill(page: Page): Promise<void> {
   await page.goto('./');
@@ -25,19 +32,6 @@ async function advance(page: Page): Promise<void> {
 // The feedback's button for owning up to a wrong answer.
 function correction(page: Page): Locator {
   return page.getByRole('button', { name: 'Oops, I was wrong' });
-}
-
-// The dragon doing the given thing, as its accessible name says.
-function dragon(page: Page, doing: string): Locator {
-  return page.getByRole('img', { name: `The dragon ${doing}`, exact: true });
-}
-
-function sparkles(page: Page): Locator {
-  return page.getByRole('img', { name: 'Sparkles' });
-}
-
-function confetti(page: Page): Locator {
-  return page.getByRole('img', { name: 'Confetti' });
 }
 
 // How tall the learner sees the part, in pixels.

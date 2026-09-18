@@ -1,9 +1,10 @@
 import { schedule } from '../time';
 
 // What the dragon is doing. Each pose is a CSS animation that plays once,
-// except sit, which bobs for as long as it is on screen.
+// except sit, which bobs for as long as it is on screen, and proud, which
+// the dragon moves into and holds.
 export type DragonPose =
-  'sit' | 'jump' | 'nod' | 'shrug' | 'big-jump' | 'hop' | 'wave';
+  'sit' | 'jump' | 'nod' | 'shrug' | 'big-jump' | 'hop' | 'wave' | 'proud';
 
 // What each pose is called, for a learner who cannot see it.
 const LABELS: Readonly<Record<DragonPose, string>> = {
@@ -14,6 +15,7 @@ const LABELS: Readonly<Record<DragonPose, string>> = {
   'big-jump': 'The dragon jumps high',
   hop: 'The dragon hops',
   wave: 'The dragon waves',
+  proud: 'The dragon stands proud',
 };
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
@@ -57,10 +59,11 @@ const DRAGON = `
   </g>
 `;
 
-// How many sparkles a burst has, and how long the burst stays before it is
-// taken away, in milliseconds. The styles have the last sparkle faded by
-// then.
-const SPARKLE_COUNT = 5;
+// How many sparkles a burst and a breath have, and how long either stays
+// before it is taken away, in milliseconds. The styles have the last sparkle
+// faded by then.
+const BURST_COUNT = 5;
+const BREATH_COUNT = 6;
 const SPARKLES_STAY = 1300;
 
 // How many pieces of confetti fall, and how long the confetti stays before
@@ -68,22 +71,41 @@ const SPARKLES_STAY = 1300;
 const CONFETTI_COUNT = 24;
 const CONFETTI_STAY = 2400;
 
-// A burst of sparkles flying out from the middle of the dragon. The burst
-// takes itself away once it has faded.
-function renderSparkles(): HTMLElement {
+// Where a sparkle ends up from the middle of the dragon, as fractions of the
+// dragon's size.
+type Offset = { dx: number; dy: number };
+
+// Evenly round the dragon from straight up, wider than tall and lifted a
+// little so that each sparkle ends clear of it.
+function burstOffset(i: number): Offset {
+  const angle = (i / BURST_COUNT - 0.25) * Math.PI * 2;
+  return { dx: Math.cos(angle) * 0.8, dy: Math.sin(angle) * 0.6 - 0.1 };
+}
+
+// Out of the mouth to one side and a little up, as breath. The sparkles are
+// spread by their index, not at random, as the confetti is.
+function breathOffset(i: number): Offset {
+  return { dx: 0.45 + ((i * 5) % 6) * 0.1, dy: -0.1 - ((i * 7) % 6) * 0.05 };
+}
+
+// Sparkles flying out from the middle of the dragon, where its mouth is.
+// They take themselves away once they have faded.
+function renderSparkles(
+  label: string,
+  count: number,
+  offset: (i: number) => Offset,
+): HTMLElement {
   const sparkles = document.createElement('div');
   sparkles.className = 'sparkles';
   sparkles.setAttribute('role', 'img');
-  sparkles.setAttribute('aria-label', 'Sparkles');
-  for (let i = 0; i < SPARKLE_COUNT; i++) {
-    // Evenly round the dragon from straight up, wider than tall and lifted
-    // a little so that each ends clear of it, as fractions of its size.
-    const angle = (i / SPARKLE_COUNT - 0.25) * Math.PI * 2;
+  sparkles.setAttribute('aria-label', label);
+  for (let i = 0; i < count; i++) {
+    const { dx, dy } = offset(i);
     const sparkle = document.createElement('span');
     sparkle.className = 'sparkle';
     sparkle.style.setProperty('--i', String(i));
-    sparkle.style.setProperty('--dx', (Math.cos(angle) * 0.8).toFixed(3));
-    sparkle.style.setProperty('--dy', (Math.sin(angle) * 0.6 - 0.1).toFixed(3));
+    sparkle.style.setProperty('--dx', dx.toFixed(3));
+    sparkle.style.setProperty('--dy', dy.toFixed(3));
     sparkles.append(sparkle);
   }
   schedule(() => sparkles.remove(), SPARKLES_STAY);
@@ -94,6 +116,8 @@ export type DragonOptions = {
   pose: DragonPose;
   // Whether the dragon bursts with sparkles.
   sparkles?: boolean;
+  // Whether the dragon breathes sparkles out to one side.
+  breath?: boolean;
 };
 
 // Builds the dragon in the given pose, inside a box the screen's styles
@@ -110,7 +134,12 @@ export function renderDragon(options: DragonOptions): HTMLElement {
   dragon.innerHTML = DRAGON;
 
   stage.append(dragon);
-  if (options.sparkles) stage.append(renderSparkles());
+  if (options.sparkles) {
+    stage.append(renderSparkles('Sparkles', BURST_COUNT, burstOffset));
+  }
+  if (options.breath) {
+    stage.append(renderSparkles('Sparkle breath', BREATH_COUNT, breathOffset));
+  }
   return stage;
 }
 
