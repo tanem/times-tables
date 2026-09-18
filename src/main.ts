@@ -86,8 +86,8 @@ function showStart(): void {
   );
 }
 
-// The Progress screen reads the document as it stands when a parent opens
-// it; it makes no changes of its own.
+// The Parent view reads the document as it stands when a parent opens it;
+// it makes no changes of its own.
 function showParent(): void {
   show(
     renderParent({

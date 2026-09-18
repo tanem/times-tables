@@ -1,7 +1,10 @@
 import { execSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { defineConfig } from 'vitest/config';
+
+const configDir = dirname(fileURLToPath(import.meta.url));
 
 const pkg = JSON.parse(
   readFileSync(
@@ -10,15 +13,19 @@ const pkg = JSON.parse(
   ),
 );
 
-// The build's short commit: read from git when the build runs in a
-// checkout, falling back to the CI-provided SHA, then to "unknown" so a
-// build never fails for lack of either.
+// The build's short commit: read from git, quietly, when the build runs in
+// a checkout, falling back to "unknown" so a build never fails for lack of
+// one.
 function shortCommit(): string {
   try {
-    return execSync('git rev-parse --short HEAD').toString().trim();
+    return execSync('git rev-parse --short HEAD', {
+      cwd: configDir,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    })
+      .toString()
+      .trim();
   } catch {
-    const sha = process.env.GITHUB_SHA;
-    return sha ? sha.slice(0, 7) : 'unknown';
+    return 'unknown';
   }
 }
 

@@ -95,3 +95,16 @@ export async function startRun(page: Page): Promise<void> {
   await page.clock.runFor(3000);
   await expect(page.getByRole('timer', { name: 'Time' })).toBeVisible();
 }
+
+// Answers every fact remaining in a speed run with Got it, taking the
+// given time over each, until the run ends.
+export async function getEveryFact(
+  page: Page,
+  msPerFact: number,
+): Promise<void> {
+  const got = page.getByRole('button', { name: 'Got it' });
+  while (await got.isVisible()) {
+    await page.clock.runFor(msPerFact);
+    await got.click();
+  }
+}

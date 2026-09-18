@@ -3,6 +3,7 @@ import {
   bestLine,
   countsLine,
   gridRows,
+  LEGEND,
   recentRows,
   weekLine,
   type DayOf,
@@ -12,7 +13,9 @@ import type { Day } from '../time';
 
 export type ParentOptions = {
   progress: Progress;
+  // The calendar day the screen opens on.
   today: Day;
+  // Reads the local calendar day a stored timestamp falls on.
   dayOf: DayOf;
   build: BuildInfo;
   onBack: () => void;
@@ -78,21 +81,15 @@ function renderLegend(): HTMLElement {
   const legend = document.createElement('div');
   legend.className = 'legend';
 
-  const WORDING: Readonly<Partial<Record<number, string>>> = {
-    0: 'new or missed',
-    4: 'known',
-  };
-
-  for (let level = 0; level <= 4; level++) {
+  for (const { level, label } of LEGEND) {
     const item = document.createElement('div');
     item.className = `legend-item level-${level}`;
     const swatch = document.createElement('span');
     swatch.className = 'swatch';
     swatch.setAttribute('role', 'img');
     swatch.setAttribute('aria-label', `Level ${level} colour`);
-    const word = WORDING[level];
     const text = document.createElement('span');
-    text.textContent = word ? `${level}, ${word}` : String(level);
+    text.textContent = label;
     item.append(swatch, text);
     legend.append(item);
   }
@@ -123,7 +120,7 @@ function renderRecent(
   return list;
 }
 
-// Builds the Progress screen: the fact grid with its legend and tap-for-
+// Builds the Parent view: the fact grid with its legend and tap-for-
 // counts, this week's practice, the recent list, the personal best, and
 // the build version in the foot. Read-only: plain typography, no dragon,
 // no animation.

@@ -106,7 +106,7 @@ export function renderStart(options: StartOptions): HTMLElement {
   speed.append(speedRun, best);
 
   // A small text link, out of the way of the learner's own buttons, for a
-  // parent to reach the Progress screen on a plain tap.
+  // parent to reach the Parent view on a plain tap.
   const parents = document.createElement('button');
   parents.type = 'button';
   parents.className = 'parents-link';

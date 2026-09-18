@@ -1,4 +1,4 @@
-// The Progress screen's model: pure functions from a Progress document and
+// The Parent view's model: pure functions from a Progress document and
 // calendar days to the strings and data the screen shows. No clock, no DOM.
 
 import { DRILL_LENGTH } from './drill';
@@ -48,7 +48,14 @@ export function dateWording(day: Day, today: Day): string {
   return `${WEEKDAYS[day.weekday]} ${day.date} ${MONTHS[day.month]}`;
 }
 
-// The calendar week is today and the six days before it.
+// The number of presentations a record answered, whether it ran to the end
+// or was quit.
+function answered(record: DrillRecord): number {
+  return record.fast + record.slow + record.missed;
+}
+
+// The calendar week is a rolling seven days: today and the six days before
+// it. A future-dated day (a later ordinal than today) falls outside it.
 function inWeek(day: Day, today: Day): boolean {
   const diff = today.ordinal - day.ordinal;
   return diff >= 0 && diff <= 6;
@@ -66,15 +73,12 @@ export function weekLine(
   const week = records.filter((record) => inWeek(dayOf(record.at), today));
   if (week.length === 0) return 'No practice this week';
 
-  const answered = week.reduce(
-    (sum, record) => sum + record.fast + record.slow + record.missed,
-    0,
-  );
+  const totalAnswered = week.reduce((sum, record) => sum + answered(record), 0);
   const fast = week.reduce((sum, record) => sum + record.fast, 0);
 
-  const line = `This week: ${counted(week.length, 'drill')}, ${counted(answered, 'fact')} answered`;
-  if (answered === 0) return line;
-  const share = Math.round((fast / answered) * 100);
+  const line = `This week: ${counted(week.length, 'drill')}, ${counted(totalAnswered, 'fact')} answered`;
+  if (totalAnswered === 0) return line;
+  const share = Math.round((fast / totalAnswered) * 100);
   return `${line}, ${share}% fast`;
 }
 
@@ -95,20 +99,14 @@ export function bestLine(progress: Progress, dayOf: DayOf, today: Day): string {
   return `Best ${formatTime(best.time)}, set ${wording}`;
 }
 
-// The tables a record covers, in the Start screen's wording: "6s", "6s and
-// 8s", "6s, 8s and 12s".
+// The tables a record covers, listed with "and" before the last: "6s", "6s
+// and 8s", "6s, 8s and 12s".
 function tablesWording(tables: readonly Table[]): string {
   const names = tables.map((table) => `${table}s`);
   const last = names.at(-1) ?? '';
   return names.length < 2
     ? last
     : `${names.slice(0, -1).join(', ')} and ${last}`;
-}
-
-// The number of presentations a record answered, whether it ran to the end
-// or was quit.
-function answered(record: DrillRecord): number {
-  return record.fast + record.slow + record.missed;
 }
 
 // A drill's row: its date, tables and tally, with how far it got if it was
@@ -155,10 +153,9 @@ export function recentRows(
     });
 }
 
-// One cell of the fact grid: a table and a multiplier, shown as the fact
+// One cell of the fact grid: a multiplier of a table, shown as the fact
 // itself, coloured and named by its level so colour is not the only signal.
 export type GridCell = {
-  key: string;
   label: string;
   level: Level;
   counts: OutcomeCounts;
@@ -166,24 +163,21 @@ export type GridCell = {
 };
 
 export type GridRow = {
-  table: Table;
   label: string;
   cells: GridCell[];
 };
 
 // The fact grid: one row per table, twelve cells for the multipliers 1 to
-// 12. An overlap fact, such as 6 × 8, reads the same key and level from
-// whichever row shows it.
+// 12. An overlap fact, such as 6 × 8, reads the same level from whichever
+// row shows it.
 export function gridRows(progress: Progress): GridRow[] {
   return TABLES.map((table) => ({
-    table,
     label: `${table}s`,
     cells: Array.from({ length: 12 }, (_, index) => {
       const n = index + 1;
       const key = factKey(table, n);
       const level = factLevel(progress, key);
       return {
-        key,
         label: `${table} × ${n}`,
         level,
         counts: factCounts(progress, key),
@@ -198,3 +192,12 @@ export function countsLine(cell: GridCell): string {
   const { fast, slow, missed } = cell.counts;
   return `${cell.label}: fast ${fast}, slow ${slow}, missed ${missed}`;
 }
+
+// The grid's legend, from new or missed at level 0 to known at level 4.
+export const LEGEND: readonly { level: Level; label: string }[] = [
+  { level: 0, label: '0, new or missed' },
+  { level: 1, label: '1' },
+  { level: 2, label: '2' },
+  { level: 3, label: '3' },
+  { level: 4, label: '4, known' },
+];

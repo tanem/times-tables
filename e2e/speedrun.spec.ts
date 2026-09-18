@@ -5,6 +5,7 @@ import {
   confetti,
   dragon,
   factOnScreen,
+  getEveryFact,
   keyOnScreen,
   openWithRecords,
   sparkles,
@@ -167,17 +168,6 @@ test('each answer is timed against 3 seconds and moves the stored level and coun
 // The sparkles the dragon breathes out at a new best.
 function breath(page: Page): Locator {
   return page.getByRole('img', { name: 'Sparkle breath' });
-}
-
-// Gets every fact left in the run, taking the given time over each, and
-// lands on the end screen.
-async function getEveryFact(page: Page, msPerFact: number): Promise<void> {
-  const got = page.getByRole('button', { name: 'Got it' });
-  while (await got.isVisible()) {
-    await page.clock.runFor(msPerFact);
-    await got.click();
-  }
-  await expect(page.getByRole('button', { name: 'Run again' })).toBeVisible();
 }
 
 // What a first completed run and a new best get: the dragon stands proud

@@ -1,9 +1,11 @@
 import type { Locator, Page } from '@playwright/test';
+import { TABLES } from '../src/model/facts';
 import type { DrillRecord } from '../src/model/progress';
 import { expect, test } from './fixtures';
 import {
   advance,
   answerCard,
+  getEveryFact,
   openWithRecords,
   startDrill,
   startRun,
@@ -36,16 +38,26 @@ async function backgroundColor(locator: Locator): Promise<string> {
   return locator.evaluate((el) => getComputedStyle(el).backgroundColor);
 }
 
+// The red and green channels of a computed "rgb(r, g, b)" colour.
+function redAndGreen(rgb: string): { red: number; green: number } {
+  const match = /^rgba?\((\d+), (\d+), (\d+)/.exec(rgb);
+  if (!match) throw new Error(`not a colour: ${rgb}`);
+  const [, red, green] = match;
+  return { red: Number(red), green: Number(green) };
+}
+
 // A fact key, such as "6x7", read as the grid's own label for it: the
 // table factor first.
 function labelOf(key: string): string {
   const [a, b] = key.split('x').map(Number);
   if (a === undefined || b === undefined)
     throw new Error(`bad fact key ${key}`);
-  return [6, 8, 12].includes(a) ? `${a} × ${b}` : `${b} × ${a}`;
+  return (TABLES as readonly number[]).includes(a)
+    ? `${a} × ${b}`
+    : `${b} × ${a}`;
 }
 
-test('For parents opens the Progress screen on one tap, and Back returns to the Start screen', async ({
+test('For parents opens the Parent view on one tap, and Back returns to the Start screen', async ({
   page,
 }) => {
   await page.goto('./');
@@ -82,13 +94,33 @@ test('a fresh document shows the empty states, an unlevelled grid and the legend
   await expect(page.getByText('2', { exact: true })).toBeVisible();
   await expect(page.getByText('3', { exact: true })).toBeVisible();
   await expect(page.getByText('4, known', { exact: true })).toBeVisible();
+  const swatchColors: string[] = [];
   for (let level = 0; level <= 4; level++) {
     await expect(swatch(page, level)).toBeVisible();
+    swatchColors.push(await backgroundColor(swatch(page, level)));
   }
+  // The five levels are all told apart, and the scale runs red to green.
+  expect(new Set(swatchColors)).toHaveProperty('size', 5);
+  const [lowest, , , , highest] = swatchColors.map(redAndGreen);
+  if (!lowest || !highest) throw new Error('five swatches were checked above');
+  expect(lowest.red).toBeGreaterThan(lowest.green);
+  expect(highest.green).toBeGreaterThan(highest.red);
 
   await expect(
     page.getByText(/Version \d+\.\d+\.\d+ \([0-9a-f]{7,}\)/),
   ).toBeVisible();
+
+  // No dragon on this read-only screen.
+  await expect(page.getByRole('img', { name: /dragon/i })).toHaveCount(0);
+
+  // Each row groups its twelve cells under an accessible name.
+  for (const table of TABLES) {
+    await expect(
+      page
+        .getByRole('group', { name: `${table}s`, exact: true })
+        .getByRole('button'),
+    ).toHaveCount(12);
+  }
 });
 
 // A whole drill: 14 fast, 4 slow and 2 missed, the same mix drill.spec.ts
@@ -151,15 +183,11 @@ async function driveSpeedRun(page: Page, misses: number): Promise<void> {
     await page.getByRole('button', { name: 'Missed' }).click();
     await page.clock.runFor(1500);
   }
-  const got = page.getByRole('button', { name: 'Got it' });
-  while (await got.isVisible()) {
-    await page.clock.runFor(500);
-    await got.click();
-  }
+  await getEveryFact(page, 500);
   await page.getByRole('button', { name: 'Done' }).click();
 }
 
-test('a mix of drills and a speed run show correctly on the Progress screen', async ({
+test('a mix of drills and a speed run show correctly on the Parent view', async ({
   page,
 }) => {
   await page.goto('./');
@@ -175,21 +203,23 @@ test('a mix of drills and a speed run show correctly on the Progress screen', as
   const entries = Object.entries(stored.facts);
   const levelsReached = new Set(entries.map(([, fact]) => fact.level));
   for (const level of levelsReached) {
-    const [key] = entries.find(([, fact]) => fact.level === level) ?? [];
-    if (!key) continue;
+    const found = entries.find(([, fact]) => fact.level === level);
+    if (!found) throw new Error(`no stored fact reached level ${level}`);
+    const [key] = found;
     const legendColor = await backgroundColor(swatch(page, level));
     const cellColor = await backgroundColor(cell(page, labelOf(key), level));
     expect(cellColor).toBe(legendColor);
   }
 
   // An overlap fact shows the same colour and level in both its rows.
-  const overlap = ['6x8', '6x12', '8x12'].find((key) => stored.facts[key]);
-  if (!overlap) throw new Error('the speed run touches every fact');
+  const overlapKeys = ['6x8', '6x12', '8x12'];
+  const overlapEntry = entries.find(([key]) => overlapKeys.includes(key));
+  if (!overlapEntry) throw new Error('the speed run touches every fact');
+  const [overlap, overlapFact] = overlapEntry;
   const [a, b] = overlap.split('x').map(Number);
-  const overlapLevel = stored.facts[overlap]?.level ?? 0;
-  expect(await backgroundColor(cell(page, `${a} × ${b}`, overlapLevel))).toBe(
-    await backgroundColor(cell(page, `${b} × ${a}`, overlapLevel)),
-  );
+  expect(
+    await backgroundColor(cell(page, `${a} × ${b}`, overlapFact.level)),
+  ).toBe(await backgroundColor(cell(page, `${b} × ${a}`, overlapFact.level)));
 
   // Tap for counts: shows the tapped cell's lifetime counts, clears on a
   // second tap of the same cell, and replaces on a tap of another.
@@ -248,9 +278,39 @@ test('a mix of drills and a speed run show correctly on the Progress screen', as
   await expect(page.getByText('Best 0:19.5, set today')).toBeVisible();
 });
 
-test('a record from yesterday and an older one read with their date wording', async ({
+test('older history reads with its date wording, and the best line follows the fastest run, not the latest', async ({
   page,
 }) => {
+  const older: DrillRecord = {
+    mode: 'speed',
+    at: '2025-12-23T09:00:00.000Z',
+    tables: [...TABLES],
+    fast: 33,
+    slow: 0,
+    missed: 0,
+    quit: false,
+    time: 30000, // the fastest run, so the best
+  };
+  const quitRun: DrillRecord = {
+    mode: 'speed',
+    at: '2025-12-29T09:00:00.000Z',
+    tables: [...TABLES],
+    fast: 10,
+    slow: 0,
+    missed: 3,
+    quit: true,
+    time: null,
+  };
+  const newerSlower: DrillRecord = {
+    mode: 'speed',
+    at: '2025-12-30T09:00:00.000Z',
+    tables: [...TABLES],
+    fast: 33,
+    slow: 0,
+    missed: 0,
+    quit: false,
+    time: 40000, // newer than `older`, but slower, so not the best
+  };
   const yesterday: DrillRecord = {
     mode: 'drill',
     at: '2025-12-31T09:00:00.000Z',
@@ -261,21 +321,20 @@ test('a record from yesterday and an older one read with their date wording', as
     quit: true,
     time: null,
   };
-  const older: DrillRecord = {
-    mode: 'speed',
-    at: '2025-12-23T09:00:00.000Z',
-    tables: [6, 8, 12],
-    fast: 33,
-    slow: 0,
-    missed: 0,
-    quit: false,
-    time: 30000,
-  };
-  await openWithRecords(page, [older, yesterday]);
+  await openWithRecords(page, [older, quitRun, newerSlower, yesterday]);
   await openParent(page);
 
   await expect(page.getByText(/^Yesterday ·/)).toBeVisible();
+  await expect(
+    page.getByText('Tue 30 Dec · Speed run · 0:40.0 · 0 missed'),
+  ).toBeVisible();
+  await expect(
+    page.getByText('Mon 29 Dec · Speed run · stopped · 3 missed'),
+  ).toBeVisible();
   await expect(page.getByText(/^Tue 23 Dec ·/)).toBeVisible();
+
+  // The best line follows the fastest completed run (23rd), not the most
+  // recent one (30th).
   await expect(page.getByText('Best 0:30.0, set Tue 23 Dec')).toBeVisible();
 });
 

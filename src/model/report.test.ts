@@ -3,6 +3,7 @@ import {
   applyOutcome,
   freshProgress,
   type DrillRecord,
+  type OutcomeCounts,
   type Progress,
 } from './progress';
 import type { Day } from '../time';
@@ -41,7 +42,7 @@ const today = dayOfStub('2026-09-15');
 
 function drill(
   at: string,
-  outcomes: { fast: number; slow: number; missed: number },
+  outcomes: OutcomeCounts,
   quit = false,
   tables: DrillRecord['tables'] = [6],
 ): DrillRecord {
@@ -50,7 +51,7 @@ function drill(
 
 function speedRun(
   at: string,
-  outcomes: { fast: number; slow: number; missed: number },
+  outcomes: OutcomeCounts,
   time: number | null = 100000,
 ): DrillRecord {
   return {
@@ -155,6 +156,19 @@ describe('bestLine', () => {
       'Best 1:40.0, set yesterday',
     );
   });
+
+  it('gives the older, faster run over a newer, slower one', () => {
+    const progress: Progress = {
+      ...freshProgress(),
+      records: [
+        speedRun('2026-09-08', { fast: 33, slow: 0, missed: 0 }, 100000),
+        speedRun('2026-09-14', { fast: 33, slow: 0, missed: 0 }, 150000),
+      ],
+    };
+    expect(bestLine(progress, dayOfStub, today)).toBe(
+      'Best 1:40.0, set Sun 8 Sep',
+    );
+  });
 });
 
 describe('recentRows', () => {
@@ -215,7 +229,6 @@ describe('gridRows', () => {
 
     const first = rows[0]?.cells[0];
     expect(first).toMatchObject({
-      key: '1x6',
       label: '6 × 1',
       level: 0,
       counts: { fast: 0, slow: 0, missed: 0 },
@@ -223,16 +236,16 @@ describe('gridRows', () => {
     });
   });
 
-  it('gives an overlap fact the same key and level in both its rows', () => {
+  it('gives an overlap fact the same level and counts in both its rows', () => {
     const progress = applyOutcome(freshProgress(), '6x8', 'fast');
     const rows = gridRows(progress);
 
     const inSixes = rows[0]?.cells.find((cell) => cell.label === '6 × 8');
     const inEights = rows[1]?.cells.find((cell) => cell.label === '8 × 6');
-    expect(inSixes?.key).toBe('6x8');
-    expect(inEights?.key).toBe('6x8');
     expect(inSixes?.level).toBe(1);
     expect(inEights?.level).toBe(1);
+    expect(inSixes?.counts).toEqual(inEights?.counts);
+    expect(inSixes?.counts).toEqual({ fast: 1, slow: 0, missed: 0 });
   });
 });
 

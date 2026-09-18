@@ -13,13 +13,13 @@
   --missed: #de5a52;
   --track: #dce2f0;
   --sparkle: #ffc93c;
-  /* The fact grid's five levels, red through amber to green. Each is a
-     light enough tint that --ink text on it keeps at least 4.5:1 contrast. */
-  --level-0: #f6d3d0;
-  --level-1: #f4dfc4;
-  --level-2: #f2e6b8;
-  --level-3: #dcebbb;
-  --level-4: #c7e6c9;
+  /* The fact grid's five levels, red through amber to green, told apart at
+     a glance. Each keeps at least 4.5:1 contrast against --ink text. */
+  --level-0: #f5a9a3;
+  --level-1: #f7c08a;
+  --level-2: #f5dc7a;
+  --level-3: #c5e08a;
+  --level-4: #8fd19e;
 }
 
 * {
@@ -501,8 +501,8 @@ button {
   color: white;
 }
 
-/* The Progress screen: a scrolling document, not a fixed viewport, since
-   its content is read rather than played. */
+/* The Parent view: a scrolling document, not a fixed viewport, since its
+   content is read rather than played. */
 .parent {
   max-width: 640px;
   margin: 0 auto;
@@ -579,7 +579,7 @@ button {
   border: 2px solid transparent;
   border-radius: 8px;
   color: var(--ink);
-  font-size: clamp(0.5rem, 1.8vmin, 0.75rem);
+  font-size: clamp(0.625rem, 1.8vmin, 0.75rem);
   line-height: 1.05;
   font-variant-numeric: tabular-nums;
   padding: 2px;
@@ -591,31 +591,41 @@ button {
   border-color: var(--ink);
 }
 
-.cell.level-0 {
-  background: var(--level-0);
+@media (max-width: 480px) {
+  .cell {
+    font-size: 0.75rem;
+  }
 }
 
-.cell.level-1 {
-  background: var(--level-1);
+/* Each level sets --level once; the cell and the legend swatch below both
+   read it, so the two never fall out of step. */
+.level-0 {
+  --level: var(--level-0);
 }
 
-.cell.level-2 {
-  background: var(--level-2);
+.level-1 {
+  --level: var(--level-1);
 }
 
-.cell.level-3 {
-  background: var(--level-3);
+.level-2 {
+  --level: var(--level-2);
 }
 
-.cell.level-4 {
-  background: var(--level-4);
+.level-3 {
+  --level: var(--level-3);
+}
+
+.level-4 {
+  --level: var(--level-4);
+}
+
+.cell,
+.legend .swatch {
+  background: var(--level);
 }
 
 /* The five-step legend under the grid, in the grid's own colours. */
 .legend {
-  margin: 0;
-  padding: 0;
-  list-style: none;
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -633,26 +643,6 @@ button {
   width: 1em;
   height: 1em;
   border-radius: 4px;
-}
-
-.legend-item.level-0 .swatch {
-  background: var(--level-0);
-}
-
-.legend-item.level-1 .swatch {
-  background: var(--level-1);
-}
-
-.legend-item.level-2 .swatch {
-  background: var(--level-2);
-}
-
-.legend-item.level-3 .swatch {
-  background: var(--level-3);
-}
-
-.legend-item.level-4 .swatch {
-  background: var(--level-4);
 }
 
 .parent .counts {
