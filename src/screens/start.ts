@@ -5,6 +5,8 @@ export type StartOptions = {
   tables: readonly Table[];
   // Called with the new selection, in table order, after every toggle.
   onTablesChange: (tables: Table[]) => void;
+  // Called with the selection when the learner taps Practise.
+  onPractise: (tables: Table[]) => void;
 };
 
 // What the Practise caption says for a selection: the drill's length and
@@ -19,7 +21,7 @@ function practiseCaption(tables: readonly Table[]): string {
 }
 
 // Builds the Start screen. The tiles keep the selection and the Practise
-// button follows it; Practise itself does nothing yet.
+// button follows it.
 export function renderStart(options: StartOptions): HTMLElement {
   const selected = new Set<Table>(options.tables);
   const selection = () => TABLES.filter((table) => selected.has(table));
@@ -44,6 +46,7 @@ export function renderStart(options: StartOptions): HTMLElement {
   practise.className = 'practise';
   practise.textContent = 'Practise';
   practise.setAttribute('aria-describedby', 'practise-caption');
+  practise.addEventListener('click', () => options.onPractise(selection()));
 
   const caption = document.createElement('p');
   caption.id = 'practise-caption';
