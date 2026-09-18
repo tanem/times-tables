@@ -93,15 +93,15 @@ describe('startDrill', () => {
 
   it('shows the first fact at once', () => {
     const drill = startDrill([6], levels({}), sequence([0, 0]));
-    expect(drill.current?.fact).toBe(six(0));
+    expect(drill.current.fact).toBe(six(0));
     expect(drill.answered).toBe(0);
   });
 
   it('picks the ordering of the presentation at random', () => {
     const smallerFirst = startDrill([6], levels({}), sequence([0, 0.2]));
-    expect([smallerFirst.current?.x, smallerFirst.current?.y]).toEqual([1, 6]);
+    expect([smallerFirst.current.x, smallerFirst.current.y]).toEqual([1, 6]);
     const largerFirst = startDrill([6], levels({}), sequence([0, 0.7]));
-    expect([largerFirst.current?.x, largerFirst.current?.y]).toEqual([6, 1]);
+    expect([largerFirst.current.x, largerFirst.current.y]).toEqual([6, 1]);
   });
 
   it('starts with nothing answered and no streak', () => {
@@ -168,8 +168,7 @@ describe('present', () => {
     const random = () => 0;
     let drill = startDrill([6], levels({}), random);
     for (let i = 0; i < DRILL_LENGTH; i++) {
-      const key = drill.current?.fact.key;
-      if (key === undefined) throw new Error('no presentation');
+      const key = drill.current.fact.key;
       expect(shown.slice(-3)).not.toContain(key);
       shown.push(key);
       drill = answer(drill, 'fast');
@@ -189,7 +188,7 @@ describe('present', () => {
     // fact at level 4 the same value would land on the fifth.
     const levelOf = (key: string): Level => (key === second.key ? 0 : 4);
     drill = present(drill, levelOf, sequence([0.4, 0]));
-    expect(drill.current?.fact).toBe(second);
+    expect(drill.current.fact).toBe(second);
     expect(present(drill, () => 4, sequence([0.4, 0])).current?.fact).toBe(
       six(5),
     );

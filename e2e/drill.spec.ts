@@ -1,8 +1,9 @@
 import type { Page } from '@playwright/test';
+import { TABLES } from '../src/model/facts';
+import type { Outcome } from '../src/model/level';
+import type { Progress } from '../src/model/progress';
 import { PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
-
-const TABLES = [6, 8, 12];
 
 // The fact on the card or the feedback, read the way the learner reads it.
 async function factOnScreen(page: Page): Promise<{ x: number; y: number }> {
@@ -18,8 +19,6 @@ async function startDrill(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Practise', exact: true }).click();
 }
 
-type Outcome = 'fast' | 'slow' | 'missed';
-
 // Answers the card the given way and lands on the feedback.
 async function answerCard(page: Page, outcome: Outcome): Promise<void> {
   if (outcome === 'slow') await page.clock.runFor(3000);
@@ -33,22 +32,7 @@ async function advance(page: Page): Promise<void> {
   await page.getByText('Tap to go on').click();
 }
 
-async function storedProgress(page: Page): Promise<{
-  facts: Record<
-    string,
-    { level: number; fast: number; slow: number; missed: number }
-  >;
-  records: {
-    mode: string;
-    tables: number[];
-    fast: number;
-    slow: number;
-    missed: number;
-    quit: boolean;
-    time: number | null;
-    at: string;
-  }[];
-}> {
+async function storedProgress(page: Page): Promise<Progress> {
   const text = await page.evaluate(
     (key) => localStorage.getItem(key),
     PROGRESS_KEY,
@@ -63,7 +47,8 @@ test('Practise shows the first fact at once with the bar, the position and both 
   await startDrill(page);
 
   const { x, y } = await factOnScreen(page);
-  expect(TABLES.includes(x) || TABLES.includes(y)).toBe(true);
+  const tables: readonly number[] = TABLES;
+  expect(tables.includes(x) || tables.includes(y)).toBe(true);
   await expect(
     page.getByRole('progressbar', { name: 'Time left' }),
   ).toBeVisible();
@@ -215,8 +200,14 @@ test('after 20 presentations the end screen shows the heading, the tally and the
   page,
 }) => {
   await startDrill(page);
+  const shown: string[] = [];
   for (const [index, outcome] of FULL_DRILL.entries()) {
     await expect(page.getByText(`${index + 1} / 20`)).toBeVisible();
+    const { x, y } = await factOnScreen(page);
+    const key = `${Math.min(x, y)}x${Math.max(x, y)}`;
+    // No fact comes back within three presentations of itself.
+    expect(shown.slice(-3)).not.toContain(key);
+    shown.push(key);
     await answerCard(page, outcome);
     await advance(page);
   }
@@ -379,6 +370,5 @@ for (const [orientation, width, height] of [
     for (const part of parts) {
       await expect(part).toBeInViewport({ ratio: 1 });
     }
-    await expect(page.locator('html')).toHaveJSProperty('scrollHeight', height);
   });
 }

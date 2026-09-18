@@ -1,6 +1,6 @@
 import { pool, type Fact, type Table } from './facts';
 import { weightOf, type Level, type Outcome } from './level';
-import type { DrillRecord } from './progress';
+import type { DrillRecord, OutcomeCounts } from './progress';
 
 // The number of presentations in a drill.
 export const DRILL_LENGTH = 20;
@@ -23,15 +23,12 @@ export type Presentation = {
 
 // One sitting of practice. Every function here returns a new drill and
 // leaves the given one as it was.
-export type Drill = {
+export type Drill = Readonly<OutcomeCounts> & {
   readonly tables: Table[];
   readonly pool: readonly Fact[];
   // The presentation on the card, or the one just answered.
-  readonly current: Presentation | null;
+  readonly current: Presentation;
   readonly answered: number;
-  readonly fast: number;
-  readonly slow: number;
-  readonly missed: number;
   // Consecutive fast outcomes, and the longest run of them in this drill.
   readonly streak: number;
   readonly bestStreak: number;
@@ -76,10 +73,9 @@ export function startDrill(
   levelOf: LevelOf,
   random: Random,
 ): Drill {
-  const drill: Drill = {
+  const drill: Omit<Drill, 'current'> = {
     tables: [...tables],
     pool: pool(tables),
-    current: null,
     answered: 0,
     fast: 0,
     slow: 0,
@@ -89,21 +85,28 @@ export function startDrill(
     recent: [],
     quit: false,
   };
-  return present(drill, levelOf, random);
+  return { ...drill, current: draw(drill, levelOf, random) };
+}
+
+function draw(
+  drill: Omit<Drill, 'current'>,
+  levelOf: LevelOf,
+  random: Random,
+): Presentation {
+  const fact = drawFact(drill.pool, drill.recent, levelOf, random);
+  return presentation(fact, random);
 }
 
 // The drill with the next fact drawn and on the card. The levels are read
 // afresh so that the answer just given weighs on the draw.
 export function present(drill: Drill, levelOf: LevelOf, random: Random): Drill {
-  const fact = drawFact(drill.pool, drill.recent, levelOf, random);
-  return { ...drill, current: presentation(fact, random) };
+  return { ...drill, current: draw(drill, levelOf, random) };
 }
 
 // The drill after the learner's outcome on the current presentation: the
 // tally, the streak and the recent facts move on. The presentation stays
 // current until the next one is drawn.
 export function answer(drill: Drill, outcome: Outcome): Drill {
-  if (!drill.current) return drill;
   const streak = outcome === 'fast' ? drill.streak + 1 : 0;
   return {
     ...drill,

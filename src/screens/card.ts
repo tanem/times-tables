@@ -1,16 +1,14 @@
-import type { Presentation } from '../model/drill';
+import { DRILL_LENGTH, type Presentation } from '../model/drill';
 import type { Outcome } from '../model/level';
 import { now, onFrame, schedule } from '../time';
 
 // How long the learner has to answer fast, in milliseconds.
-export const TIME_LIMIT = 3000;
+const TIME_LIMIT = 3000;
 
 export type CardOptions = {
   presentation: Presentation;
-  // The number of this presentation in the drill, from 1, and the drill's
-  // length.
+  // The number of this presentation in the drill, from 1.
   position: number;
-  length: number;
   // Whether the card slides in, as the first card of a drill does.
   entering: boolean;
   onAnswer: (outcome: Outcome) => void;
@@ -38,7 +36,7 @@ export function renderCard(options: CardOptions): HTMLElement {
 
   const position = document.createElement('p');
   position.className = 'position';
-  position.textContent = `${options.position} / ${options.length}`;
+  position.textContent = `${options.position} / ${DRILL_LENGTH}`;
 
   // Keeps the position centred by balancing the quit cross.
   const spacer = document.createElement('span');
@@ -81,10 +79,13 @@ export function renderCard(options: CardOptions): HTMLElement {
   answers.append(missed, got);
   screen.append(top, fact, bar, caption, answers);
 
-  // The bar measures wall-clock time from the card appearing: a timer at
-  // the limit drains it, and the frames in between paint what is left. Once
-  // it has drained, Got it means slow.
+  // The bar measures wall-clock time from the card appearing. The frames
+  // paint what is left, and a timer at the limit drains the bar even when
+  // no frame lands on the limit. Once the limit has passed, Got it means
+  // slow.
   const shownAt = now();
+  const elapsed = () => now() - shownAt;
+  const timeIsUp = () => elapsed() >= TIME_LIMIT;
   let drained = false;
   let cancelFrame = () => {};
   const paint = (left: number) => {
@@ -92,6 +93,7 @@ export function renderCard(options: CardOptions): HTMLElement {
     bar.setAttribute('aria-valuenow', String(Math.round(left * 100)));
   };
   const drain = () => {
+    if (drained) return;
     drained = true;
     cancelFrame();
     // No time is left, and the bar shows it by refilling amber.
@@ -103,7 +105,11 @@ export function renderCard(options: CardOptions): HTMLElement {
     caption.classList.add('warn');
   };
   const tick = () => {
-    paint(Math.max(0, 1 - (now() - shownAt) / TIME_LIMIT));
+    if (timeIsUp()) {
+      drain();
+      return;
+    }
+    paint(1 - elapsed() / TIME_LIMIT);
     cancelFrame = onFrame(tick);
   };
   cancelFrame = onFrame(tick);
@@ -118,7 +124,7 @@ export function renderCard(options: CardOptions): HTMLElement {
     act();
   };
   got.addEventListener('click', () =>
-    settle(() => options.onAnswer(drained ? 'slow' : 'fast')),
+    settle(() => options.onAnswer(timeIsUp() ? 'slow' : 'fast')),
   );
   missed.addEventListener('click', () =>
     settle(() => options.onAnswer('missed')),

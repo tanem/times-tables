@@ -1,6 +1,5 @@
 import './style.css';
 import {
-  DRILL_LENGTH,
   answer,
   drillRecord,
   isComplete,
@@ -64,25 +63,22 @@ function beginDrill(tables: Table[]): void {
 }
 
 function showCard(drill: Drill, entering: boolean): void {
-  const presentation = drill.current;
-  if (!presentation) return;
   show(
     renderCard({
-      presentation,
+      presentation: drill.current,
       position: drill.answered + 1,
-      length: DRILL_LENGTH,
       entering,
-      onAnswer: (outcome) => grade(drill, outcome),
+      onAnswer: (outcome) => recordAnswer(drill, outcome),
       onQuit: () => endDrill(quitDrill(drill)),
     }),
   );
 }
 
 // The outcome moves the fact's level and counts at once and the whole
-// document is written back before the feedback shows.
-function grade(before: Drill, outcome: Outcome): void {
+// document is written back before the feedback shows. The next fact is
+// drawn when the feedback moves on, with the levels as they now are.
+function recordAnswer(before: Drill, outcome: Outcome): void {
   const presentation = before.current;
-  if (!presentation) return;
   progress = applyOutcome(progress, presentation.fact.key, outcome);
   saveProgress(store, progress);
   const drill = answer(before, outcome);
