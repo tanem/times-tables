@@ -6,6 +6,7 @@ import {
   factLevel,
   freshProgress,
   parseProgress,
+  personalBest,
   type DrillRecord,
   type Progress,
 } from './progress';
@@ -280,5 +281,62 @@ describe('addRecord', () => {
     const after = addRecord(valid, record);
     expect(after.records).toEqual([...valid.records, record]);
     expect(valid.records).toHaveLength(2);
+  });
+});
+
+describe('personalBest', () => {
+  const speedRun = (at: string, time: number | null): DrillRecord => ({
+    mode: 'speed',
+    at,
+    tables: [6, 8, 12],
+    fast: 33,
+    slow: 0,
+    missed: 0,
+    quit: time === null,
+    time,
+  });
+  const withRecords = (records: DrillRecord[]): Progress => ({
+    ...freshProgress(),
+    records,
+  });
+
+  it('is absent before any speed run', () => {
+    expect(personalBest(freshProgress())).toBeNull();
+  });
+
+  it('is the completed speed run with the shortest time', () => {
+    const best = speedRun('2026-01-02T09:00:00.000Z', 150000);
+    const progress = withRecords([
+      speedRun('2026-01-01T09:00:00.000Z', 161300),
+      best,
+      speedRun('2026-01-03T09:00:00.000Z', 170000),
+    ]);
+    expect(personalBest(progress)).toEqual(best);
+  });
+
+  it('passes over quit runs and drills', () => {
+    const progress = withRecords([
+      speedRun('2026-01-01T09:00:00.000Z', null),
+      {
+        mode: 'drill',
+        at: '2026-01-02T09:00:00.000Z',
+        tables: [6],
+        fast: 20,
+        slow: 0,
+        missed: 0,
+        quit: false,
+        time: null,
+      },
+    ]);
+    expect(personalBest(progress)).toBeNull();
+  });
+
+  it('stays with the earlier of two runs with the same time', () => {
+    const earlier = speedRun('2026-01-01T09:00:00.000Z', 150000);
+    const progress = withRecords([
+      earlier,
+      speedRun('2026-01-02T09:00:00.000Z', 150000),
+    ]);
+    expect(personalBest(progress)).toBe(earlier);
   });
 });

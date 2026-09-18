@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { grade, weightOf, type Level, type Outcome } from './level';
+import {
+  grade,
+  timedOutcome,
+  weightOf,
+  type Level,
+  type Outcome,
+} from './level';
 
 describe('grade', () => {
   const transitions: ReadonlyArray<readonly [Level, Outcome, Level]> = [
@@ -26,5 +32,22 @@ describe('weightOf', () => {
     expect([0, 1, 2, 3, 4].map((level) => weightOf(level as Level))).toEqual([
       8, 4, 2, 1, 1,
     ]);
+  });
+});
+
+describe('timedOutcome', () => {
+  it('grades an answer got inside 3 seconds as fast', () => {
+    expect(timedOutcome(true, 0)).toBe('fast');
+    expect(timedOutcome(true, 2999)).toBe('fast');
+  });
+
+  it('grades an answer got at 3 seconds or later as slow', () => {
+    expect(timedOutcome(true, 3000)).toBe('slow');
+    expect(timedOutcome(true, 60000)).toBe('slow');
+  });
+
+  it('grades an answer not got as missed, however quick', () => {
+    expect(timedOutcome(false, 0)).toBe('missed');
+    expect(timedOutcome(false, 5000)).toBe('missed');
   });
 });
