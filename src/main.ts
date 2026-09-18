@@ -1,4 +1,5 @@
 import './style.css';
+import { registerSW } from 'virtual:pwa-register';
 import { buildInfo } from './build';
 import {
   answer,
@@ -45,6 +46,7 @@ import {
   type ProgressStore,
 } from './storage';
 import { dayOf, now, timestamp, today } from './time';
+import { createUpdater } from './update';
 
 // localStorage itself can be unavailable, in which case the app runs on its
 // in-memory state alone.
@@ -65,9 +67,27 @@ let progress = loadProgress(store);
 
 const app = document.querySelector('#app');
 
+// A waiting service worker is applied on the Start screen alone, per
+// docs/adr/0001, so that a reload cannot end a drill or a speed run.
+const updater = createUpdater(() => {
+  // The app stops taking taps before the update is applied: skip-waiting is
+  // posted here and the reload follows once the new worker takes control, so
+  // a tap in between could start a drill that the reload then ends.
+  app?.setAttribute('inert', '');
+  void updateSW();
+});
+
+// Registered in prompt mode with no banner: a waiting worker is reported to
+// the updater, which decides when it is applied.
+const updateSW = registerSW({
+  onNeedRefresh: () => updater.workerWaiting(),
+});
+
 // Screens are swapped by in-app state: one screen at a time, no routing.
-function show(screen: HTMLElement): void {
+// onStart marks the Start screen, the one screen an update may reload on.
+function show(screen: HTMLElement, onStart = false): void {
   app?.replaceChildren(screen);
+  updater.screenShown(onStart);
 }
 
 const levelOf = (key: string) => factLevel(progress, key);
@@ -88,6 +108,7 @@ function showStart(): void {
       onSpeedRun: beginRun,
       onParents: showParent,
     }),
+    true,
   );
 }
 
