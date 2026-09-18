@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   DRILL_LENGTH,
   answer,
+  bandOf,
   correct,
   drawFact,
   drillRecord,
@@ -293,5 +294,35 @@ describe('correct', () => {
   it('leaves the corrected fact in the recent facts', () => {
     const drill = correct(answeredAfter([], 'fast'));
     expect(drill.recent).toEqual([drill.current.fact.key]);
+  });
+});
+
+describe('bandOf', () => {
+  // A full drill with the given number of fast answers and the rest slow.
+  function drillWithFast(fast: number): Drill {
+    return drillAfter([
+      ...Array<'fast'>(fast).fill('fast'),
+      ...Array<'slow'>(DRILL_LENGTH - fast).fill('slow'),
+    ]);
+  }
+
+  it('is the top band from 15 fast answers of 20', () => {
+    expect(bandOf(drillWithFast(15))).toBe('top');
+    expect(bandOf(drillWithFast(20))).toBe('top');
+  });
+
+  it('is the middle band from 8 to 14 fast answers', () => {
+    expect(bandOf(drillWithFast(14))).toBe('middle');
+    expect(bandOf(drillWithFast(8))).toBe('middle');
+  });
+
+  it('is the low band below 8 fast answers', () => {
+    expect(bandOf(drillWithFast(7))).toBe('low');
+    expect(bandOf(drillWithFast(0))).toBe('low');
+  });
+
+  it('is the low band for any quit drill', () => {
+    const quit = quitDrill(drillAfter(Array<'fast'>(16).fill('fast')));
+    expect(bandOf(quit)).toBe('low');
   });
 });

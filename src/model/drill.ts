@@ -159,6 +159,18 @@ export function isComplete(drill: Drill): boolean {
   return drill.quit || drill.answered >= DRILL_LENGTH;
 }
 
+// How big the end of a drill celebrates.
+export type Band = 'top' | 'middle' | 'low';
+
+// The band of an ended drill, from its fast count as a share of the drill's
+// length. A quit drill is in the low band whatever its count.
+export function bandOf(drill: Drill): Band {
+  if (drill.quit) return 'low';
+  const share = drill.fast / DRILL_LENGTH;
+  if (share >= 0.75) return 'top';
+  return share >= 0.4 ? 'middle' : 'low';
+}
+
 // The entry the drill leaves in the progress, timestamped with when it
 // ended.
 export function drillRecord(drill: Drill, at: string): DrillRecord {

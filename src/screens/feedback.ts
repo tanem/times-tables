@@ -1,12 +1,20 @@
 import type { Presentation } from '../model/drill';
 import type { Outcome } from '../model/level';
 import { schedule } from '../time';
+import { renderDragon, type DragonPose } from './dragon';
 
 // The words for each outcome, shown in turn.
 const WORDS: Readonly<Record<Outcome, readonly string[]>> = {
   fast: ['Fast!', 'Zoom!', 'Yes!'],
   slow: ['Got there!', 'You got it', 'Nice'],
   missed: ['Next time', 'Tricky one', 'Keep going'],
+};
+
+// What the dragon does for each outcome.
+const POSES: Readonly<Record<Outcome, DragonPose>> = {
+  fast: 'jump',
+  slow: 'nod',
+  missed: 'shrug',
 };
 
 // How long the feedback holds before moving on by itself, in milliseconds.
@@ -35,10 +43,10 @@ export type FeedbackOptions = {
   onCorrect?: () => void;
 };
 
-// Builds the feedback screen: the fact with its answer, a word, and the
-// streak from two fast answers in a row. It holds for a moment, and a tap
-// anywhere moves on at once. Given onCorrect, a small button bottom-left
-// lets the learner correct the answer to missed instead.
+// Builds the feedback screen: the fact with its answer, the dragon, a word,
+// and the streak from two fast answers in a row. It holds for a moment, and
+// a tap anywhere moves on at once. Given onCorrect, a small button
+// bottom-left lets the learner correct the answer to missed instead.
 export function renderFeedback(options: FeedbackOptions): HTMLElement {
   const { presentation, outcome } = options;
 
@@ -53,7 +61,14 @@ export function renderFeedback(options: FeedbackOptions): HTMLElement {
   word.className = 'word';
   word.textContent = feedbackWord(outcome, options.nth);
 
-  screen.append(sum, word);
+  // After a got outcome the dragon stands between the sum and the word,
+  // the biggest thing on screen. After a miss the styles put it small in the
+  // top corner and the sum is the biggest thing.
+  const dragon = renderDragon({
+    pose: POSES[outcome],
+    sparkles: outcome === 'fast',
+  });
+  screen.append(sum, dragon, word);
 
   if (outcome === 'fast' && options.streak >= 2) {
     const streak = document.createElement('p');
