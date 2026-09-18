@@ -11,6 +11,9 @@ export default defineConfig({
   use: {
     baseURL,
     trace: 'on-first-retry',
+    // Fixes the date wording on the Parent view to the same day on every
+    // machine.
+    timezoneId: 'UTC',
   },
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

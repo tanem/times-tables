@@ -44,6 +44,12 @@ export function factLevel(progress: Progress, key: string): Level {
   return (progress.facts[key] ?? UNSEEN).level;
 }
 
+// A fact's lifetime outcome counts; an absent fact has none.
+export function factCounts(progress: Progress, key: string): OutcomeCounts {
+  const { fast, slow, missed } = progress.facts[key] ?? UNSEEN;
+  return { fast, slow, missed };
+}
+
 // The document with one fact changed. The given document is left as it was.
 function updateFact(
   progress: Progress,

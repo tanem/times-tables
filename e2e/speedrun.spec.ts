@@ -1,13 +1,16 @@
 import type { Locator, Page } from '@playwright/test';
 import type { DrillRecord } from '../src/model/progress';
-import { PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
 import {
   confetti,
   dragon,
   factOnScreen,
+  getEveryFact,
   keyOnScreen,
+  openWithRecords,
   sparkles,
+  startCountdown,
+  startRun,
   storedProgress,
 } from './helpers';
 
@@ -33,21 +36,6 @@ function clock(page: Page): Locator {
 // The dragon, whatever it is doing.
 function anyDragon(page: Page): Locator {
   return page.getByRole('img', { name: /^The dragon/ });
-}
-
-// Taps Speed run and lands on the countdown.
-async function startCountdown(page: Page): Promise<void> {
-  await speedRunButton(page).click();
-  await expect(
-    page.getByRole('heading', { level: 1, name: '3' }),
-  ).toBeVisible();
-}
-
-// Taps Speed run and waits out the countdown, landing on the first fact.
-async function startRun(page: Page): Promise<void> {
-  await startCountdown(page);
-  await page.clock.runFor(3000);
-  await expect(clock(page)).toBeVisible();
 }
 
 test('a run counts down 3-2-1 and then shows the clock in tenths in place of the bar', async ({
@@ -182,17 +170,6 @@ function breath(page: Page): Locator {
   return page.getByRole('img', { name: 'Sparkle breath' });
 }
 
-// Gets every fact left in the run, taking the given time over each, and
-// lands on the end screen.
-async function getEveryFact(page: Page, msPerFact: number): Promise<void> {
-  const got = page.getByRole('button', { name: 'Got it' });
-  while (await got.isVisible()) {
-    await page.clock.runFor(msPerFact);
-    await got.click();
-  }
-  await expect(page.getByRole('button', { name: 'Run again' })).toBeVisible();
-}
-
 // What a first completed run and a new best get: the dragon stands proud
 // breathing sparkles under confetti. The sparkles and the confetti go; the
 // dragon stays.
@@ -234,19 +211,6 @@ function completedRun(time: number): DrillRecord {
     quit: false,
     time,
   };
-}
-
-// Opens the app on a stored document holding the given records.
-async function openWithRecords(
-  page: Page,
-  records: DrillRecord[],
-): Promise<void> {
-  const progress = { version: 1, tables: [6, 8, 12], facts: {}, records };
-  await page.addInitScript(([key, text]) => localStorage.setItem(key, text), [
-    PROGRESS_KEY,
-    JSON.stringify(progress),
-  ] as const);
-  await page.goto('./');
 }
 
 test('a first run shows every fact, brings a missed fact back, and ends on its time', async ({
