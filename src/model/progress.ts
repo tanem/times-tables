@@ -1,4 +1,5 @@
 import { FACTS, TABLES, type Table } from './facts';
+import { grade, type Level, type Outcome } from './level';
 
 // How many of each outcome, for one fact over its lifetime or for one drill.
 export type OutcomeCounts = {
@@ -6,8 +7,6 @@ export type OutcomeCounts = {
   slow: number;
   missed: number;
 };
-
-export type Level = 0 | 1 | 2 | 3 | 4;
 
 // What the app remembers about one fact. An absent fact means level 0 with
 // zero counts.
@@ -36,6 +35,34 @@ export type Progress = {
 // nothing learnt.
 export function freshProgress(): Progress {
   return { version: 1, tables: [...TABLES], facts: {}, records: [] };
+}
+
+const UNSEEN: FactProgress = { level: 0, fast: 0, slow: 0, missed: 0 };
+
+// The level of a fact; an absent fact is at level 0.
+export function factLevel(progress: Progress, key: string): Level {
+  return (progress.facts[key] ?? UNSEEN).level;
+}
+
+// The document after one outcome on a fact: its level moved and the
+// outcome's lifetime count up by one. The given document is left as it was.
+export function applyOutcome(
+  progress: Progress,
+  key: string,
+  outcome: Outcome,
+): Progress {
+  const before = progress.facts[key] ?? UNSEEN;
+  const after: FactProgress = {
+    ...before,
+    level: grade(before.level, outcome),
+    [outcome]: before[outcome] + 1,
+  };
+  return { ...progress, facts: { ...progress.facts, [key]: after } };
+}
+
+// The document with a record appended. The given document is left as it was.
+export function addRecord(progress: Progress, record: DrillRecord): Progress {
+  return { ...progress, records: [...progress.records, record] };
 }
 
 // Reads a stored document. Reading is strict: anything that is not a

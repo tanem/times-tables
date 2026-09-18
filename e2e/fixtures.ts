@@ -23,8 +23,9 @@ export const test = base.extend<{ fixedRandomAndClock: void }>({
     async ({ page }, use) => {
       await page.addInitScript(seedRandom, SEED);
       // Puts Date, the timers, performance and animation frames under the
-      // test's control.
+      // test's control, and holds them still until a test moves them on.
       await page.clock.install({ time: TIME });
+      await page.clock.pauseAt(TIME);
       await use();
     },
     { auto: true },
