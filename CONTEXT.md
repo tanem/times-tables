@@ -12,6 +12,7 @@
 - **Weighted repetition**: choosing the next fact so that facts at a low level appear more often.
 - **Correction**: the learner re-grading the presentation just answered from fast or slow to missed, from the feedback, when the answer shown is not what they said. One way only: missed cannot become got.
 - **Streak**: consecutive fast outcomes within a drill; a slow or missed outcome, or a correction, resets it. The best streak of a drill is shown on its end screen. Nothing accumulates across drills.
+- **Band**: how big the end of a drill celebrates, from the fast count as a share of the drill's 20 presentations: top (75% or more), middle (40% to 74%) or low (below that, and any quit drill).
 - **Speed run**: a drill covering every fact, in random order, where a missed fact returns until it is got, timed as a whole and compared to the personal best.
 - **Run card**: the card of a speed run: the drill card with the running clock in place of the 3-second bar and the position.
 - **Miss reveal**: the screen that replaces the run card after a missed outcome, showing the fact with its answer briefly while the clock runs.
