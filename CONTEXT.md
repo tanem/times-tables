@@ -14,6 +14,6 @@
 - **Streak**: consecutive fast outcomes within a drill; a slow or missed outcome resets it. The best streak of a drill is shown on its end screen. Nothing accumulates across drills.
 - **Band**: how big the end of a drill celebrates, from the fast count as a share of the drill's 20 presentations: top (75% or more), middle (40% to 74%) or low (below that, and any quit drill).
 - **Progress**: everything the app remembers about the learner: the tables they chose, each fact's level and outcome counts, the recent answer times that pace is worked out from, and the drill records.
-- **Drill record**: the one entry a drill leaves in the progress: when it ran, which tables, how many fast, slow and missed outcomes, whether it was quit early, the learner's pace and the number of facts at level 4 as the drill ended, and the median answer time of its right answers.
+- **Drill record**: the one entry a drill leaves in the progress: when it ran, which tables, how many fast, slow and missed outcomes, whether it was quit early, the learner's pace and the number of facts at level 4 as the drill ended, and the median answer time of its right answers under the cap.
 - **Start screen**: the app's opening screen, where the learner chooses tables and starts a drill. Not the iPad home screen, where the app's icon lives.
 - **Parent view**: the screen reached from the Start screen where a parent reads the progress and can erase it. Headed "Progress" in the app.
