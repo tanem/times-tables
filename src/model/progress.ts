@@ -1,4 +1,4 @@
-import { FACTS, OFFERED_TABLES, TABLES, type Table } from './facts';
+import { FACTS, pool, TABLES, type Table } from './facts';
 import { grade, type Level, type Outcome } from './level';
 import { keepTime, TIME_CAP, TIMES_KEPT } from './pace';
 
@@ -43,12 +43,12 @@ export type Progress = {
   records: DrillRecord[];
 };
 
-// The document for a first launch or a fresh start: the offered tables on
-// and nothing learnt.
+// The document for a first launch or a fresh start: no table on and nothing
+// learnt.
 export function freshProgress(): Progress {
   return {
     version: 2,
-    tables: [...OFFERED_TABLES],
+    tables: [],
     facts: {},
     times: [],
     records: [],
@@ -72,6 +72,15 @@ export function factCounts(progress: Progress, key: string): OutcomeCounts {
 export function knownCount(progress: Progress): number {
   return Object.values(progress.facts).filter((fact) => fact.level === 4)
     .length;
+}
+
+// The share of a table's facts at level 4, from 0 to 1. A fact counts towards
+// both of its tables, so a table that was never switched on still shows the
+// facts known through the others.
+export function knownShare(progress: Progress, table: Table): number {
+  const facts = pool([table]);
+  const known = facts.filter((fact) => factLevel(progress, fact.key) === 4);
+  return known.length / facts.length;
 }
 
 // The document with one fact changed. The given document is left as it was.

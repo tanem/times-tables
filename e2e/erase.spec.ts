@@ -3,7 +3,7 @@ import type { DrillRecord, Progress } from '../src/model/progress';
 import { BACKUP_KEY, PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
 import {
-  expectAllTablesOn,
+  expectNoTableOn,
   openParent,
   progressHeading,
   startHeading,
@@ -79,10 +79,10 @@ test('holding the erase control for three seconds erases progress and returns to
   await page.clock.runFor(3100);
 
   await expect(startHeading(page)).toBeVisible();
-  await expectAllTablesOn(page);
+  await expectNoTableOn(page);
   expect(await storedProgress(page)).toEqual({
     version: 2,
-    tables: [6, 8, 12],
+    tables: [],
     facts: {},
     times: [],
     records: [],
@@ -198,7 +198,7 @@ test('an erase survives a reload', async ({ page }) => {
   await page.reload();
 
   await expect(startHeading(page)).toBeVisible();
-  await expectAllTablesOn(page);
+  await expectNoTableOn(page);
   expect(await storedBackup(page)).toBeNull();
 });
 
@@ -241,7 +241,7 @@ test.describe('touch', () => {
     await expect(startHeading(page)).toBeVisible();
     expect(await storedProgress(page)).toEqual({
       version: 2,
-      tables: [6, 8, 12],
+      tables: [],
       facts: {},
       times: [],
       records: [],
@@ -289,7 +289,7 @@ test('holding Space on the focused control for three seconds erases', async ({
   await page.clock.runFor(3100);
 
   await expect(startHeading(page)).toBeVisible();
-  await expectAllTablesOn(page);
+  await expectNoTableOn(page);
 });
 
 test('releasing Space before three seconds cancels the keyboard hold', async ({

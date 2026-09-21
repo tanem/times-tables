@@ -44,6 +44,7 @@ test('the app opens and works with no network once the worker is active', async 
   // The Start screen offline proves the index came from the precache, and a
   // card proves the hashed JS and CSS did too.
   await expect(startHeading(page)).toBeVisible();
+  await page.getByRole('button', { name: '6s' }).click();
   await page.getByRole('button', { name: 'Practise', exact: true }).click();
   await expect(page.getByRole('heading', { level: 1 })).toContainText('×');
 

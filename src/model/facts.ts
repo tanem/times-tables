@@ -14,10 +14,15 @@ export const TABLES = [
   2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
 ] as const satisfies readonly Table[];
 
-// The tables the Start screen offers, and the ones a fresh document switches
-// on. The progress document already accepts every table; this goes when the
-// Start screen offers all eleven.
-export const OFFERED_TABLES = [6, 8, 12] as const satisfies readonly Table[];
+// Tables listed with "and" before the last: "6s", "6s and 8s", "6s, 8s and
+// 12s".
+export function tablesList(tables: readonly Table[]): string {
+  const names = tables.map((table) => `${table}s`);
+  const last = names.at(-1) ?? '';
+  return names.length < 2
+    ? last
+    : `${names.slice(0, -1).join(', ')} and ${last}`;
+}
 
 // The two factors of a pair, smaller first.
 function ordered(a: number, b: number): [number, number] {

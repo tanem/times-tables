@@ -1,31 +1,89 @@
+import type { Page } from '@playwright/test';
+import type { Progress } from '../src/model/progress';
 import { BACKUP_KEY, PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
-import { expectAllTablesOn, startHeading, TILES } from './helpers';
+import {
+  dragon,
+  expectNoTableOn,
+  practiseButton,
+  seedProgress,
+  startHeading,
+  storedProgress,
+  tile,
+  TILES,
+} from './helpers';
 
-test('the app opens onto the Start screen with all three tables on', async ({
+test('a first launch has nothing on and asks for a tap', async ({ page }) => {
+  await page.goto('./');
+  await expect(startHeading(page)).toBeVisible();
+  for (const name of [...TILES, 'All']) {
+    await expect(tile(page, name)).toHaveAttribute('aria-pressed', 'false');
+  }
+  await expectNoTableOn(page);
+  await expect(page.getByText('Which tables?')).toHaveCount(0);
+  await expect(dragon(page, 'waves')).toBeVisible();
+});
+
+test('the first table switched on ends the nudge, and clearing every table brings it back', async ({
   page,
 }) => {
   await page.goto('./');
-  await expect(startHeading(page)).toBeVisible();
+  await tile(page, '7s').click();
+
   await expect(page.getByText('Which tables?')).toBeVisible();
-  await expectAllTablesOn(page);
-  const practise = page.getByRole('button', { name: 'Practise', exact: true });
-  await expect(practise).toBeEnabled();
-  await expect(practise).toHaveAccessibleDescription(
-    '20 facts from all three tables',
+  await expect(page.getByText('Tap the tables you want')).toHaveCount(0);
+  await expect(
+    page.getByRole('img', { name: 'The dragon', exact: true }),
+  ).toBeVisible();
+  await expect(practiseButton(page)).toBeEnabled();
+  await expect(practiseButton(page)).toHaveAccessibleDescription(
+    '20 facts from the 7s',
   );
+
+  await tile(page, '7s').click();
+  await expectNoTableOn(page);
+  await expect(dragon(page, 'waves')).toBeVisible();
+});
+
+// Whether an element has a running CSS animation.
+const animates = (el: Element) => getComputedStyle(el).animationName !== 'none';
+
+test('the tiles pulse and the dragon waves only while nothing is on', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await expect(tile(page, '2s')).toBeVisible();
+  expect(await tile(page, '2s').evaluate(animates)).toBe(true);
+  expect(await tile(page, 'All').evaluate(animates)).toBe(true);
+
+  await tile(page, '2s').click();
+  expect(await tile(page, '2s').evaluate(animates)).toBe(false);
+  expect(await tile(page, '3s').evaluate(animates)).toBe(false);
+});
+
+test('reduced motion drops the pulse and the wave', async ({ page }) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.goto('./');
+  await expectNoTableOn(page);
+  expect(await tile(page, '2s').evaluate(animates)).toBe(false);
+  expect(await dragon(page, 'waves').evaluate(animates)).toBe(false);
+  expect(
+    await dragon(page, 'waves').locator('.arm-right').evaluate(animates),
+  ).toBe(false);
 });
 
 test('the dragon sits with the app’s name at the top of the Start screen', async ({
   page,
 }) => {
   await page.goto('./');
-  const dragon = page.getByRole('img', { name: 'The dragon', exact: true });
-  await expect(dragon).toBeVisible();
+  const theDragon = page.getByRole('img', { name: /^The dragon/ });
+  await expect(theDragon).toBeVisible();
 
-  const dragonBox = await dragon.boundingBox();
+  const dragonBox = await theDragon.boundingBox();
   const nameBox = await startHeading(page).boundingBox();
-  const questionBox = await page.getByText('Which tables?').boundingBox();
+  const questionBox = await page
+    .getByText('Tap the tables you want')
+    .boundingBox();
   if (!dragonBox || !nameBox || !questionBox) throw new Error('not laid out');
   expect(dragonBox.y + dragonBox.height).toBeLessThanOrEqual(questionBox.y);
   expect(nameBox.y + nameBox.height).toBeLessThanOrEqual(questionBox.y);
@@ -40,65 +98,150 @@ test('the Start screen has no Speed run button and no best time', async ({
   await expect(page.getByText(/best/i)).toHaveCount(0);
 });
 
-test('toggling tiles updates the Practise caption', async ({ page }) => {
-  await page.goto('./');
-  const practise = page.getByRole('button', { name: 'Practise', exact: true });
-
-  await page.getByRole('button', { name: '12s' }).click();
-  await expect(
-    page.getByRole('button', { name: '12s', pressed: false }),
-  ).toBeVisible();
-  await expect(practise).toHaveAccessibleDescription(
-    '20 facts from the 6s and 8s',
-  );
-
-  await page.getByRole('button', { name: '8s' }).click();
-  await expect(practise).toHaveAccessibleDescription('20 facts from the 6s');
-
-  await page.getByRole('button', { name: '12s' }).click();
-  await expect(practise).toHaveAccessibleDescription(
-    '20 facts from the 6s and 12s',
-  );
-});
-
-test('with no table on Practise is disabled with a prompt', async ({
+test('the caption lists up to three tables and counts from four', async ({
   page,
 }) => {
   await page.goto('./');
-  for (const table of TILES) {
-    await page.getByRole('button', { name: table }).click();
-  }
-  const practise = page.getByRole('button', { name: 'Practise', exact: true });
-  await expect(practise).toBeDisabled();
+  const practise = practiseButton(page);
+
+  await tile(page, '10s').click();
+  await expect(practise).toHaveAccessibleDescription('20 facts from the 10s');
+
+  await tile(page, '2s').click();
   await expect(practise).toHaveAccessibleDescription(
-    'Pick a table to practise',
+    '20 facts from the 2s and 10s',
   );
 
-  await page.getByRole('button', { name: '8s' }).click();
-  await expect(practise).toBeEnabled();
-  await expect(practise).toHaveAccessibleDescription('20 facts from the 8s');
+  await tile(page, '5s').click();
+  await expect(practise).toHaveAccessibleDescription(
+    '20 facts from the 2s, 5s and 10s',
+  );
+
+  await tile(page, '3s').click();
+  await expect(practise).toHaveAccessibleDescription('20 facts from 4 tables');
+
+  await tile(page, '3s').click();
+  await expect(tile(page, '3s')).toHaveAttribute('aria-pressed', 'false');
+  await expect(practise).toHaveAccessibleDescription(
+    '20 facts from the 2s, 5s and 10s',
+  );
+});
+
+test('the All tile switches every table on, and off when all are on', async ({
+  page,
+}) => {
+  await page.goto('./');
+  const practise = practiseButton(page);
+
+  await tile(page, 'All').click();
+  for (const name of [...TILES, 'All']) {
+    await expect(tile(page, name)).toHaveAttribute('aria-pressed', 'true');
+  }
+  await expect(practise).toHaveAccessibleDescription(
+    '20 facts from all 11 tables',
+  );
+  expect((await storedProgress(page)).tables).toEqual([
+    2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
+  ]);
+
+  // One table off: All no longer shows as pressed, and pressing it fills the
+  // grid again.
+  await tile(page, '9s').click();
+  await expect(tile(page, 'All')).toHaveAttribute('aria-pressed', 'false');
+  await expect(practise).toHaveAccessibleDescription('20 facts from 10 tables');
+  await tile(page, 'All').click();
+  await expect(tile(page, '9s')).toHaveAttribute('aria-pressed', 'true');
+  await expect(tile(page, 'All')).toHaveAttribute('aria-pressed', 'true');
+
+  await tile(page, 'All').click();
+  await expectNoTableOn(page);
+  expect((await storedProgress(page)).tables).toEqual([]);
+});
+
+test('switching on the last table by hand presses the All tile', async ({
+  page,
+}) => {
+  await page.goto('./');
+  for (const name of TILES) await tile(page, name).click();
+  await expect(tile(page, 'All')).toHaveAttribute('aria-pressed', 'true');
 });
 
 test('a changed selection is still there after a reload', async ({ page }) => {
   await page.goto('./');
-  await page.getByRole('button', { name: '6s' }).click();
-  await expect(
-    page.getByRole('button', { name: '6s', pressed: false }),
-  ).toBeVisible();
+  await tile(page, '4s').click();
+  await tile(page, '11s').click();
+  await expect(tile(page, '11s')).toHaveAttribute('aria-pressed', 'true');
 
   await page.reload();
-  await expect(
-    page.getByRole('button', { name: '6s', pressed: false }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: '8s', pressed: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: '12s', pressed: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Practise', exact: true }),
-  ).toHaveAccessibleDescription('20 facts from the 8s and 12s');
+  await expect(tile(page, '4s')).toHaveAttribute('aria-pressed', 'true');
+  await expect(tile(page, '11s')).toHaveAttribute('aria-pressed', 'true');
+  await expect(tile(page, '6s')).toHaveAttribute('aria-pressed', 'false');
+  await expect(practiseButton(page)).toHaveAccessibleDescription(
+    '20 facts from the 4s and 11s',
+  );
+});
+
+test('a selection made before the tables widened is kept', async ({ page }) => {
+  await seedProgress(page, {
+    version: 2,
+    tables: [6, 8, 12],
+    facts: {},
+    times: [],
+    records: [],
+  });
+  await expect(page.getByText('Which tables?')).toBeVisible();
+  for (const name of ['6s', '8s', '12s']) {
+    await expect(tile(page, name)).toHaveAttribute('aria-pressed', 'true');
+  }
+  await expect(page.getByRole('button', { pressed: true })).toHaveCount(3);
+  await expect(practiseButton(page)).toHaveAccessibleDescription(
+    '20 facts from the 6s, 8s and 12s',
+  );
+});
+
+// How full a tile's meter is, from 0 to 1, as it is drawn.
+async function meterShare(page: Page, name: string): Promise<number> {
+  return tile(page, name).evaluate((el) => {
+    const meter = el.querySelector('.meter');
+    const fill = meter?.firstElementChild;
+    if (!meter || !fill) throw new Error('no meter');
+    return (
+      fill.getBoundingClientRect().width / meter.getBoundingClientRect().width
+    );
+  });
+}
+
+test('each tile carries a meter of the share of its facts at level 4, without numbers', async ({
+  page,
+}) => {
+  const known = { level: 4, fast: 9, slow: 0, missed: 0 } as const;
+  const facts: Progress['facts'] = {
+    // Six of the twelve facts of the 3s, one of them shared with the 9s.
+    '1x3': known,
+    '2x3': known,
+    '3x3': known,
+    '3x4': known,
+    '3x5': known,
+    '3x9': known,
+    // Not yet known, so it counts towards nothing.
+    '3x7': { level: 3, fast: 5, slow: 1, missed: 0 },
+  };
+  await seedProgress(page, {
+    version: 2,
+    tables: [3],
+    facts,
+    times: [],
+    records: [],
+  });
+
+  expect(await meterShare(page, '3s')).toBeCloseTo(0.5, 2);
+  // Never switched on, and known through the 3s.
+  expect(await meterShare(page, '9s')).toBeCloseTo(1 / 12, 2);
+  expect(await meterShare(page, '7s')).toBe(0);
+  await expect(tile(page, 'All').locator('.meter')).toHaveCount(0);
+
+  // The meter adds nothing to a tile's name and shows no numbers.
+  await expect(tile(page, '3s')).toHaveText('3s');
 });
 
 // A backup left by an earlier corrupt document, which the next one replaces.
@@ -134,10 +277,7 @@ for (const [kind, text] of corruptDocuments) {
     );
     await page.goto('./');
 
-    await expectAllTablesOn(page);
-    await expect(
-      page.getByRole('button', { name: 'Practise', exact: true }),
-    ).toHaveAccessibleDescription('20 facts from all three tables');
+    await expectNoTableOn(page);
     expect(
       await page.evaluate((key) => localStorage.getItem(key), BACKUP_KEY),
     ).toBe(text);
@@ -154,34 +294,71 @@ test('a write that throws does not stop the tiles from toggling', async ({
   });
   await page.goto('./');
 
-  await page.getByRole('button', { name: '6s' }).click();
-  await expect(
-    page.getByRole('button', { name: '6s', pressed: false }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: 'Practise', exact: true }),
-  ).toHaveAccessibleDescription('20 facts from the 8s and 12s');
+  await tile(page, '6s').click();
+  await expect(tile(page, '6s')).toHaveAttribute('aria-pressed', 'true');
+  await expect(practiseButton(page)).toHaveAccessibleDescription(
+    '20 facts from the 6s',
+  );
 });
 
-for (const [orientation, width, height] of [
-  ['portrait', 820, 1180],
-  ['landscape', 1180, 820],
+// Whether the named tiles share a row, by where their tops are.
+async function tops(page: Page, names: readonly string[]): Promise<number[]> {
+  const found: number[] = [];
+  for (const name of names) {
+    const box = await tile(page, name).boundingBox();
+    if (!box) throw new Error(`${name} is not laid out`);
+    found.push(Math.round(box.y));
+  }
+  return found;
+}
+
+for (const [orientation, width, height, columns] of [
+  ['portrait', 820, 1180, 4],
+  ['landscape', 1180, 820, 6],
 ] as const) {
-  test(`the Start screen fits an iPad in ${orientation}`, async ({ page }) => {
+  test(`the Start screen fits an iPad in ${orientation}, ${columns} tiles to a row`, async ({
+    page,
+  }) => {
     await page.setViewportSize({ width, height });
     await page.goto('./');
 
     const parts = [
-      page.getByRole('img', { name: 'The dragon', exact: true }),
+      page.getByRole('img', { name: /^The dragon/ }),
       startHeading(page),
-      page.getByRole('button', { name: '6s' }),
-      page.getByRole('button', { name: '12s' }),
-      page.getByRole('button', { name: 'Practise', exact: true }),
-      page.getByText('20 facts from all three tables'),
+      ...[...TILES, 'All'].map((name) => tile(page, name)),
+      practiseButton(page),
+      page.getByText('Pick a table to practise'),
       page.getByRole('button', { name: 'For parents' }),
     ];
     for (const part of parts) {
       await expect(part).toBeInViewport({ ratio: 1 });
     }
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollHeight <=
+          document.documentElement.clientHeight,
+      ),
+    ).toBe(true);
+
+    // With everything on, the sitting dragon and the longest caption fit too.
+    await tile(page, 'All').click();
+    await expect(page.getByText('20 facts from all 11 tables')).toBeInViewport({
+      ratio: 1,
+    });
+    await expect(
+      page.getByRole('button', { name: 'For parents' }),
+    ).toBeInViewport({ ratio: 1 });
+
+    // The twelve cells fill whole rows, and a tile is a square. Measured
+    // with a table on, when the tiles are not pulsing.
+    const names = [...TILES, 'All'];
+    const rows = new Map<number, number>();
+    for (const top of await tops(page, names)) {
+      rows.set(top, (rows.get(top) ?? 0) + 1);
+    }
+    expect([...rows.values()]).toEqual(Array(12 / columns).fill(columns));
+    const box = await tile(page, '2s').boundingBox();
+    expect(box?.width).toBeCloseTo(box?.height ?? 0, 0);
   });
 }

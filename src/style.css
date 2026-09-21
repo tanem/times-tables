@@ -57,7 +57,7 @@ button {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(16px, 3vmin, 32px);
+  gap: clamp(12px, 2.4vmin, 24px);
   text-align: center;
 }
 
@@ -77,37 +77,105 @@ button {
 }
 
 .start .dragon-stage {
-  --size: clamp(88px, 18vmin, 170px);
+  --size: clamp(80px, 15vmin, 140px);
 }
 
 .start h1 {
-  font-size: clamp(2.5rem, 8vmin, 5rem);
+  font-size: clamp(2.25rem, 7vmin, 4rem);
 }
 
 .start h2 {
   font-size: clamp(1.5rem, 4vmin, 2.5rem);
 }
 
+/* The eleven tables and All: twelve square tiles, four to a row in portrait
+   and six in landscape. */
 .tiles {
+  --tile-size: clamp(72px, 15.5vmin, 132px);
+  --tile-gap: clamp(10px, 2vmin, 18px);
+  --columns: 4;
   display: flex;
-  gap: clamp(12px, 3vmin, 32px);
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--tile-gap);
+  max-width: calc(
+    var(--columns) * var(--tile-size) + (var(--columns) - 1) * var(--tile-gap)
+  );
+}
+
+@media (orientation: landscape) {
+  .tiles {
+    --columns: 6;
+  }
 }
 
 .tile {
-  width: clamp(88px, 22vmin, 180px);
+  width: var(--tile-size);
   aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 0 12px;
   border: 4px solid var(--tile);
-  border-radius: 24px;
+  border-radius: 20px;
   background: white;
   color: var(--tile);
   font-family: var(--font-heading);
   font-weight: 600;
-  font-size: clamp(1.75rem, 7vmin, 3.5rem);
+  font-size: clamp(1.5rem, 5vmin, 2.5rem);
+  line-height: 1;
 }
 
 .tile[aria-pressed='true'] {
   background: var(--tile);
   color: white;
+}
+
+.tile.all {
+  border-style: dashed;
+}
+
+/* How well a table is known: a bar along the bottom of its tile. */
+.meter {
+  display: block;
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--track);
+  overflow: hidden;
+}
+
+.meter span {
+  display: block;
+  height: 100%;
+  border-radius: 999px;
+  background: var(--go);
+}
+
+.tile[aria-pressed='true'] .meter {
+  background: rgb(255 255 255 / 35%);
+}
+
+.tile[aria-pressed='true'] .meter span {
+  background: white;
+}
+
+/* While nothing is on, the tiles pulse gently. */
+.nudge .tile {
+  animation: pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%,
+  60%,
+  100% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.06);
+  }
 }
 
 .practise {
@@ -878,6 +946,16 @@ button {
   animation: wave 1.6s ease;
 }
 
+/* The wave, every four seconds with a rest between, for as long as the
+   dragon is on screen. */
+.dragon.beckon {
+  animation: beckon-sway 4s ease infinite;
+}
+
+.dragon.beckon .arm-right {
+  animation: beckon-wave 4s ease infinite;
+}
+
 /* The proud pose is held, not played: the dragon stays where the animation
    ends for as long as it is on screen. */
 .dragon.proud {
@@ -1016,6 +1094,39 @@ button {
   }
 }
 
+/* The wave and its sway played in the first 1.6 of 4 seconds, with the
+   dragon at rest for what is left. */
+@keyframes beckon-wave {
+  0%,
+  40%,
+  100% {
+    transform: rotate(0);
+  }
+  6%,
+  18%,
+  30% {
+    transform: rotate(150deg);
+  }
+  12%,
+  24% {
+    transform: rotate(110deg);
+  }
+}
+
+@keyframes beckon-sway {
+  0%,
+  40%,
+  100% {
+    transform: rotate(0);
+  }
+  12% {
+    transform: rotate(-4deg);
+  }
+  28% {
+    transform: rotate(4deg);
+  }
+}
+
 /* The dragon puffs up and leans back. */
 @keyframes proud {
   from {
@@ -1125,16 +1236,22 @@ button {
   }
 }
 
-/* Reduced motion stops the endless bob and shortens every reaction; no
-   reaction is taken away. */
+/* Reduced motion stops the endless bob, the Start screen's pulse and the
+   repeating wave, and shortens every reaction; no reaction is taken away. */
 @media (prefers-reduced-motion: reduce) {
-  .dragon.sit {
+  .dragon.sit,
+  .nudge .tile {
     animation: none;
   }
 
   .dragon:not(.sit),
   .dragon:not(.sit) * {
     animation-duration: 0.3s;
+  }
+
+  .dragon.beckon,
+  .dragon.beckon .arm-right {
+    animation: none;
   }
 
   .sparkle,

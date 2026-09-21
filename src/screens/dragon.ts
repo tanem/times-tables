@@ -1,10 +1,19 @@
 import { schedule } from '../time';
 
 // What the dragon is doing. Each pose is a CSS animation that plays once,
-// except sit, which bobs for as long as it is on screen, and proud, which
-// the dragon moves into and holds.
+// except sit, which bobs for as long as it is on screen, beckon, which waves
+// every few seconds with a rest between, and proud, which the dragon moves
+// into and holds.
 export type DragonPose =
-  'sit' | 'jump' | 'nod' | 'shrug' | 'big-jump' | 'hop' | 'wave' | 'proud';
+  | 'sit'
+  | 'jump'
+  | 'nod'
+  | 'shrug'
+  | 'big-jump'
+  | 'hop'
+  | 'wave'
+  | 'beckon'
+  | 'proud';
 
 // What each pose is called, for a learner who cannot see it.
 const LABELS: Readonly<Record<DragonPose, string>> = {
@@ -15,6 +24,7 @@ const LABELS: Readonly<Record<DragonPose, string>> = {
   'big-jump': 'The dragon jumps high',
   hop: 'The dragon hops',
   wave: 'The dragon waves',
+  beckon: 'The dragon waves',
   proud: 'The dragon stands proud',
 };
 

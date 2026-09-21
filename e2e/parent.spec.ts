@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { OFFERED_TABLES } from '../src/model/facts';
+import { TABLES } from '../src/model/facts';
 import type { DrillRecord } from '../src/model/progress';
 import { expect, test } from './fixtures';
 import {
@@ -8,6 +8,7 @@ import {
   openParent,
   openWithRecords,
   PACE_TIMES,
+  practiseButton,
   startDrill,
   startHeading,
   storedProgress,
@@ -48,15 +49,13 @@ function redAndGreen(rgb: string): { red: number; green: number } {
   return { red: Number(red), green: Number(green) };
 }
 
-// A fact key, such as "6x7", read as the grid's own label for it: the
-// table factor first.
+// A fact key, such as "6x7", read as one of the grid's own labels for it:
+// the table factor first. There is no row for the 1s.
 function labelOf(key: string): string {
   const [a, b] = key.split('x').map(Number);
   if (a === undefined || b === undefined)
     throw new Error(`bad fact key ${key}`);
-  return (OFFERED_TABLES as readonly number[]).includes(a)
-    ? `${a} × ${b}`
-    : `${b} × ${a}`;
+  return a === 1 ? `${b} × ${a}` : `${a} × ${b}`;
 }
 
 test('For parents opens the Parent view on one tap, and Back returns to the Start screen', async ({
@@ -86,8 +85,9 @@ test('a fresh document shows the empty states, an unlevelled grid and the legend
   await expect(figure(page, 'Pace')).toHaveCount(0);
   await expect(chart(page)).toHaveCount(0);
 
+  // Eleven rows of twelve cells.
   await expect(page.getByRole('button', { name: /, level 0$/ })).toHaveCount(
-    36,
+    132,
   );
   // The grid is a multiplication square: a cell shows its product.
   await expect(cell(page, '6 × 7', 0)).toHaveText('42');
@@ -121,7 +121,7 @@ test('a fresh document shows the empty states, an unlevelled grid and the legend
   await expect(page.getByRole('img', { name: /dragon/i })).toHaveCount(0);
 
   // Each row groups its twelve cells under an accessible name.
-  for (const table of OFFERED_TABLES) {
+  for (const table of TABLES) {
     await expect(
       page
         .getByRole('group', { name: `${table}s`, exact: true })
@@ -169,10 +169,10 @@ async function driveFullDrill(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Home' }).click();
 }
 
-// 1 fast then 1 missed, then quit: a drill record with 2 answered. Returns
-// to the Start screen.
+// 1 fast then 1 missed, then quit: a drill record with 2 answered. Starts
+// from the Start screen with a table on, and returns to it.
 async function driveQuitDrill(page: Page): Promise<void> {
-  await startDrill(page);
+  await practiseButton(page).click();
   await answerCard(page, 'fast');
   await advance(page);
   await answerCard(page, 'missed');
@@ -246,7 +246,7 @@ test('a full drill and a quit drill show correctly on the Parent view', async ({
   // drill opened on, and nothing is four weeks old.
   await expect(figure(page, 'Pace')).toContainText('1.0 s');
   await expect(figure(page, 'Pace')).toContainText('nothing to compare yet');
-  await expect(figure(page, 'Facts known')).toContainText('0 of 33');
+  await expect(figure(page, 'Facts known')).toContainText('0 of 77');
   await expect(figure(page, 'Fast answers')).toContainText('68%');
 
   // The week line: both drills count, the quit one too; facts answered
@@ -306,7 +306,7 @@ test('weeks of practice show as figures against four weeks ago over a chart of p
 
   await expect(figure(page, 'Pace')).toContainText('3.0 s');
   await expect(figure(page, 'Pace')).toContainText('5.2 s four weeks ago');
-  await expect(figure(page, 'Facts known')).toContainText('12 of 33');
+  await expect(figure(page, 'Facts known')).toContainText('12 of 77');
   await expect(figure(page, 'Facts known')).toContainText('3 four weeks ago');
   await expect(figure(page, 'Fast answers')).toContainText('80%');
   await expect(figure(page, 'Fast answers')).toContainText(

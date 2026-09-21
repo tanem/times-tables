@@ -19,6 +19,7 @@ import {
   factLevel,
   keepAnswerTime,
   knownCount,
+  knownShare,
 } from './model/progress';
 import { random } from './random';
 import { renderCard } from './screens/card';
@@ -86,6 +87,7 @@ function showStart(): void {
   show(
     renderStart({
       tables: progress.tables,
+      knownShare: (table) => knownShare(progress, table),
       onTablesChange: (tables) => {
         progress = { ...progress, tables };
         saveProgress(store, progress);
