@@ -18,6 +18,7 @@ import {
   applyOutcome,
   correctOutcome,
   factLevel,
+  knownCount,
 } from './model/progress';
 import { random } from './random';
 import { renderCard } from './screens/card';
@@ -168,7 +169,10 @@ function showFeedback(drill: Drill, outcome: Outcome): void {
 
 // The drill record is written when the drill ends or is quit.
 function endDrill(drill: Drill): void {
-  progress = addRecord(progress, drillRecord(drill, timestamp()));
+  progress = addRecord(
+    progress,
+    drillRecord(drill, timestamp(), knownCount(progress)),
+  );
   saveProgress(store, progress);
   show(
     renderEnd({

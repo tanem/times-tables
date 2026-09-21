@@ -102,18 +102,18 @@ test('a changed selection is still there after a reload', async ({ page }) => {
 });
 
 // A backup left by an earlier corrupt document, which the next one replaces.
-const EARLIER_BACKUP = '{"version":1,"tables":"old"}';
+const EARLIER_BACKUP = '{"version":2,"tables":"old"}';
 
 const corruptDocuments: ReadonlyArray<readonly [string, string]> = [
-  ['fails to parse', '{"version":1,'],
-  ['fails the schema', '{"version":1,"tables":[6],"facts":{}}'],
+  ['fails to parse', '{"version":2,'],
+  ['fails the schema', '{"version":2,"tables":[6],"facts":{},"times":[]}'],
   [
     'holds a level out of range',
-    '{"version":1,"tables":[6],"facts":{"6x7":{"level":9,"fast":0,"slow":0,"missed":0}},"records":[]}',
+    '{"version":2,"tables":[6],"facts":{"6x7":{"level":9,"fast":0,"slow":0,"missed":0}},"times":[],"records":[]}',
   ],
   [
     'has an unknown version',
-    '{"version":2,"tables":[6],"facts":{},"records":[]}',
+    '{"version":3,"tables":[6],"facts":{},"times":[],"records":[]}',
   ],
 ];
 

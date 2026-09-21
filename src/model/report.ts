@@ -2,7 +2,7 @@
 // calendar days to the strings and data the screen shows. No clock, no DOM.
 
 import { DRILL_LENGTH } from './drill';
-import { factKey, TABLES, type Table } from './facts';
+import { factKey, OFFERED_TABLES, type Table } from './facts';
 import type { Level } from './level';
 import {
   factCounts,
@@ -59,13 +59,6 @@ function inWeek(day: Day, today: Day): boolean {
   return diff >= 0 && diff <= 6;
 }
 
-// The drills among the records. A version 1 document can still hold speed
-// run records from before the speed run was removed; they stay stored and
-// the Parent view leaves them out.
-function drillsOf(records: readonly DrillRecord[]): DrillRecord[] {
-  return records.filter((record) => record.mode === 'drill');
-}
-
 // This calendar week's practice: how many drills (a quit drill counts as a
 // drill), how many facts were answered across them, and what share of those
 // were fast. "No practice this week" when there are none.
@@ -74,9 +67,7 @@ export function weekLine(
   dayOf: DayOf,
   today: Day,
 ): string {
-  const week = drillsOf(records).filter((record) =>
-    inWeek(dayOf(record.at), today),
-  );
+  const week = records.filter((record) => inWeek(dayOf(record.at), today));
   if (week.length === 0) return 'No practice this week';
 
   const totalAnswered = week.reduce((sum, record) => sum + answered(record), 0);
@@ -118,7 +109,7 @@ export function recentRows(
   dayOf: DayOf,
   today: Day,
 ): string[] {
-  return drillsOf(records)
+  return records
     .slice(-10)
     .reverse()
     .map((record) => drillRow(record, dayOf(record.at), today));
@@ -138,11 +129,11 @@ export type GridRow = {
   cells: GridCell[];
 };
 
-// The fact grid: one row per table, twelve cells for the multipliers 1 to
-// 12. An overlap fact, such as 6 × 8, reads the same level from whichever
-// row shows it.
+// The fact grid: one row per offered table, twelve cells for the multipliers
+// 1 to 12. An overlap fact, such as 6 × 8, reads the same level from
+// whichever row shows it.
 export function gridRows(progress: Progress): GridRow[] {
-  return TABLES.map((table) => ({
+  return OFFERED_TABLES.map((table) => ({
     label: `${table}s`,
     cells: Array.from({ length: 12 }, (_, index) => {
       const n = index + 1;

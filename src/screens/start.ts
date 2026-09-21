@@ -1,5 +1,5 @@
 import { DRILL_LENGTH } from '../model/drill';
-import { TABLES, type Table } from '../model/facts';
+import { OFFERED_TABLES, type Table } from '../model/facts';
 import { renderDragon } from './dragon';
 
 export type StartOptions = {
@@ -15,7 +15,7 @@ export type StartOptions = {
 // tables, or a prompt when nothing is on.
 function practiseCaption(tables: readonly Table[]): string {
   if (tables.length === 0) return 'Pick a table to practise';
-  if (tables.length === TABLES.length) {
+  if (tables.length === OFFERED_TABLES.length) {
     return `${DRILL_LENGTH} facts from all three tables`;
   }
   const names = tables.map((table) => `${table}s`).join(' and ');
@@ -26,7 +26,7 @@ function practiseCaption(tables: readonly Table[]): string {
 // The tiles keep the selection and the Practise button follows it.
 export function renderStart(options: StartOptions): HTMLElement {
   const selected = new Set<Table>(options.tables);
-  const selection = () => TABLES.filter((table) => selected.has(table));
+  const selection = () => OFFERED_TABLES.filter((table) => selected.has(table));
 
   const screen = document.createElement('main');
   screen.className = 'start';
@@ -63,7 +63,7 @@ export function renderStart(options: StartOptions): HTMLElement {
     practise.disabled = tables.length === 0;
   };
 
-  for (const table of TABLES) {
+  for (const table of OFFERED_TABLES) {
     const tile = document.createElement('button');
     tile.type = 'button';
     tile.className = 'tile';

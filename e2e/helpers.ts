@@ -21,8 +21,8 @@ export async function openParent(page: Page): Promise<void> {
 
 export const TILES = ['6s', '8s', '12s'];
 
-// All three table tiles pressed, as the Start screen shows with nothing
-// toggled off.
+// All three offered table tiles pressed, as the Start screen shows with
+// nothing toggled off.
 export async function expectAllTablesOn(page: Page): Promise<void> {
   for (const table of TILES) {
     await expect(
@@ -71,16 +71,17 @@ export function confetti(page: Page): Locator {
   return page.getByRole('img', { name: 'Confetti' });
 }
 
-// Opens the app on a stored document holding the given records, with all
-// three tables on.
+// Opens the app on a stored document holding the given records, with the
+// three offered tables on.
 export async function openWithRecords(
   page: Page,
   records: DrillRecord[],
 ): Promise<void> {
   const progress: Progress = {
-    version: 1,
+    version: 2,
     tables: [6, 8, 12],
     facts: {},
+    times: [],
     records,
   };
   await page.addInitScript(([key, text]) => localStorage.setItem(key, text), [

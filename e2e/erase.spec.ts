@@ -10,25 +10,26 @@ import {
   storedProgress,
 } from './helpers';
 
-const OLD_RUN: DrillRecord = {
-  mode: 'speed',
+const OLD_DRILL: DrillRecord = {
   at: '2026-01-01T08:00:00.000Z',
-  tables: [6, 8, 12],
-  fast: 33,
-  slow: 0,
-  missed: 0,
+  tables: [6],
+  fast: 16,
+  slow: 3,
+  missed: 1,
   quit: false,
-  time: 25000,
+  pace: 2400,
+  known: 0,
+  median: 2200,
 };
 
-// A stored document visibly not fresh: one table, a levelled fact and a
-// speed run record from before the speed run was removed, so an erase has
-// something real to remove.
+// A stored document visibly not fresh: one table, a levelled fact, answer
+// times and a drill record, so an erase has something real to remove.
 const NOT_FRESH: Progress = {
-  version: 1,
+  version: 2,
   tables: [6],
   facts: { '6x7': { level: 3, fast: 5, slow: 1, missed: 1 } },
-  records: [OLD_RUN],
+  times: [2600, 2200],
+  records: [OLD_DRILL],
 };
 
 // Seeds the progress document and a backup key, as an earlier corrupt
@@ -80,9 +81,10 @@ test('holding the erase control for three seconds erases progress and returns to
   await expect(startHeading(page)).toBeVisible();
   await expectAllTablesOn(page);
   expect(await storedProgress(page)).toEqual({
-    version: 1,
+    version: 2,
     tables: [6, 8, 12],
     facts: {},
+    times: [],
     records: [],
   });
   expect(await storedBackup(page)).toBeNull();
@@ -235,9 +237,10 @@ test.describe('touch', () => {
 
     await expect(startHeading(page)).toBeVisible();
     expect(await storedProgress(page)).toEqual({
-      version: 1,
+      version: 2,
       tables: [6, 8, 12],
       facts: {},
+      times: [],
       records: [],
     });
   });

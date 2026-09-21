@@ -12,7 +12,7 @@ import {
   startDrill,
   type Drill,
 } from './drill';
-import { FACTS, pool, type Fact } from './facts';
+import { FACTS, TABLES, pool, type Fact } from './facts';
 import type { Level } from './level';
 
 // A random source that hands out the given values in turn, then fails.
@@ -206,38 +206,40 @@ describe('quitDrill', () => {
 });
 
 describe('drillRecord', () => {
-  it('records a finished drill with its tally and a null time', () => {
+  it('records a finished drill with its tally, the known count and no pace or median', () => {
     const drill = drillAfter([
       ...Array<'fast'>(14).fill('fast'),
       ...Array<'slow'>(4).fill('slow'),
       ...Array<'missed'>(2).fill('missed'),
     ]);
-    expect(drillRecord(drill, '2026-01-01T09:05:00.000Z')).toEqual({
-      mode: 'drill',
+    expect(drillRecord(drill, '2026-01-01T09:05:00.000Z', 5)).toEqual({
       at: '2026-01-01T09:05:00.000Z',
       tables: [6],
       fast: 14,
       slow: 4,
       missed: 2,
       quit: false,
-      time: null,
+      pace: null,
+      known: 5,
+      median: null,
     });
   });
 
   it('records a quit drill with the answers given so far', () => {
     const drill = quitDrill(drillAfter(['fast', 'slow', 'slow']));
-    expect(drillRecord(drill, '2026-01-01T09:05:00.000Z')).toMatchObject({
+    expect(drillRecord(drill, '2026-01-01T09:05:00.000Z', 3)).toMatchObject({
       fast: 1,
       slow: 2,
       missed: 0,
       quit: true,
+      known: 3,
     });
   });
 });
 
 describe('the fact set', () => {
   it('is the source of the drill pool', () => {
-    expect(startDrill([6, 8, 12], levels({}), () => 0).pool).toEqual(FACTS);
+    expect(startDrill([...TABLES], levels({}), () => 0).pool).toEqual(FACTS);
   });
 });
 

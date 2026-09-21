@@ -1,6 +1,8 @@
 import type { Locator, Page } from '@playwright/test';
-import { TABLES } from '../src/model/facts';
+import { OFFERED_TABLES } from '../src/model/facts';
 import type { Outcome } from '../src/model/level';
+import type { Progress } from '../src/model/progress';
+import { PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
 import {
   advance,
@@ -32,7 +34,7 @@ test('Practise shows the first fact at once with the bar, the position and both 
   await startDrill(page);
 
   const { x, y } = await factOnScreen(page);
-  const tables: readonly number[] = TABLES;
+  const tables: readonly number[] = OFFERED_TABLES;
   expect(tables.includes(x) || tables.includes(y)).toBe(true);
   await expect(
     page.getByRole('progressbar', { name: 'Time left' }),
@@ -260,7 +262,6 @@ test('after 20 presentations the end screen shows the heading, the tally and the
   const stored = await storedProgress(page);
   expect(stored.records).toEqual([
     {
-      mode: 'drill',
       // The fixed date plus the four slow answers' 3 seconds each.
       at: '2026-01-01T09:00:12.000Z',
       tables: [6, 8, 12],
@@ -268,7 +269,10 @@ test('after 20 presentations the end screen shows the heading, the tally and the
       slow: 4,
       missed: 2,
       quit: false,
-      time: null,
+      // The learner still answers aloud, so there are no answer times.
+      pace: null,
+      known: 0,
+      median: null,
     },
   ]);
   const facts = Object.values(stored.facts);
@@ -391,6 +395,59 @@ test('quitting from the card ends the drill with the answers given so far', asyn
     missed: 1,
     quit: true,
   });
+});
+
+// Opens a drill on the 6s with two facts at level 4 from outside the offered
+// tables, which the drill never presents, and every fact of the 6s one fast
+// answer from level 4.
+async function startDrillNearLevel4(page: Page): Promise<void> {
+  const atLevel4 = { level: 4, fast: 4, slow: 0, missed: 0 } as const;
+  const atLevel3 = { level: 3, fast: 3, slow: 0, missed: 0 } as const;
+  const facts: Progress['facts'] = { '3x5': atLevel4, '4x9': atLevel4 };
+  for (let n = 1; n <= 12; n++) {
+    facts[`${Math.min(6, n)}x${Math.max(6, n)}`] = atLevel3;
+  }
+  const progress: Progress = {
+    version: 2,
+    tables: [6],
+    facts,
+    times: [],
+    records: [],
+  };
+  await page.addInitScript(([key, text]) => localStorage.setItem(key, text), [
+    PROGRESS_KEY,
+    JSON.stringify(progress),
+  ] as const);
+  await startDrill(page);
+}
+
+test('a drill record holds the number of facts at level 4 as the drill ended', async ({
+  page,
+}) => {
+  await startDrillNearLevel4(page);
+
+  await answerCard(page, 'fast');
+  await advance(page);
+  await page.getByRole('button', { name: 'Quit' }).click();
+
+  const stored = await storedProgress(page);
+  expect(stored.records).toHaveLength(1);
+  expect(stored.records[0]).toMatchObject({ quit: true, known: 3 });
+});
+
+test('a fact corrected to missed does not count as known in the drill record', async ({
+  page,
+}) => {
+  await startDrillNearLevel4(page);
+
+  await answerCard(page, 'fast');
+  await correction(page).click();
+  await advance(page);
+  await page.getByRole('button', { name: 'Quit' }).click();
+
+  const stored = await storedProgress(page);
+  expect(stored.records).toHaveLength(1);
+  expect(stored.records[0]).toMatchObject({ missed: 1, known: 2 });
 });
 
 test('Go again starts a new drill on the same tables and Home returns to the Start screen', async ({
