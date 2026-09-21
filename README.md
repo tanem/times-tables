@@ -27,3 +27,7 @@ Renovate opens dependency update pull requests, including majors, and merges the
 ## Deployment
 
 Pushes to `main` that pass the checks deploy to GitHub Pages at https://tanem.github.io/times-tables/.
+
+## License
+
+[MIT](LICENSE).
