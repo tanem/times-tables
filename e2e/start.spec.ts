@@ -4,6 +4,7 @@ import { BACKUP_KEY, PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
 import {
   dragon,
+  ALL_TILES,
   expectNoTableOn,
   practiseButton,
   seedProgress,
@@ -16,7 +17,7 @@ import {
 test('a first launch has nothing on and asks for a tap', async ({ page }) => {
   await page.goto('./');
   await expect(startHeading(page)).toBeVisible();
-  for (const name of [...TILES, 'All']) {
+  for (const name of ALL_TILES) {
     await expect(tile(page, name)).toHaveAttribute('aria-pressed', 'false');
   }
   await expectNoTableOn(page);
@@ -55,8 +56,12 @@ test('the tiles pulse and the dragon waves only while nothing is on', async ({
   await expect(tile(page, '2s')).toBeVisible();
   expect(await tile(page, '2s').evaluate(animates)).toBe(true);
   expect(await tile(page, 'All').evaluate(animates)).toBe(true);
+  expect(
+    await dragon(page, 'waves').locator('.arm-right').evaluate(animates),
+  ).toBe(true);
 
   await tile(page, '2s').click();
+  await expect(dragon(page, 'waves')).toHaveCount(0);
   expect(await tile(page, '2s').evaluate(animates)).toBe(false);
   expect(await tile(page, '3s').evaluate(animates)).toBe(false);
 });
@@ -66,10 +71,13 @@ test('reduced motion drops the pulse and the wave', async ({ page }) => {
   await page.goto('./');
   await expectNoTableOn(page);
   expect(await tile(page, '2s').evaluate(animates)).toBe(false);
-  expect(await dragon(page, 'waves').evaluate(animates)).toBe(false);
-  expect(
-    await dragon(page, 'waves').locator('.arm-right').evaluate(animates),
-  ).toBe(false);
+
+  // The dragon sits still, and is not said to wave.
+  await expect(dragon(page, 'waves')).toHaveCount(0);
+  const sitting = page.getByRole('img', { name: 'The dragon', exact: true });
+  await expect(sitting).toBeVisible();
+  expect(await sitting.evaluate(animates)).toBe(false);
+  expect(await sitting.locator('.arm-right').evaluate(animates)).toBe(false);
 });
 
 test('the dragon sits with the app’s name at the top of the Start screen', async ({
@@ -134,7 +142,7 @@ test('the All tile switches every table on, and off when all are on', async ({
   const practise = practiseButton(page);
 
   await tile(page, 'All').click();
-  for (const name of [...TILES, 'All']) {
+  for (const name of ALL_TILES) {
     await expect(tile(page, name)).toHaveAttribute('aria-pressed', 'true');
   }
   await expect(practise).toHaveAccessibleDescription(
@@ -301,7 +309,8 @@ test('a write that throws does not stop the tiles from toggling', async ({
   );
 });
 
-// Whether the named tiles share a row, by where their tops are.
+// Where the tops of the named tiles are, to the nearest pixel. Tiles with
+// the same top share a row.
 async function tops(page: Page, names: readonly string[]): Promise<number[]> {
   const found: number[] = [];
   for (const name of names) {
@@ -315,8 +324,11 @@ async function tops(page: Page, names: readonly string[]): Promise<number[]> {
 for (const [orientation, width, height, columns] of [
   ['portrait', 820, 1180, 4],
   ['landscape', 1180, 820, 6],
+  // The smallest iPad screen.
+  ['portrait', 768, 1024, 4],
+  ['landscape', 1024, 768, 6],
 ] as const) {
-  test(`the Start screen fits an iPad in ${orientation}, ${columns} tiles to a row`, async ({
+  test(`the Start screen fits a ${width} × ${height} iPad in ${orientation}, ${columns} tiles to a row`, async ({
     page,
   }) => {
     await page.setViewportSize({ width, height });
@@ -325,7 +337,7 @@ for (const [orientation, width, height, columns] of [
     const parts = [
       page.getByRole('img', { name: /^The dragon/ }),
       startHeading(page),
-      ...[...TILES, 'All'].map((name) => tile(page, name)),
+      ...ALL_TILES.map((name) => tile(page, name)),
       practiseButton(page),
       page.getByText('Pick a table to practise'),
       page.getByRole('button', { name: 'For parents' }),
@@ -352,9 +364,8 @@ for (const [orientation, width, height, columns] of [
 
     // The twelve cells fill whole rows, and a tile is a square. Measured
     // with a table on, when the tiles are not pulsing.
-    const names = [...TILES, 'All'];
     const rows = new Map<number, number>();
-    for (const top of await tops(page, names)) {
+    for (const top of await tops(page, ALL_TILES)) {
       rows.set(top, (rows.get(top) ?? 0) + 1);
     }
     expect([...rows.values()]).toEqual(Array(12 / columns).fill(columns));

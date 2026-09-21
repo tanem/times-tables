@@ -11,6 +11,7 @@ import {
   factOnScreen,
   key,
   PACE_TIMES,
+  practiseButton,
   pressEnter,
   SEEDED_TABLES,
   seedProgress,
@@ -19,6 +20,7 @@ import {
   sparkles,
   startDrill,
   storedProgress,
+  tile,
   typeAnswer,
 } from './helpers';
 
@@ -139,8 +141,8 @@ test('a right answer typed with a leading zero is still right', async ({
   // The 6s alone, whose products are all two digits at most, so the leading
   // zero fits inside the three digits the answer holds.
   await page.goto('./');
-  await page.getByRole('button', { name: '6s' }).click();
-  await page.getByRole('button', { name: 'Practise', exact: true }).click();
+  await tile(page, '6s').click();
+  await practiseButton(page).click();
 
   await typeAnswer(page, `0${await productOnScreen(page)}`);
   await pressEnter(page);
@@ -638,7 +640,7 @@ test('a drill record holds the number of facts at level 4 as the drill ended', a
     records: [],
   };
   await seedProgress(page, progress);
-  await page.getByRole('button', { name: 'Practise', exact: true }).click();
+  await practiseButton(page).click();
 
   await answerCard(page, 'fast');
   await advance(page);
@@ -653,9 +655,9 @@ test('Go again starts a new drill on the same tables and Home returns to the Sta
   page,
 }) => {
   await page.goto('./');
-  await page.getByRole('button', { name: '6s' }).click();
-  await page.getByRole('button', { name: '8s' }).click();
-  await page.getByRole('button', { name: 'Practise', exact: true }).click();
+  await tile(page, '6s').click();
+  await tile(page, '8s').click();
+  await practiseButton(page).click();
   await answerCard(page, 'fast');
   await advance(page);
   await page.getByRole('button', { name: 'Quit' }).click();
@@ -672,12 +674,8 @@ test('Go again starts a new drill on the same tables and Home returns to the Sta
 
   await page.getByRole('button', { name: 'Home' }).click();
   await expect(page.getByText('Which tables?')).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: '8s', pressed: true }),
-  ).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: '12s', pressed: false }),
-  ).toBeVisible();
+  await expect(tile(page, '8s')).toHaveAttribute('aria-pressed', 'true');
+  await expect(tile(page, '12s')).toHaveAttribute('aria-pressed', 'false');
 });
 
 test('progress survives a reload', async ({ page }) => {
@@ -687,7 +685,7 @@ test('progress survives a reload', async ({ page }) => {
   await page.getByRole('button', { name: 'Quit' }).click();
 
   await page.reload();
-  await page.getByRole('button', { name: 'Practise', exact: true }).click();
+  await practiseButton(page).click();
   await answerCard(page, 'missed');
   await advance(page);
   await page.getByRole('button', { name: 'Quit' }).click();
@@ -708,8 +706,8 @@ test('a drill carries on after a write that throws', async ({ page }) => {
   });
   // Nothing can be seeded, so the table is switched on by hand.
   await page.goto('./');
-  await page.getByRole('button', { name: '6s' }).click();
-  await page.getByRole('button', { name: 'Practise', exact: true }).click();
+  await tile(page, '6s').click();
+  await practiseButton(page).click();
   await answerCard(page, 'fast');
   await advance(page);
   await answerCard(page, 'fast');

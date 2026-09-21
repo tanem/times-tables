@@ -21,8 +21,10 @@ export async function openParent(page: Page): Promise<void> {
   await expect(progressHeading(page)).toBeVisible();
 }
 
-// The Start screen's table tiles, in order. The All tile follows them.
+// The Start screen's table tiles, in order, and the All tile that follows
+// them.
 export const TILES = TABLES.map((table) => `${table}s`);
+export const ALL_TILES = [...TILES, 'All'];
 
 // A tile of the Start screen by its name, "7s" or "All".
 export function tile(page: Page, name: string): Locator {
@@ -46,7 +48,7 @@ export async function expectNoTableOn(page: Page): Promise<void> {
 
 // The tables the seeded documents switch on. Their pool is 33 facts, small
 // enough for a drill to come back to a fact.
-export const SEEDED_TABLES: Table[] = [6, 8, 12];
+export const SEEDED_TABLES: readonly Table[] = [6, 8, 12];
 
 // The fact on the card or the feedback, read the way the learner reads it.
 export async function factOnScreen(
@@ -123,7 +125,7 @@ export async function openWithRecords(
 ): Promise<void> {
   const progress: Progress = {
     version: 2,
-    tables: SEEDED_TABLES,
+    tables: [...SEEDED_TABLES],
     facts: {},
     times,
     records,
@@ -167,7 +169,7 @@ export async function startDrill(
 ): Promise<void> {
   await seedProgress(page, {
     version: 2,
-    tables: SEEDED_TABLES,
+    tables: [...SEEDED_TABLES],
     facts: {},
     times,
     records: [],

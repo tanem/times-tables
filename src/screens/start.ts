@@ -13,8 +13,9 @@ export type StartOptions = {
   onParents: () => void;
 };
 
-// How many tables the Practise caption lists by name before it counts them.
-const LISTED = 3;
+// The most tables the Practise caption lists by name; from one more it
+// counts them.
+const MOST_TABLES_LISTED = 3;
 
 // What the Practise caption says for a selection: the drill's length and
 // tables, or a prompt when nothing is on.
@@ -23,7 +24,7 @@ function practiseCaption(tables: readonly Table[]): string {
   if (tables.length === TABLES.length) {
     return `${DRILL_LENGTH} facts from all ${TABLES.length} tables`;
   }
-  if (tables.length > LISTED) {
+  if (tables.length > MOST_TABLES_LISTED) {
     return `${DRILL_LENGTH} facts from ${tables.length} tables`;
   }
   return `${DRILL_LENGTH} facts from the ${tablesList(tables)}`;
@@ -92,6 +93,15 @@ export function renderStart(options: StartOptions): HTMLElement {
   const all = renderTile('All');
   all.classList.add('all');
 
+  // Reduced motion drops the wave, so the dragon sits and is named as
+  // sitting.
+  const nudgePose = window.matchMedia('(prefers-reduced-motion: reduce)')
+    .matches
+    ? 'sit'
+    : 'beckon';
+
+  // The dragon on screen, and whether the screen is nudging. Both are null
+  // until the first update, which always draws them.
   let dragon: HTMLElement | null = null;
   let nudging: boolean | null = null;
 
@@ -111,7 +121,7 @@ export function renderStart(options: StartOptions): HTMLElement {
       ? 'Tap the tables you want'
       : 'Which tables?';
     screen.classList.toggle('nudge', nothingOn);
-    const next = renderDragon({ pose: nothingOn ? 'beckon' : 'sit' });
+    const next = renderDragon({ pose: nothingOn ? nudgePose : 'sit' });
     if (dragon) dragon.replaceWith(next);
     else masthead.prepend(next);
     dragon = next;
@@ -136,7 +146,7 @@ export function renderStart(options: StartOptions): HTMLElement {
 
   // All switches every table on, or every table off when all are on.
   all.addEventListener('click', () => {
-    const allOn = selected.size === TABLES.length;
+    const allOn = selection().length === TABLES.length;
     selected.clear();
     if (!allOn) for (const table of TABLES) selected.add(table);
     changed();

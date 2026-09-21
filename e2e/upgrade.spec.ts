@@ -6,6 +6,8 @@ import {
   expectNoTableOn,
   openParent,
   storedProgress,
+  practiseButton,
+  tile,
 } from './helpers';
 
 // A document the version 1 build accepts: a table selection, some levels, a
@@ -63,8 +65,8 @@ test('a version 1 document is backed up, the app starts fresh and a drill saves 
   );
   await page.getByRole('button', { name: 'Back' }).click();
 
-  await page.getByRole('button', { name: '6s' }).click();
-  await page.getByRole('button', { name: 'Practise', exact: true }).click();
+  await tile(page, '6s').click();
+  await practiseButton(page).click();
   await answerCard(page, 'fast');
   await advance(page);
   await page.getByRole('button', { name: 'Quit' }).click();

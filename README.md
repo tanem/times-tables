@@ -1,6 +1,6 @@
 # times-tables
 
-A small web app for practising the 6, 8 and 12 times tables. The learner types each answer on an on-screen keypad and the app judges it against the learner's own pace, not a fixed limit. Built for an iPad, hosted on GitHub Pages.
+A small web app for practising the times tables from the 2s to the 12s. The learner types each answer on an on-screen keypad and the app judges it against the learner's own pace, not a fixed limit. Built for an iPad, hosted on GitHub Pages.
 
 ## Installing on an iPad
 
