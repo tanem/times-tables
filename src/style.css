@@ -596,7 +596,7 @@ button {
 }
 
 /* Set apart from the read-only content above it, so a stray tap near the
-   best line cannot land on it by accident. */
+   recent list cannot land on it by accident. */
 .erase {
   display: flex;
   justify-content: center;

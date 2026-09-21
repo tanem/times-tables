@@ -240,7 +240,7 @@ test('a full drill and a quit drill show correctly on the Parent view', async ({
   );
 });
 
-test('older history reads with its date wording, and stored speed runs are left unread', async ({
+test('older history reads with its date wording, and stored speed runs are left out', async ({
   page,
 }) => {
   // A version 1 document from before the speed run was removed can hold
@@ -303,8 +303,13 @@ test('older history reads with its date wording, and stored speed runs are left 
   ).toBeVisible();
   await expect(page.getByText(/speed run|best/i)).toHaveCount(0);
 
-  // The speed run records stay in the stored document.
-  expect((await storedProgress(page)).records).toHaveLength(4);
+  // The speed run records stay in the stored document, through a later
+  // write too.
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: '12s' }).click();
+  const stored = await storedProgress(page);
+  expect(stored.tables).toEqual([6, 8]);
+  expect(stored.records).toEqual([completedRun, older, yesterday, quitRun]);
 });
 
 test('a record six days old counts in the week and one seven days old does not', async ({

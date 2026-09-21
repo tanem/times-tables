@@ -15,8 +15,8 @@ export type FactProgress = OutcomeCounts & {
 };
 
 // The one entry a drill leaves behind. The speed run is gone, but the
-// version 1 shape is unchanged: a stored speed run record still reads as
-// valid and nothing uses it, and a drill's record carries a null time.
+// version 1 shape is unchanged: a stored speed run record is still valid,
+// though nothing shows it, and a drill's record carries a null time.
 export type DrillRecord = OutcomeCounts & {
   mode: 'drill' | 'speed';
   at: string;

@@ -31,7 +31,7 @@ test('the dragon sits with the app’s name at the top of the Start screen', asy
   expect(nameBox.y + nameBox.height).toBeLessThanOrEqual(questionBox.y);
 });
 
-test('the Start screen offers practice and nothing else to the learner', async ({
+test('the Start screen has no Speed run button and no best time', async ({
   page,
 }) => {
   await page.goto('./');

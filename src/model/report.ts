@@ -61,7 +61,7 @@ function inWeek(day: Day, today: Day): boolean {
 
 // The drills among the records. A version 1 document can still hold speed
 // run records from before the speed run was removed; they stay stored and
-// nothing reads them.
+// the Parent view leaves them out.
 function drillsOf(records: readonly DrillRecord[]): DrillRecord[] {
   return records.filter((record) => record.mode === 'drill');
 }
