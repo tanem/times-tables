@@ -254,9 +254,9 @@ describe('trendFigures', () => {
       paced('2026-09-15', 2960, 21, { fast: 18, slow: 1, missed: 1 }),
     ];
     expect(trendFigures(records, dayOfStub, today)).toEqual([
-      { label: 'Pace', now: '3.0 s', then: '5.2 s four weeks ago' },
-      { label: 'Facts known', now: '21 of 33', then: '9 four weeks ago' },
-      { label: 'Fast answers', now: '83%', then: '38% four weeks ago' },
+      { label: 'Pace', now: '3.0 s', earlier: '5.2 s four weeks ago' },
+      { label: 'Facts known', now: '21 of 33', earlier: '9 four weeks ago' },
+      { label: 'Fast answers', now: '83%', earlier: '38% four weeks ago' },
     ]);
   });
 
@@ -265,18 +265,26 @@ describe('trendFigures', () => {
       paced('2026-09-15', null, 0, { fast: 3, slow: 0, missed: 1 }),
     ];
     expect(trendFigures(records, dayOfStub, today)).toEqual([
-      { label: 'Pace', now: '–', then: 'nothing to compare yet' },
-      { label: 'Facts known', now: '0 of 33', then: 'nothing to compare yet' },
-      { label: 'Fast answers', now: '75%', then: 'nothing to compare yet' },
+      { label: 'Pace', now: '–', earlier: 'nothing to compare yet' },
+      {
+        label: 'Facts known',
+        now: '0 of 33',
+        earlier: 'nothing to compare yet',
+      },
+      { label: 'Fast answers', now: '75%', earlier: 'nothing to compare yet' },
     ]);
   });
 
   it('reads the last drill of all when this week has none', () => {
     const records = [paced('2026-09-01', 4000, 12)];
     expect(trendFigures(records, dayOfStub, today)).toEqual([
-      { label: 'Pace', now: '4.0 s', then: 'nothing to compare yet' },
-      { label: 'Facts known', now: '12 of 33', then: 'nothing to compare yet' },
-      { label: 'Fast answers', now: '–', then: 'nothing to compare yet' },
+      { label: 'Pace', now: '4.0 s', earlier: 'nothing to compare yet' },
+      {
+        label: 'Facts known',
+        now: '12 of 33',
+        earlier: 'nothing to compare yet',
+      },
+      { label: 'Fast answers', now: '–', earlier: 'nothing to compare yet' },
     ]);
   });
 });
@@ -334,7 +342,7 @@ describe('trendChart', () => {
         { x: 1, y: 0.25 },
       ],
       marks: [],
-      span: '3 weeks ago',
+      span: '2 weeks ago',
       highest: 'highest 8.0 s',
     });
   });
@@ -381,5 +389,20 @@ describe('trendChart', () => {
     expect(chart?.points).toHaveLength(5);
     expect(chart?.span).toBe('12 weeks ago');
     expect(chart?.highest).toBe('highest 6.0 s');
+  });
+
+  it('gives no chart while every drill with a pace fell on one day', () => {
+    const records = Array.from({ length: 5 }, () =>
+      paced('2026-09-15', 3000, 0),
+    );
+    expect(trendChart(records, dayOfStub, today)).toBeNull();
+  });
+
+  it('captions a span under two weeks in days', () => {
+    const records = [
+      paced('2026-09-02', 5000, 0),
+      ...Array.from({ length: 4 }, () => paced('2026-09-15', 3000, 0)),
+    ];
+    expect(trendChart(records, dayOfStub, today)?.span).toBe('13 days ago');
   });
 });

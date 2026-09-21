@@ -315,7 +315,7 @@ test('weeks of practice show as figures against four weeks ago over a chart of p
 
   await expect(chart(page)).toBeVisible();
   await expect(page.getByText('8s added')).toBeVisible();
-  await expect(page.getByText('5 weeks ago', { exact: true })).toBeVisible();
+  await expect(page.getByText('4 weeks ago', { exact: true })).toBeVisible();
   await expect(page.getByText('highest 5.2 s')).toBeVisible();
   await expect(page.getByText('Today', { exact: true })).toBeVisible();
   await expect(

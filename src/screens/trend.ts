@@ -10,10 +10,11 @@ import {
 import type { Progress } from '../model/progress';
 import type { Day } from '../time';
 
+// The namespace svg elements are created in.
 const SVG = 'http://www.w3.org/2000/svg';
 
-// The chart's own coordinates. The svg stretches to the page width, so only
-// their proportions show.
+// The chart's own coordinates. The svg stretches to the page width and the
+// stylesheet gives it this height, so a unit down the chart is a pixel.
 const WIDTH = 600;
 const HEIGHT = 170;
 
@@ -26,7 +27,7 @@ function renderFigures(figures: readonly TrendFigure[]): HTMLElement {
   const row = document.createElement('div');
   row.className = 'figures';
 
-  for (const { label, now, then } of figures) {
+  for (const { label, now, earlier } of figures) {
     const figure = document.createElement('div');
     figure.className = 'figure';
     figure.setAttribute('role', 'group');
@@ -41,11 +42,11 @@ function renderFigures(figures: readonly TrendFigure[]): HTMLElement {
     nowEl.className = 'figure-now';
     nowEl.textContent = now;
 
-    const thenEl = document.createElement('span');
-    thenEl.className = 'figure-then';
-    thenEl.textContent = then;
+    const earlierEl = document.createElement('span');
+    earlierEl.className = 'figure-earlier';
+    earlierEl.textContent = earlier;
 
-    figure.append(labelEl, nowEl, thenEl);
+    figure.append(labelEl, nowEl, earlierEl);
     row.append(figure);
   }
 
@@ -89,13 +90,14 @@ function renderChart(chart: TrendChart): HTMLElement[] {
   box.append(svg);
 
   // Labels alternate between two rows so that marks close together do not
-  // overlap, and one near the right edge sits to the left of its mark.
+  // overlap, and one in the right half sits to the left of its mark, so that
+  // a long list of tables stays on the chart.
   chart.marks.forEach((mark, index) => {
     const label = document.createElement('span');
     label.className = 'chart-mark';
     label.textContent = mark.label;
     label.style.top = `${(index % 2) * 15}px`;
-    if (mark.x > 0.8) {
+    if (mark.x > 0.5) {
       label.classList.add('chart-mark-left');
       label.style.right = `${(1 - mark.x) * 100}%`;
     } else {

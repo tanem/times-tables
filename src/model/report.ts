@@ -4,7 +4,7 @@
 import { DRILL_LENGTH } from './drill';
 import { factKey, OFFERED_TABLES, pool, TABLES, type Table } from './facts';
 import type { Level } from './level';
-import { PACE_NEEDED, TIMES_KEPT } from './pace';
+import { PACE_NEEDED, paceOf, TIMES_KEPT } from './pace';
 import {
   factCounts,
   factLevel,
@@ -60,6 +60,15 @@ function inWeek(day: Day, today: Day): boolean {
   return diff >= 0 && diff <= 6;
 }
 
+// The share of the records' answers that were fast, as a whole percentage,
+// or null when nothing was answered.
+function fastShare(records: readonly DrillRecord[]): number | null {
+  const total = records.reduce((sum, record) => sum + answered(record), 0);
+  if (total === 0) return null;
+  const fast = records.reduce((sum, record) => sum + record.fast, 0);
+  return Math.round((fast / total) * 100);
+}
+
 // This calendar week's practice: how many drills (a quit drill counts as a
 // drill), how many facts were answered across them, and what share of those
 // were fast. "No practice this week" when there are none.
@@ -72,12 +81,9 @@ export function weekLine(
   if (week.length === 0) return 'No practice this week';
 
   const totalAnswered = week.reduce((sum, record) => sum + answered(record), 0);
-  const fast = week.reduce((sum, record) => sum + record.fast, 0);
-
   const line = `This week: ${counted(week.length, 'drill')}, ${counted(totalAnswered, 'fact')} answered`;
-  if (totalAnswered === 0) return line;
-  const share = Math.round((fast / totalAnswered) * 100);
-  return `${line}, ${share}% fast`;
+  const share = fastShare(week);
+  return share === null ? line : `${line}, ${share}% fast`;
 }
 
 // Tables listed with "and" before the last: "6s", "6s and 8s", "6s, 8s and
@@ -126,17 +132,8 @@ function seconds(time: number): string {
   return `${(time / 1000).toFixed(1)} s`;
 }
 
-// The share of the records' answers that were fast, as a whole percentage,
-// or null when nothing was answered.
-function fastShare(records: readonly DrillRecord[]): number | null {
-  const total = records.reduce((sum, record) => sum + answered(record), 0);
-  if (total === 0) return null;
-  const fast = records.reduce((sum, record) => sum + record.fast, 0);
-  return Math.round((fast / total) * 100);
-}
-
 // How many days before today the trend's earlier week ends.
-const EARLIER = 28;
+const EARLIER_DAYS_AGO = 28;
 
 // The facts of the offered tables: what "facts known" is out of.
 const OFFERED_FACTS = pool(OFFERED_TABLES).length;
@@ -146,14 +143,21 @@ const OFFERED_FACTS = pool(OFFERED_TABLES).length;
 export type TrendFigure = {
   label: string;
   now: string;
-  then: string;
+  earlier: string;
 };
 
-function figure(label: string, now: string, then: string | null): TrendFigure {
+// A figure from its value now and its value four weeks ago, null when there
+// is none.
+function figure(
+  label: string,
+  now: string,
+  earlier: string | null,
+): TrendFigure {
   return {
     label,
     now,
-    then: then === null ? 'nothing to compare yet' : `${then} four weeks ago`,
+    earlier:
+      earlier === null ? 'nothing to compare yet' : `${earlier} four weeks ago`,
   };
 }
 
@@ -173,7 +177,7 @@ export function trendFigures(
   const week = records.filter((record) => inWeek(dayOf(record.at), today));
   const earlierWeek = records.filter((record) => {
     const days = today.ordinal - dayOf(record.at).ordinal;
-    return days >= EARLIER && days < EARLIER + 7;
+    return days >= EARLIER_DAYS_AGO && days < EARLIER_DAYS_AGO + 7;
   });
   const now = week.at(-1) ?? last;
   const earlier = earlierWeek.at(-1);
@@ -208,7 +212,7 @@ export function earlyLine(progress: Progress): string | null {
   if (progress.records.length === 0) {
     return 'A trend shows here once there is practice to compare.';
   }
-  if (progress.times.length < PACE_NEEDED) {
+  if (paceOf(progress.times) === null) {
     return `No pace yet: it starts after ${PACE_NEEDED} right answers (${progress.times.length} so far).`;
   }
   return null;
@@ -230,14 +234,15 @@ const CHART_NEEDED = 5;
 export type TrendChart = {
   points: { x: number; y: number }[];
   marks: { x: number; label: string }[];
-  // The captions under the line: how far back it starts, and its highest
-  // value.
+  // The captions under the line: how far back it starts, in days under two
+  // weeks and in weeks from there, and its highest value.
   span: string;
   highest: string;
 };
 
 // The chart over the last twelve weeks, or null until five drills in them
-// have a pace.
+// have a pace and they span more than one day: drills are placed by their
+// day, so one day's drills make no line.
 export function trendChart(
   records: readonly DrillRecord[],
   dayOf: DayOf,
@@ -255,7 +260,8 @@ export function trendChart(
   if (charted.length < CHART_NEEDED) return null;
 
   const top = Math.max(1, ...charted.map((point) => point.pace));
-  const days = Math.max(1, ...charted.map((point) => point.daysAgo));
+  const days = Math.max(...charted.map((point) => point.daysAgo));
+  if (days === 0) return null;
   const xOf = (daysAgo: number) => 1 - daysAgo / days;
 
   // A mark where tables were switched on: wider tables push pace up, and the
@@ -277,7 +283,7 @@ export function trendChart(
       y: point.pace / top,
     })),
     marks,
-    span: `${counted(Math.ceil(days / 7), 'week')} ago`,
+    span: `${days < 14 ? counted(days, 'day') : counted(Math.round(days / 7), 'week')} ago`,
     highest: `highest ${seconds(top)}`,
   };
 }
