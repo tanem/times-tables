@@ -113,8 +113,13 @@ describe('fasterThanLastTime', () => {
 });
 
 describe('BONUS', () => {
-  it('pays two gems over ten right answers', () => {
+  it('is two gems', () => {
     expect(BONUS).toBe(2);
+  });
+});
+
+describe('RIGHT_NEEDED', () => {
+  it('is ten right answers', () => {
     expect(RIGHT_NEEDED).toBe(10);
   });
 });

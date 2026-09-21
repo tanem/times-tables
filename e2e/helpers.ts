@@ -180,7 +180,7 @@ export async function startDrill(
 
 // A finished drill on the seeded tables with every answer right and the
 // given median answer time: the record a drill before this one left.
-export function lastTimeRecord(median: number): DrillRecord {
+function lastTimeRecord(median: number): DrillRecord {
   return {
     at: '2025-12-31T09:00:00.000Z',
     tables: [...SEEDED_TABLES],
@@ -196,7 +196,7 @@ export function lastTimeRecord(median: number): DrillRecord {
 
 // The gems the seeded tables' 33 facts have paid once every one of them has
 // reached level 4.
-export const KNOWN_GEMS = 132;
+const KNOWN_GEMS = 132;
 
 // Opens the app on a document with the seeded tables on, every fact of their
 // pool at level 4 and one earlier finished drill on those tables with the
@@ -221,9 +221,30 @@ export async function startDrillAfter(
   await practiseButton(page).click();
 }
 
-// When the words of the moment show, in milliseconds after the end screen:
-// the race starts at 900 and runs for 2200.
+// The moment's two beats, in milliseconds after the end screen shows: the
+// race starts, then runs for 2200 before the words follow it.
+export const RACE_AT = 900;
 export const WORDS_AT = 3100;
+
+// The race track between the learner's earlier self and today.
+export function race(page: Page): Locator {
+  return page.locator('.race');
+}
+
+// One of the race's two runners, in the lane named.
+export function runner(page: Page, lane: 'earlier' | 'today'): Locator {
+  return page.locator(`.lane.${lane} .runner`);
+}
+
+// What the moment says once the race has run, which a screen reader
+// announces. It is on screen and empty until then.
+export function momentWords(page: Page): Locator {
+  return page.locator('.moment').getByRole('status');
+}
+
+// Whether the given element is being animated, for a page evaluate.
+export const animates = (el: Element) =>
+  getComputedStyle(el).animationName !== 'none';
 
 // The digits that answer the fact on screen the given way: the product for a
 // right answer, one past it for a wrong one.

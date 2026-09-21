@@ -506,10 +506,11 @@ button {
 }
 
 /* The moment a drill faster than last time earns, between the best streak
-   and the buttons: the race, then the words. Both are hidden by visibility
-   and not by display, so the block holds its place from the first render and
-   the buttons never move under a finger. The celebrating dragon gives up
-   some room so that landscape still fits. */
+   and the buttons: the race, then the words. The track is hidden by
+   visibility and not by display, and the words keep a line's height while
+   they are empty, so the block holds its place from the first render and the
+   buttons never move under a finger. The celebrating dragon gives up some
+   room so that landscape still fits. */
 .end.faster {
   gap: clamp(10px, 2vmin, 24px);
 }
@@ -528,7 +529,9 @@ button {
 
 .moment-words {
   margin: 0;
-  visibility: hidden;
+  /* One line of the words' own size, held whether they are there or not. */
+  line-height: 1.2;
+  min-height: 1.2em;
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: clamp(1.5rem, 4.5vmin, 2.5rem);
@@ -536,7 +539,6 @@ button {
 }
 
 .moment.won .moment-words {
-  visibility: visible;
   animation: pop 0.45s ease-out;
 }
 
@@ -555,9 +557,13 @@ button {
    the right. */
 .race {
   --runner: clamp(36px, 7vmin, 56px);
+  /* The gutter the flag stands in, and how far along its lane the earlier
+     self gets before it stops. */
+  --gutter: 28px;
+  --earlier-end: 68%;
   position: relative;
   width: 100%;
-  padding-right: 28px;
+  padding-right: var(--gutter);
   visibility: hidden;
 }
 
@@ -595,13 +601,13 @@ button {
   animation: none;
 }
 
-.lane.ghost .dragon {
+.lane.earlier .dragon {
   filter: grayscale(1);
   opacity: 0.45;
 }
 
-.moment.go .lane.ghost .runner {
-  animation: run-ghost 2.2s cubic-bezier(0.3, 0, 0.6, 1) forwards;
+.moment.go .lane.earlier .runner {
+  animation: run-earlier 2.2s cubic-bezier(0.3, 0, 0.6, 1) forwards;
 }
 
 .moment.go .lane.today .runner {
@@ -609,15 +615,15 @@ button {
 }
 
 /* The earlier self stops short of the flag; today reaches it. */
-@keyframes run-ghost {
+@keyframes run-earlier {
   to {
-    left: calc(68% - var(--runner));
+    left: calc(var(--earlier-end) - var(--runner));
   }
 }
 
 @keyframes run-today {
   to {
-    left: calc(100% - var(--runner) - 28px);
+    left: calc(100% - var(--runner) - var(--gutter));
   }
 }
 
@@ -1400,16 +1406,16 @@ button {
 
   /* The runners do not slide: they show where the race leaves them. The
      words still show. */
-  .moment.go .lane.ghost .runner,
+  .moment.go .lane.earlier .runner,
   .moment.go .lane.today .runner {
     animation: none;
   }
 
-  .moment.go .lane.ghost .runner {
-    left: calc(68% - var(--runner));
+  .moment.go .lane.earlier .runner {
+    left: calc(var(--earlier-end) - var(--runner));
   }
 
   .moment.go .lane.today .runner {
-    left: calc(100% - var(--runner) - 28px);
+    left: calc(100% - var(--runner) - var(--gutter));
   }
 }

@@ -113,18 +113,45 @@ test('the improvement sweep plays as the race ends and not before', async ({
   expect(sweep).toHaveLength(4);
 });
 
-test('the improvement sweep does not follow the learner off the end screen', async ({
+// The two ways off the end screen, and what each lands on.
+const WAYS_OFF = [
+  ['Home', (page: Page) => startHeading(page)],
+  ['Go again', (page: Page) => page.getByText('1 / 20')],
+] as const;
+
+for (const [action, landing] of WAYS_OFF) {
+  test(`the improvement sweep does not follow the learner off the end screen by ${action}`, async ({
+    page,
+  }) => {
+    await finishDrillAfter(page, 15000);
+
+    const notes = await heardDuring(page, async () => {
+      await page.getByRole('button', { name: action }).click();
+      await expect(landing(page)).toBeVisible();
+      await page.clock.runFor(WORDS_AT);
+    });
+
+    expect(notes).toEqual([]);
+  });
+}
+
+// The top note of the improvement sweep, G7, in whole hertz. No other effect
+// reaches it.
+const SWEEP_TOP = 3136;
+
+test('a drill that was not faster than last time plays no improvement sweep', async ({
   page,
 }) => {
-  await finishDrillAfter(page, 15000);
+  // The earlier drill's median matches this one's, and a tie does not pay.
+  await finishDrillAfter(page, 0);
 
-  const notes = await heardDuring(page, async () => {
-    await page.getByRole('button', { name: 'Home' }).click();
-    await expect(startHeading(page)).toBeVisible();
-    await page.clock.runFor(WORDS_AT);
-  });
+  const afterTheRunUp = await heardDuring(page, () =>
+    page.clock.runFor(WORDS_AT),
+  );
 
-  expect(notes).toEqual([]);
+  expect(afterTheRunUp).toEqual([]);
+  const pitches = (await heard(page)).map((note) => Math.round(note.freq));
+  expect(pitches).not.toContain(SWEEP_TOP);
 });
 
 test('sound comes back when the app returns from the background', async ({

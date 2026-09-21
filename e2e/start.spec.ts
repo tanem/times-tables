@@ -3,6 +3,7 @@ import { freshProgress, type Progress } from '../src/model/progress';
 import { BACKUP_KEY, PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
 import {
+  animates,
   dragon,
   ALL_TILES,
   expectNoTableOn,
@@ -45,9 +46,6 @@ test('the first table switched on ends the nudge, and clearing every table bring
   await expectNoTableOn(page);
   await expect(dragon(page, 'waves')).toBeVisible();
 });
-
-// Whether an element has a running CSS animation.
-const animates = (el: Element) => getComputedStyle(el).animationName !== 'none';
 
 test('the tiles pulse and the dragon waves only while nothing is on', async ({
   page,

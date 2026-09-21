@@ -223,7 +223,7 @@ describe('createSound', () => {
     const sweep = notesOf(heard, () => sound.faster());
 
     // C5, then C7, E7 and G7 after it.
-    expect(sweep.map((note) => note.freq)).toHaveLength(4);
+    expect(sweep).toHaveLength(4);
     expect(sweep[0]?.freq).toBeCloseTo(523.25, 1);
     expect(sweep[1]?.freq).toBeCloseTo(2093, 1);
     expect(sweep[2]?.freq).toBeCloseTo(2637.02, 1);

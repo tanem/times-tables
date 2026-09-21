@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  addRecord,
   applyOutcome,
   factCounts,
   factLevel,
@@ -9,6 +8,7 @@ import {
   knownCount,
   knownShare,
   parseProgress,
+  recordDrill,
   type DrillRecord,
   type Progress,
   type ProgressRead,
@@ -577,7 +577,7 @@ describe('keepAnswerTime', () => {
   });
 });
 
-describe('addRecord', () => {
+describe('recordDrill', () => {
   it('appends the record after the ones already held', () => {
     const record: DrillRecord = {
       at: '2026-01-03T09:00:00.000Z',
@@ -590,7 +590,7 @@ describe('addRecord', () => {
       known: 0,
       median: null,
     };
-    const after = addRecord(valid, record);
+    const after = recordDrill(valid, record).progress;
     expect(after.records).toEqual([...valid.records, record]);
     expect(valid.records).toHaveLength(2);
   });
@@ -610,19 +610,25 @@ describe('addRecord', () => {
   };
 
   it('pays two gems for a drill faster than last time', () => {
-    expect(addRecord(valid, faster).gems).toBe(29);
+    expect(recordDrill(valid, faster).progress.gems).toBe(29);
   });
 
   it('pays nothing for a drill that was not faster', () => {
     const slower: DrillRecord = { ...faster, median: 19999 };
 
-    expect(addRecord(valid, slower).gems).toBe(27);
+    expect(recordDrill(valid, slower).progress.gems).toBe(27);
+  });
+
+  it('says a drill was faster when, and only when, it paid the bonus', () => {
+    const slower: DrillRecord = { ...faster, median: 19999 };
+
+    expect(recordDrill(valid, faster).faster).toBe(true);
+    expect(recordDrill(valid, slower).faster).toBe(false);
   });
 
   it('leaves the given document as it was', () => {
-    addRecord(valid, faster);
+    recordDrill(valid, faster);
 
     expect(valid.gems).toBe(27);
-    expect(valid.records).toHaveLength(2);
   });
 });

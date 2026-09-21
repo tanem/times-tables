@@ -130,14 +130,21 @@ export function keepAnswerTime(progress: Progress, time: number): Progress {
   return { ...progress, times: keepTime(progress.times, time) };
 }
 
-// The document with a record appended, and the bonus paid if the drill was
-// faster than last time (ADR 0004). The given document is left as it was.
-export function addRecord(progress: Progress, record: DrillRecord): Progress {
-  const bonus = fasterThanLastTime(progress.records, record) ? BONUS : 0;
+// The document with a record appended and the bonus paid if the drill was
+// faster than last time, with the verdict it was paid on, which the end
+// screen shows (ADR 0004). The given document is left as it was.
+export function recordDrill(
+  progress: Progress,
+  record: DrillRecord,
+): { progress: Progress; faster: boolean } {
+  const faster = fasterThanLastTime(progress.records, record);
   return {
-    ...progress,
-    gems: progress.gems + bonus,
-    records: [...progress.records, record],
+    progress: {
+      ...progress,
+      gems: progress.gems + (faster ? BONUS : 0),
+      records: [...progress.records, record],
+    },
+    faster,
   };
 }
 

@@ -4,6 +4,7 @@ import { freshProgress, type Progress } from '../src/model/progress';
 import { expect, test } from './fixtures';
 import {
   advance,
+  animates,
   answerCard,
   confetti,
   dontKnow,
@@ -11,9 +12,13 @@ import {
   factOnScreen,
   finishDrillAfter,
   key,
+  momentWords,
   PACE_TIMES,
   practiseButton,
   pressEnter,
+  race,
+  RACE_AT,
+  runner,
   SEEDED_TABLES,
   seedProgress,
   setVisibility,
@@ -36,8 +41,8 @@ async function heightOf(part: Locator): Promise<number> {
 }
 
 // How far along its lane a runner of the race stands, in pixels.
-function alongLane(runner: Locator): Promise<number> {
-  return runner.evaluate((el) => parseFloat(getComputedStyle(el).left));
+function alongLane(lane: Locator): Promise<number> {
+  return lane.evaluate((el) => parseFloat(getComputedStyle(el).left));
 }
 
 // The product of the fact on the card, as the learner would type it.
@@ -539,29 +544,27 @@ for (const fast of [14, 8]) {
   });
 }
 
-// When the race starts, and when it has run and the words show.
-const RACE_AT = 900;
-
 test('a drill faster than last time runs a race, then says so and stands the dragon proud', async ({
   page,
 }) => {
   // The earlier drill's median is 15 seconds; every answer of this one is
-  // given on the instant.
+  // given on the instant. Twenty fast answers celebrate with a big jump.
   await finishDrillAfter(page, 15000);
-  const race = page.locator('.race');
-  const words = page.getByText('Faster than last time!');
 
-  // The moment holds its place from the start, so the buttons do not move.
-  await expect(race).toBeHidden();
-  await expect(words).toBeHidden();
+  // The track holds its place from the start and the words say nothing yet.
+  await expect(race(page)).toBeHidden();
+  await expect(momentWords(page)).toBeEmpty();
+  await expect(dragon(page, 'jumps high')).toBeVisible();
 
   await page.clock.runFor(RACE_AT);
-  await expect(race).toBeVisible();
-  await expect(words).toBeHidden();
+  await expect(race(page)).toBeVisible();
+  await expect(momentWords(page)).toBeEmpty();
+  await expect(dragon(page, 'stands proud')).toHaveCount(0);
 
   await page.clock.runFor(WORDS_AT - RACE_AT);
-  await expect(words).toBeVisible();
+  await expect(momentWords(page)).toContainText('Faster than last time!');
   await expect(dragon(page, 'stands proud')).toBeVisible();
+  await expect(dragon(page, 'jumps high')).toHaveCount(0);
 });
 
 test('a drill faster than last time pays a bonus of two gems', async ({
@@ -581,8 +584,8 @@ test('a drill that was not faster than last time says nothing and pays nothing',
   await finishDrillAfter(page, 0);
 
   await page.clock.runFor(WORDS_AT);
-  await expect(page.locator('.race')).toHaveCount(0);
-  await expect(page.getByText('Faster than last time!')).toHaveCount(0);
+  await expect(race(page)).toHaveCount(0);
+  await expect(momentWords(page)).toHaveCount(0);
   expect((await storedProgress(page)).gems).toBe(132);
 });
 
@@ -597,8 +600,8 @@ test('a quit drill says nothing and pays nothing however fast it was', async ({
   await page.getByRole('button', { name: 'Quit' }).click();
 
   await page.clock.runFor(WORDS_AT);
-  await expect(page.locator('.race')).toHaveCount(0);
-  await expect(page.getByText('Faster than last time!')).toHaveCount(0);
+  await expect(race(page)).toHaveCount(0);
+  await expect(momentWords(page)).toHaveCount(0);
   expect((await storedProgress(page)).gems).toBe(132);
 });
 
@@ -609,21 +612,17 @@ test('reduced motion leaves the runners where the race ends them and still says 
   await finishDrillAfter(page, 15000);
   await page.clock.runFor(RACE_AT);
 
-  const ghost = page.locator('.lane.ghost .runner');
-  const today = page.locator('.lane.today .runner');
-  for (const runner of [ghost, today]) {
-    expect(
-      await runner.evaluate(
-        (el) => getComputedStyle(el).animationName === 'none',
-      ),
-    ).toBe(true);
+  const earlier = runner(page, 'earlier');
+  const today = runner(page, 'today');
+  for (const lane of [earlier, today]) {
+    expect(await lane.evaluate(animates)).toBe(false);
   }
   // Neither runner is still on the start line, and today is the further on.
-  expect(await alongLane(ghost)).toBeGreaterThan(0);
-  expect(await alongLane(today)).toBeGreaterThan(await alongLane(ghost));
+  expect(await alongLane(earlier)).toBeGreaterThan(0);
+  expect(await alongLane(today)).toBeGreaterThan(await alongLane(earlier));
 
   await page.clock.runFor(WORDS_AT - RACE_AT);
-  await expect(page.getByText('Faster than last time!')).toBeVisible();
+  await expect(momentWords(page)).toContainText('Faster than last time!');
 });
 
 test('a drill with 7 fast answers ends with a warm wave', async ({ page }) => {
@@ -893,6 +892,9 @@ for (const [orientation, width, height] of [
   }) => {
     await page.setViewportSize({ width, height });
     await finishDrillAfter(page, 15000);
+    const home = page.getByRole('button', { name: 'Home' });
+    const before = await home.boundingBox();
+
     await page.clock.runFor(WORDS_AT);
 
     const parts = [
@@ -900,13 +902,15 @@ for (const [orientation, width, height] of [
       page.getByRole('heading', { level: 1 }),
       page.getByText('20 Fast'),
       page.getByText('Best streak: 20'),
-      page.locator('.race'),
-      page.getByText('Faster than last time!'),
-      page.getByRole('button', { name: 'Home' }),
+      race(page),
+      momentWords(page),
+      home,
       page.getByRole('button', { name: 'Go again' }),
     ];
     for (const part of parts) {
       await expect(part).toBeInViewport({ ratio: 1 });
     }
+    // The moment held its place, so Home never moved under a finger.
+    expect(await home.boundingBox()).toEqual(before);
   });
 }
