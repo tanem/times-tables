@@ -3,13 +3,14 @@ import { createSound } from './sound';
 
 // One note as the fake context heard it: the pitch it started on in hertz,
 // when it started in seconds, and the loudest its envelope went.
-type Heard = { freq: number; at: number; peak: number };
+type HeardNote = { freq: number; at: number; peak: number };
 
 // A stand-in for the browser's AudioContext that keeps each note started on
 // it, with a state a test can set as iPadOS would.
 function fakeContext() {
-  const heard: Heard[] = [];
-  const calls = { resumed: 0 };
+  const heard: HeardNote[] = [];
+  // refuses makes resume reject, as Safari does outside a touch.
+  const calls = { resumed: 0, refuses: false };
   const param = (set: (value: number) => void = () => {}) => ({
     value: 0,
     setValueAtTime: (value: number) => set(value),
@@ -21,7 +22,9 @@ function fakeContext() {
     destination: {},
     resume: () => {
       calls.resumed++;
-      return Promise.resolve();
+      return calls.refuses
+        ? Promise.reject(new Error('not allowed'))
+        : Promise.resolve();
     },
     createGain: () => {
       const node = {
@@ -129,8 +132,25 @@ describe('createSound', () => {
     expect(calls.resumed).toBe(1);
   });
 
+  it('carries on when the browser refuses to resume the audio', async () => {
+    const { sound, context, calls } = tracked();
+    sound.wake();
+    context.state = 'suspended';
+    calls.refuses = true;
+    const unhandled: unknown[] = [];
+    const keep = (reason: unknown) => unhandled.push(reason);
+    process.on('unhandledRejection', keep);
+
+    sound.resume();
+    await new Promise((done) => setImmediate(done));
+
+    process.off('unhandledRejection', keep);
+    expect(calls.resumed).toBe(1);
+    expect(unhandled).toEqual([]);
+  });
+
   // The pitch the effect played last opened on.
-  function openingPitch(heard: Heard[], play: () => void): number {
+  function openingPitch(heard: HeardNote[], play: () => void): number {
     const before = heard.length;
     play();
     return heard[before]?.freq ?? 0;
@@ -162,13 +182,13 @@ describe('createSound', () => {
   });
 
   // The notes the effect played last, in the order they sound.
-  function notesOf(heard: Heard[], play: () => void): Heard[] {
+  function notesOf(heard: HeardNote[], play: () => void): HeardNote[] {
     const before = heard.length;
     play();
     return heard.slice(before).sort((a, b) => a.at - b.at);
   }
 
-  const loudest = (notes: Heard[]) =>
+  const loudest = (notes: HeardNote[]) =>
     Math.max(...notes.map((note) => note.peak));
 
   it('plays a slow answer softer than a fast one', () => {

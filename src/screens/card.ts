@@ -44,20 +44,22 @@ function topBar(position: HTMLElement): {
 // a finger that slides a little still types. Only a touch or the main mouse
 // button presses a key. A click carrying no pointer press of its own
 // (detail 0) is a keyboard activation of the focused key, which acts too.
-// Every press ticks.
+// Every press ticks, except on a disabled key, which still gets the press
+// but shows nothing for a tick to go with.
 function padKey(
   label: string,
   className: string,
   act: () => void,
 ): HTMLButtonElement {
-  const press = () => {
-    sound.key();
-    act();
-  };
   const key = document.createElement('button');
   key.type = 'button';
   key.className = className;
   key.textContent = label;
+  const press = () => {
+    if (key.disabled) return;
+    sound.key();
+    act();
+  };
   key.addEventListener('pointerdown', (event) => {
     if (event.button === 0) press();
   });

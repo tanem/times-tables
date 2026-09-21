@@ -6,21 +6,36 @@
 
 import type { Band } from './model/drill';
 
-// The level every effect is mixed down to: medium, on the iPad's speaker.
+// How loud every effect is mixed down to: medium, on the iPad's speaker.
 const MASTER = 0.35;
 
 // How long a note rings, in seconds, unless it says otherwise.
 const RING = 0.14;
 
-// How loud a note at full gain peaks, before the master level.
-const LEVEL = 0.175;
+// How loud a note at full gain peaks, before the mix down.
+const PEAK = 0.175;
+
+// As good as silent: an exponential ramp cannot start from or reach zero.
+const SILENT = 0.0001;
+
+// How long a note takes to reach its peak, in seconds, short enough to
+// sound struck and long enough not to click.
+const ATTACK = 0.008;
+
+// How far ahead of the context's clock an effect starts, in seconds, so
+// that its first note is not scheduled in the past.
+const LEAD = 0.01;
+
+// How long an oscillator runs on past its ring, in seconds, so that it
+// stops once it is silent.
+const TAIL = 0.05;
 
 type Note = {
   // Hertz.
   freq: number;
   // Seconds after the effect starts.
   at?: number;
-  // A share of the full level.
+  // A share of the full peak.
   gain?: number;
   // A pitch the note slides to over its ring.
   slideTo?: number;
@@ -32,16 +47,20 @@ type Note = {
 const C5 = 523.25;
 const pitch = (semitones: number) => C5 * 2 ** (semitones / 12);
 
-// The run up that ends a drill, in semitones from C5: longer for a higher
-// band.
+// The run up that ends a drill, as the notes of a C major chord in semitones
+// from C5: longer for a higher band.
 const END_RUNS: Readonly<Record<Band, readonly number[]>> = {
   top: [0, 4, 7, 12, 16],
   middle: [0, 4, 7],
   low: [0, 7],
 };
 
-// The steps of a major scale in semitones, for the streak's climb.
-const SCALE = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16];
+// The gap between the notes of the run up, in seconds.
+const RUN_GAP = 0.11;
+
+// How far the streak's climb has gone by each answer of a streak, in
+// semitones up a major scale. The climb stops at the last.
+const CLIMB = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16];
 
 export type Sound = {
   // Starts the audio, or brings it back. Called on every touch.
@@ -78,7 +97,8 @@ export function createSound(newContext: () => AudioContext): Sound {
       master.gain.value = MASTER;
       master.connect(context.destination);
     }
-    if (context.state !== 'running') void context.resume();
+    // The browser can refuse outside a touch. The next touch asks again.
+    if (context.state !== 'running') context.resume().catch(() => {});
   };
 
   const play = (notes: readonly Note[]) => {
@@ -86,7 +106,7 @@ export function createSound(newContext: () => AudioContext): Sound {
     // A context that is not running holds its clock still, so anything
     // scheduled on it would all sound at once when it resumed.
     if (context.state !== 'running') return;
-    const start = context.currentTime + 0.01;
+    const start = context.currentTime + LEAD;
     for (const note of notes) {
       const at = start + (note.at ?? 0);
       const ring = note.ring ?? RING;
@@ -100,15 +120,15 @@ export function createSound(newContext: () => AudioContext): Sound {
           at + ring,
         );
       }
-      envelope.gain.setValueAtTime(0.0001, at);
+      envelope.gain.setValueAtTime(SILENT, at);
       envelope.gain.exponentialRampToValueAtTime(
-        (note.gain ?? 1) * LEVEL,
-        at + 0.008,
+        (note.gain ?? 1) * PEAK,
+        at + ATTACK,
       );
-      envelope.gain.exponentialRampToValueAtTime(0.0001, at + ring);
+      envelope.gain.exponentialRampToValueAtTime(SILENT, at + ring);
       oscillator.connect(envelope).connect(master);
       oscillator.start(at);
-      oscillator.stop(at + ring + 0.05);
+      oscillator.stop(at + ring + TAIL);
     }
   };
 
@@ -117,19 +137,26 @@ export function createSound(newContext: () => AudioContext): Sound {
     resume: () => {
       if (context) wake();
     },
+    // A short, quiet G6.
     key: () => play([{ freq: pitch(19), gain: 0.25, ring: 0.03 }]),
+    // C6 then the E6 above it, both moved up by the climb.
     fast: (streak) => {
-      const step = SCALE[Math.min(streak, SCALE.length) - 1] ?? 0;
-      play([{ freq: pitch(12 + step) }, { freq: pitch(16 + step), at: 0.09 }]);
+      const climb = CLIMB[Math.min(streak, CLIMB.length) - 1] ?? 0;
+      play([
+        { freq: pitch(12 + climb) },
+        { freq: pitch(16 + climb), at: 0.09 },
+      ]);
     },
+    // G5.
     slow: () => play([{ freq: pitch(7), gain: 0.6 }]),
+    // E4 sliding down to C4.
     missed: () =>
       play([{ freq: pitch(-8), slideTo: pitch(-12), gain: 0.4, ring: 0.3 }]),
     end: (band) =>
       play(
-        END_RUNS[band].map((step, i) => ({
-          freq: pitch(step),
-          at: i * 0.11,
+        END_RUNS[band].map((semitones, i) => ({
+          freq: pitch(semitones),
+          at: i * RUN_GAP,
           ring: 0.5,
         })),
       ),

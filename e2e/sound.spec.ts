@@ -4,8 +4,8 @@ import { expect, test, type HeardNote } from './fixtures';
 import {
   advance,
   answerCard,
+  digitsFor,
   dontKnow,
-  factOnScreen,
   key,
   PACE_TIMES,
   setVisibility,
@@ -44,10 +44,9 @@ async function outcomeNotes(
   page: Page,
   outcome: Outcome,
 ): Promise<HeardNote[]> {
-  const { x, y } = await factOnScreen(page);
-  const digits = String(outcome === 'missed' ? x * y + 1 : x * y).length;
+  const ticks = (await digitsFor(page, outcome)).length + 1;
   const notes = await heardDuring(page, () => answerCard(page, outcome));
-  return notes.slice(digits + 1);
+  return notes.slice(ticks);
 }
 
 test('a fast answer sounds with the feedback, higher for each answer in a streak', async ({
@@ -110,4 +109,15 @@ test('sound comes back when the app returns from the background', async ({
 
   expect(await page.evaluate(() => window.recordedAudio.resumed)).toBe(1);
   expect(await heardDuring(page, () => key(page, '4').click())).toHaveLength(1);
+});
+
+test('Enter does not tick while it is disabled', async ({ page }) => {
+  await startDrill(page);
+  await expect(key(page, 'Enter')).toBeDisabled();
+
+  const notes = await heardDuring(page, () =>
+    key(page, 'Enter').dispatchEvent('pointerdown', { button: 0 }),
+  );
+
+  expect(notes).toEqual([]);
 });
