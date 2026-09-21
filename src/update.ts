@@ -11,7 +11,8 @@ export type Updater = {
   workerWaiting(): void;
   // A new worker has taken control of the page, so the page is due a reload.
   workerTookOver(): void;
-  // The app has put a screen up; onStart is true for the Start screen alone.
+  // The app has put a screen up; onStart is true for the Start screen, and
+  // for the screen shown for a newer document, which no drill can follow.
   screenShown(onStart: boolean): void;
 };
 

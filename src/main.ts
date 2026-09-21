@@ -17,6 +17,7 @@ import {
   addRecord,
   applyOutcome,
   factLevel,
+  freshProgress,
   keepAnswerTime,
   knownCount,
   knownShare,
@@ -25,6 +26,7 @@ import { random } from './random';
 import { renderCard } from './screens/card';
 import { renderEnd } from './screens/end';
 import { renderFeedback } from './screens/feedback';
+import { renderNeedsUpdate } from './screens/needs-update';
 import { renderParent } from './screens/parent';
 import { renderStart } from './screens/start';
 import { mountSound } from './sound';
@@ -54,7 +56,12 @@ navigator.storage?.persist?.().catch(() => {});
 mountSound();
 
 const store = browserStore();
-let progress = loadProgress(store);
+const loaded = loadProgress(store);
+
+// A document from a newer build is never written over (ADR 0004). The app
+// then shows the one screen that says so, which has no way on, so the fresh
+// document standing in here is never played on or saved.
+let progress = loaded === 'newer' ? freshProgress() : loaded;
 
 const app = document.querySelector('#app');
 
@@ -78,10 +85,11 @@ const updateSW = registerSW({
 });
 
 // Screens are swapped by in-app state: one screen at a time, no routing.
-// onStart marks the Start screen, the one screen an update may reload on.
-function show(screen: HTMLElement, { onStart = false } = {}): void {
+// reloadable marks the screens an update may reload on: the Start screen,
+// and the screen for a newer document, where the update is what is needed.
+function show(screen: HTMLElement, { reloadable = false } = {}): void {
   app?.replaceChildren(screen);
-  updater.screenShown(onStart);
+  updater.screenShown(reloadable);
 }
 
 const levelOf = (key: string) => factLevel(progress, key);
@@ -98,7 +106,7 @@ function showStart(): void {
       onPractise: beginDrill,
       onParents: showParent,
     }),
-    { onStart: true },
+    { reloadable: true },
   );
 }
 
@@ -186,4 +194,5 @@ function endDrill(drill: Drill): void {
   );
 }
 
-showStart();
+if (loaded === 'newer') show(renderNeedsUpdate(), { reloadable: true });
+else showStart();

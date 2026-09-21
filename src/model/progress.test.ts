@@ -11,15 +11,19 @@ import {
   parseProgress,
   type DrillRecord,
   type Progress,
+  type ProgressRead,
 } from './progress';
 
 const valid: Progress = {
-  version: 2,
+  version: 3,
   tables: [6, 12],
   facts: {
-    '6x7': { level: 3, fast: 12, slow: 3, missed: 2 },
-    '8x12': { level: 0, fast: 0, slow: 0, missed: 1 },
+    '6x7': { level: 3, best: 4, fast: 12, slow: 3, missed: 2 },
+    '8x12': { level: 0, best: 1, fast: 1, slow: 0, missed: 1 },
   },
+  // The 5 the facts have paid, and 22 in bonuses.
+  gems: 27,
+  character: 'cat',
   times: [2400, 0, 19999],
   records: [
     {
@@ -47,6 +51,18 @@ const valid: Progress = {
   ],
 };
 
+// What parseProgress makes of a parsed document.
+function read(document: unknown): ProgressRead {
+  return parseProgress(JSON.stringify(document));
+}
+
+// A version 3 document read as it is.
+function asRead(progress: unknown): unknown {
+  return { kind: 'read', progress, migrated: false };
+}
+
+const CORRUPT = { kind: 'corrupt' };
+
 // The valid document holding one drill record, with some of the record's
 // fields replaced.
 function withRecord(fields: Record<string, unknown>): unknown {
@@ -54,11 +70,13 @@ function withRecord(fields: Record<string, unknown>): unknown {
 }
 
 describe('freshProgress', () => {
-  it('starts at version 2 with no table on and nothing learnt', () => {
+  it('starts at version 3 with no table on, nothing learnt, no gems and the dragon', () => {
     expect(freshProgress()).toEqual({
-      version: 2,
+      version: 3,
       tables: [],
       facts: {},
+      gems: 0,
+      character: 'dragon',
       times: [],
       records: [],
     });
@@ -73,42 +91,60 @@ describe('freshProgress', () => {
 
 describe('parseProgress', () => {
   it('reads back a valid document', () => {
-    expect(parseProgress(JSON.stringify(valid))).toEqual(valid);
+    expect(read(valid)).toEqual(asRead(valid));
   });
 
   it('reads a document with no tables on', () => {
-    expect(parseProgress(JSON.stringify({ ...valid, tables: [] }))).toEqual({
-      ...valid,
-      tables: [],
-    });
+    expect(read({ ...valid, tables: [] })).toEqual(
+      asRead({ ...valid, tables: [] }),
+    );
   });
 
   it('reads a document with all eleven tables on', () => {
     const tables = [2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-    expect(parseProgress(JSON.stringify({ ...valid, tables }))).toEqual({
-      ...valid,
-      tables,
-    });
+    expect(read({ ...valid, tables })).toEqual(asRead({ ...valid, tables }));
   });
 
   it('reads facts from outside the 6s, 8s and 12s', () => {
     const facts = {
-      '1x2': { level: 1, fast: 1, slow: 0, missed: 0 },
-      '5x7': { level: 4, fast: 9, slow: 0, missed: 0 },
-      '11x11': { level: 2, fast: 2, slow: 1, missed: 1 },
+      '1x2': { level: 1, best: 1, fast: 1, slow: 0, missed: 0 },
+      '5x7': { level: 4, best: 4, fast: 9, slow: 0, missed: 0 },
+      '11x11': { level: 2, best: 2, fast: 2, slow: 1, missed: 1 },
     };
-    expect(parseProgress(JSON.stringify({ ...valid, facts }))).toEqual({
-      ...valid,
-      facts,
-    });
+    expect(read({ ...valid, facts })).toEqual(asRead({ ...valid, facts }));
   });
 
   it('reads a document holding 60 answer times', () => {
     const times = Array.from({ length: 60 }, (_, index) => 1000 + index);
-    expect(parseProgress(JSON.stringify({ ...valid, times }))).toEqual({
-      ...valid,
-      times,
+    expect(read({ ...valid, times })).toEqual(asRead({ ...valid, times }));
+  });
+});
+
+describe('parseProgress on gems, characters and highest levels', () => {
+  it('reads a fact whose highest level is above its level', () => {
+    const result = read(valid);
+    expect(result).toMatchObject({
+      progress: { facts: { '6x7': { level: 3, best: 4 } } },
     });
+  });
+
+  it('reads a gem total equal to the sum of the highest levels', () => {
+    const document = { ...valid, gems: 5, character: 'dragon' };
+    expect(read(document)).toEqual(asRead(document));
+  });
+
+  it('reads each character at the gem total that unlocks it', () => {
+    for (const [character, gems] of [
+      ['dragon', 5],
+      ['cat', 25],
+      ['robot', 60],
+      ['owl', 110],
+      ['unicorn', 170],
+      ['monster', 240],
+    ] as const) {
+      const document = { ...valid, gems, character };
+      expect(read(document)).toEqual(asRead(document));
+    }
   });
 });
 
@@ -116,20 +152,23 @@ describe('parseProgress on a corrupt document', () => {
   const corrupt: ReadonlyArray<readonly [string, unknown]> = [
     [
       'a level above 4',
-      { ...valid, facts: { '6x7': { level: 5, fast: 0, slow: 0, missed: 0 } } },
+      {
+        ...valid,
+        facts: { '6x7': { level: 5, best: 5, fast: 0, slow: 0, missed: 0 } },
+      },
     ],
     [
       'a level below 0',
       {
         ...valid,
-        facts: { '6x7': { level: -1, fast: 0, slow: 0, missed: 0 } },
+        facts: { '6x7': { level: -1, best: 0, fast: 0, slow: 0, missed: 0 } },
       },
     ],
     [
       'a fractional level',
       {
         ...valid,
-        facts: { '6x7': { level: 1.5, fast: 0, slow: 0, missed: 0 } },
+        facts: { '6x7': { level: 1.5, best: 2, fast: 0, slow: 0, missed: 0 } },
       },
     ],
     ['a 1s table', { ...valid, tables: [1, 6] }],
@@ -142,7 +181,7 @@ describe('parseProgress on a corrupt document', () => {
       'a negative fact count',
       {
         ...valid,
-        facts: { '6x7': { level: 1, fast: -1, slow: 0, missed: 0 } },
+        facts: { '6x7': { level: 1, best: 1, fast: -1, slow: 0, missed: 0 } },
       },
     ],
     ['a negative record count', withRecord({ missed: -1 })],
@@ -150,26 +189,32 @@ describe('parseProgress on a corrupt document', () => {
       'a fact count that is not a number',
       {
         ...valid,
-        facts: { '6x7': { level: 1, fast: '3', slow: 0, missed: 0 } },
+        facts: { '6x7': { level: 1, best: 1, fast: '3', slow: 0, missed: 0 } },
       },
     ],
     [
       'a missing fact count',
-      { ...valid, facts: { '6x7': { level: 1, fast: 3, slow: 0 } } },
+      { ...valid, facts: { '6x7': { level: 1, best: 1, fast: 3, slow: 0 } } },
     ],
     [
       'the fact 1 x 1',
-      { ...valid, facts: { '1x1': { level: 1, fast: 0, slow: 0, missed: 0 } } },
+      {
+        ...valid,
+        facts: { '1x1': { level: 1, best: 1, fast: 0, slow: 0, missed: 0 } },
+      },
     ],
     [
       'a fact keyed larger factor first',
-      { ...valid, facts: { '7x6': { level: 1, fast: 0, slow: 0, missed: 0 } } },
+      {
+        ...valid,
+        facts: { '7x6': { level: 1, best: 1, fast: 0, slow: 0, missed: 0 } },
+      },
     ],
     [
       'a fact with a factor of 13',
       {
         ...valid,
-        facts: { '6x13': { level: 1, fast: 0, slow: 0, missed: 0 } },
+        facts: { '6x13': { level: 1, best: 1, fast: 0, slow: 0, missed: 0 } },
       },
     ],
     ['a fact that is not an object', { ...valid, facts: { '6x7': 3 } }],
@@ -199,8 +244,46 @@ describe('parseProgress on a corrupt document', () => {
     ['a record whose median is fractional', withRecord({ median: 1900.5 })],
     ['a record whose median is a string', withRecord({ median: '2.4' })],
     ['a version 1 document', { ...valid, version: 1 }],
-    ['an unknown version', { ...valid, version: 3 }],
-    ['a version given as a string', { ...valid, version: '2' }],
+    ['a version 0 document', { ...valid, version: 0 }],
+    ['a version given as a string', { ...valid, version: '3' }],
+    ['a newer version given as a string', { ...valid, version: '4' }],
+    ['a fractional version', { ...valid, version: 3.5 }],
+    ['no gems field', { ...valid, gems: undefined }],
+    ['a negative gem total', { ...valid, gems: -1, character: 'dragon' }],
+    ['a fractional gem total', { ...valid, gems: 27.5 }],
+    ['a gem total that is a string', { ...valid, gems: '27' }],
+    [
+      'a gem total under the sum of the highest levels',
+      { ...valid, gems: 4, character: 'dragon' },
+    ],
+    ['no character field', { ...valid, character: undefined }],
+    ['a character that is not one of the six', { ...valid, character: 'fox' }],
+    ['a character the gem total has not unlocked', { ...valid, gems: 24 }],
+    [
+      'a fact with no highest level',
+      { ...valid, facts: { '6x7': { level: 1, fast: 1, slow: 0, missed: 0 } } },
+    ],
+    [
+      'a highest level under the level',
+      {
+        ...valid,
+        facts: { '6x7': { level: 3, best: 2, fast: 3, slow: 0, missed: 0 } },
+      },
+    ],
+    [
+      'a highest level above 4',
+      {
+        ...valid,
+        facts: { '6x7': { level: 3, best: 5, fast: 3, slow: 0, missed: 0 } },
+      },
+    ],
+    [
+      'a fractional highest level',
+      {
+        ...valid,
+        facts: { '6x7': { level: 3, best: 3.5, fast: 3, slow: 0, missed: 0 } },
+      },
+    ],
     ['no version', { ...valid, version: undefined }],
     ['no tables field', { ...valid, tables: undefined }],
     ['a tables field that is not an array', { ...valid, tables: 6 }],
@@ -213,16 +296,16 @@ describe('parseProgress on a corrupt document', () => {
 
   for (const [name, document] of corrupt) {
     it(`reads ${name} as corrupt`, () => {
-      expect(parseProgress(JSON.stringify(document))).toBeNull();
+      expect(read(document)).toEqual(CORRUPT);
     });
   }
 
   it('reads text that is not JSON as corrupt', () => {
-    expect(parseProgress('{not json')).toBeNull();
+    expect(parseProgress('{not json')).toEqual(CORRUPT);
   });
 
   it('reads an empty string as corrupt', () => {
-    expect(parseProgress('')).toBeNull();
+    expect(parseProgress('')).toEqual(CORRUPT);
   });
 });
 
@@ -231,14 +314,96 @@ describe('parseProgress on a document with extra fields', () => {
     const extra = {
       ...valid,
       note: 'ignored',
-      facts: { '6x7': { level: 3, fast: 12, slow: 3, missed: 2, seen: 17 } },
+      facts: {
+        '6x7': { level: 3, best: 3, fast: 12, slow: 3, missed: 2, seen: 17 },
+      },
       records: [{ ...valid.records[0], label: 'ignored' }],
     };
-    expect(parseProgress(JSON.stringify(extra))).toEqual({
-      ...valid,
-      facts: { '6x7': { level: 3, fast: 12, slow: 3, missed: 2 } },
-      records: [valid.records[0]],
+    expect(read(extra)).toEqual(
+      asRead({
+        ...valid,
+        facts: { '6x7': { level: 3, best: 3, fast: 12, slow: 3, missed: 2 } },
+        records: [valid.records[0]],
+      }),
+    );
+  });
+});
+
+// A document the version 2 build accepts.
+const VERSION_2 = {
+  version: 2,
+  tables: [6, 12],
+  facts: {
+    '6x7': { level: 3, fast: 12, slow: 3, missed: 2 },
+    '8x12': { level: 0, fast: 0, slow: 0, missed: 1 },
+    '3x5': { level: 4, fast: 6, slow: 0, missed: 0 },
+  },
+  times: valid.times,
+  records: valid.records,
+};
+
+describe('parseProgress on a version 2 document', () => {
+  it('migrates it: each highest level is the level now, the gems are their sum and the dragon is chosen', () => {
+    expect(read(VERSION_2)).toEqual({
+      kind: 'read',
+      migrated: true,
+      progress: {
+        version: 3,
+        tables: [6, 12],
+        facts: {
+          '6x7': { level: 3, best: 3, fast: 12, slow: 3, missed: 2 },
+          '8x12': { level: 0, best: 0, fast: 0, slow: 0, missed: 1 },
+          '3x5': { level: 4, best: 4, fast: 6, slow: 0, missed: 0 },
+        },
+        gems: 7,
+        character: 'dragon',
+        times: valid.times,
+        records: valid.records,
+      },
     });
+  });
+
+  it('migrates a fresh version 2 document to a fresh version 3 document', () => {
+    const fresh = { version: 2, tables: [], facts: {}, times: [], records: [] };
+    expect(read(fresh)).toEqual({
+      kind: 'read',
+      migrated: true,
+      progress: freshProgress(),
+    });
+  });
+
+  it('takes nothing from version 3 fields a version 2 document happens to hold', () => {
+    const document = {
+      ...VERSION_2,
+      gems: 300,
+      character: 'monster',
+      facts: { '6x7': { level: 1, best: 4, fast: 1, slow: 0, missed: 0 } },
+    };
+    expect(read(document)).toMatchObject({
+      migrated: true,
+      progress: {
+        gems: 1,
+        character: 'dragon',
+        facts: { '6x7': { level: 1, best: 1 } },
+      },
+    });
+  });
+
+  it('reads one that fails version 2 validation as corrupt', () => {
+    expect(read({ ...VERSION_2, times: undefined })).toEqual(CORRUPT);
+    expect(
+      read({
+        ...VERSION_2,
+        facts: { '6x7': { level: 5, fast: 0, slow: 0, missed: 0 } },
+      }),
+    ).toEqual(CORRUPT);
+  });
+});
+
+describe('parseProgress on a document from a newer build', () => {
+  it('reads a whole-number version above 3 as newer, whatever else it holds', () => {
+    expect(read({ ...valid, version: 4 })).toEqual({ kind: 'newer' });
+    expect(read({ version: 12, learner: {} })).toEqual({ kind: 'newer' });
   });
 });
 
@@ -271,10 +436,10 @@ describe('knownCount', () => {
     const progress: Progress = {
       ...valid,
       facts: {
-        '6x7': { level: 4, fast: 9, slow: 0, missed: 0 },
-        '3x5': { level: 4, fast: 6, slow: 1, missed: 0 },
-        '8x12': { level: 3, fast: 5, slow: 0, missed: 1 },
-        '2x2': { level: 0, fast: 0, slow: 0, missed: 1 },
+        '6x7': { level: 4, best: 4, fast: 9, slow: 0, missed: 0 },
+        '3x5': { level: 4, best: 4, fast: 6, slow: 1, missed: 0 },
+        '8x12': { level: 3, best: 3, fast: 5, slow: 0, missed: 1 },
+        '2x2': { level: 0, best: 0, fast: 0, slow: 0, missed: 1 },
       },
     };
     expect(knownCount(progress)).toBe(2);
@@ -282,7 +447,7 @@ describe('knownCount', () => {
 });
 
 describe('knownShare', () => {
-  const known = { level: 4, fast: 9, slow: 0, missed: 0 } as const;
+  const known = { level: 4, best: 4, fast: 9, slow: 0, missed: 0 } as const;
 
   it('is 0 for every table of a fresh document', () => {
     expect(knownShare(freshProgress(), 7)).toBe(0);
@@ -295,7 +460,7 @@ describe('knownShare', () => {
         '1x6': known,
         '6x7': known,
         '6x8': known,
-        '6x9': { level: 3, fast: 5, slow: 0, missed: 1 },
+        '6x9': { level: 3, best: 3, fast: 5, slow: 0, missed: 1 },
         '3x5': known,
       },
     };
@@ -323,6 +488,7 @@ describe('applyOutcome', () => {
     const after = applyOutcome(valid, '6x7', 'fast');
     expect(after.facts['6x7']).toEqual({
       level: 4,
+      best: 4,
       fast: 13,
       slow: 3,
       missed: 2,
@@ -333,6 +499,7 @@ describe('applyOutcome', () => {
     const after = applyOutcome(valid, '6x9', 'slow');
     expect(after.facts['6x9']).toEqual({
       level: 0,
+      best: 0,
       fast: 0,
       slow: 1,
       missed: 0,
@@ -344,6 +511,54 @@ describe('applyOutcome', () => {
     const after = applyOutcome(valid, '6x7', 'missed');
     expect(after.facts['8x12']).toEqual(valid.facts['8x12']);
     expect(valid).toEqual(before);
+  });
+});
+
+describe('applyOutcome paying gems', () => {
+  it('pays one gem when a fast outcome takes a fact to a level it has not reached before', () => {
+    const after = applyOutcome(valid, '6x9', 'fast');
+    expect(after.facts['6x9']).toMatchObject({ level: 1, best: 1 });
+    expect(after.gems).toBe(28);
+  });
+
+  it('pays nothing for a level the fact has reached before', () => {
+    // 6 x 7 is at level 3 and has been at level 4.
+    const after = applyOutcome(valid, '6x7', 'fast');
+    expect(after.facts['6x7']).toMatchObject({ level: 4, best: 4 });
+    expect(after.gems).toBe(27);
+  });
+
+  it('pays nothing for a slow or missed outcome and keeps the highest level', () => {
+    for (const outcome of ['slow', 'missed'] as const) {
+      const after = applyOutcome(valid, '6x7', outcome);
+      expect(after.facts['6x7']?.best).toBe(4);
+      expect(after.gems).toBe(27);
+    }
+  });
+
+  it('pays nothing for a fast outcome on a fact already at level 4', () => {
+    const atTop = applyOutcome(valid, '6x7', 'fast');
+    expect(applyOutcome(atTop, '6x7', 'fast').gems).toBe(27);
+  });
+
+  it('pays a fact 4 gems on its way from new to level 4 and no more after a miss', () => {
+    let progress = freshProgress();
+    for (let n = 0; n < 4; n++)
+      progress = applyOutcome(progress, '2x3', 'fast');
+    expect(progress.gems).toBe(4);
+    progress = applyOutcome(progress, '2x3', 'missed');
+    for (let n = 0; n < 4; n++)
+      progress = applyOutcome(progress, '2x3', 'fast');
+    expect(progress.gems).toBe(4);
+    expect(progress.facts['2x3']).toMatchObject({ level: 4, best: 4 });
+  });
+
+  it('keeps every document it makes valid', () => {
+    let progress = freshProgress();
+    for (const outcome of ['fast', 'fast', 'slow', 'fast', 'missed'] as const) {
+      progress = applyOutcome(progress, '7x8', outcome);
+      expect(read(progress)).toEqual(asRead(progress));
+    }
   });
 });
 

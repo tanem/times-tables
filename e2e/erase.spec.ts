@@ -1,5 +1,9 @@
 import type { Page } from '@playwright/test';
-import type { DrillRecord, Progress } from '../src/model/progress';
+import {
+  freshProgress,
+  type DrillRecord,
+  type Progress,
+} from '../src/model/progress';
 import { BACKUP_KEY, PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
 import {
@@ -25,9 +29,11 @@ const OLD_DRILL: DrillRecord = {
 // A stored document visibly not fresh: one table, a levelled fact, answer
 // times and a drill record, so an erase has something real to remove.
 const NOT_FRESH: Progress = {
-  version: 2,
+  version: 3,
   tables: [6],
-  facts: { '6x7': { level: 3, fast: 5, slow: 1, missed: 1 } },
+  facts: { '6x7': { level: 3, best: 4, fast: 5, slow: 1, missed: 1 } },
+  gems: 26,
+  character: 'cat',
   times: [2600, 2200],
   records: [OLD_DRILL],
 };
@@ -80,13 +86,7 @@ test('holding the erase control for three seconds erases progress and returns to
 
   await expect(startHeading(page)).toBeVisible();
   await expectNoTableOn(page);
-  expect(await storedProgress(page)).toEqual({
-    version: 2,
-    tables: [],
-    facts: {},
-    times: [],
-    records: [],
-  });
+  expect(await storedProgress(page)).toEqual(freshProgress());
   expect(await storedBackup(page)).toBeNull();
   expect(dialogShown).toBe(false);
   await expect(page.getByRole('status')).toHaveCount(0);
@@ -239,13 +239,7 @@ test.describe('touch', () => {
     });
 
     await expect(startHeading(page)).toBeVisible();
-    expect(await storedProgress(page)).toEqual({
-      version: 2,
-      tables: [],
-      facts: {},
-      times: [],
-      records: [],
-    });
+    expect(await storedProgress(page)).toEqual(freshProgress());
   });
 
   test('a touch that slides off the control and stays down past three seconds does not erase', async ({

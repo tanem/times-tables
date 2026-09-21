@@ -215,7 +215,8 @@ button {
 /* Every screen fills the viewport and keeps a thumb-width gutter. */
 .card,
 .feedback,
-.end {
+.end,
+.needs-update {
   min-height: 100dvh;
   padding: 16px;
   display: flex;
@@ -452,12 +453,14 @@ button {
 
 /* The end screen: the heading, the tally, the best streak and the two
    buttons, stacked down the middle. */
-.end {
+.end,
+.needs-update {
   justify-content: center;
   gap: clamp(16px, 3vmin, 32px);
 }
 
-.end .dragon-stage {
+.end .dragon-stage,
+.needs-update .dragon-stage {
   --size: clamp(96px, 24vmin, 220px);
 }
 
@@ -1258,4 +1261,16 @@ button {
   .piece {
     animation-duration: 0.5s !important;
   }
+}
+
+/* The screen for a document from a newer build: the dragon, a heading and
+   what to do. */
+.needs-update h1 {
+  font-size: clamp(1.75rem, 6vmin, 3.5rem);
+}
+
+.needs-update p {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(1.125rem, 2.5vmin, 1.5rem);
 }

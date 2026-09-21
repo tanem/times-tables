@@ -1,5 +1,5 @@
 import type { Page } from '@playwright/test';
-import type { Progress } from '../src/model/progress';
+import { freshProgress, type Progress } from '../src/model/progress';
 import { BACKUP_KEY, PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
 import {
@@ -190,13 +190,7 @@ test('a changed selection is still there after a reload', async ({ page }) => {
 });
 
 test('a selection made before the tables widened is kept', async ({ page }) => {
-  await seedProgress(page, {
-    version: 2,
-    tables: [6, 8, 12],
-    facts: {},
-    times: [],
-    records: [],
-  });
+  await seedProgress(page, { ...freshProgress(), tables: [6, 8, 12] });
   await expect(page.getByText('Which tables?')).toBeVisible();
   for (const name of ['6s', '8s', '12s']) {
     await expect(tile(page, name)).toHaveAttribute('aria-pressed', 'true');
@@ -222,7 +216,7 @@ async function meterShare(page: Page, name: string): Promise<number> {
 test('each tile carries a meter of the share of its facts at level 4, without numbers', async ({
   page,
 }) => {
-  const known = { level: 4, fast: 9, slow: 0, missed: 0 } as const;
+  const known = { level: 4, best: 4, fast: 9, slow: 0, missed: 0 } as const;
   const facts: Progress['facts'] = {
     // Six of the twelve facts of the 3s, one of them shared with the 9s.
     '1x3': known,
@@ -232,14 +226,14 @@ test('each tile carries a meter of the share of its facts at level 4, without nu
     '3x5': known,
     '3x9': known,
     // Not yet known, so it counts towards nothing.
-    '3x7': { level: 3, fast: 5, slow: 1, missed: 0 },
+    '3x7': { level: 3, best: 3, fast: 5, slow: 1, missed: 0 },
   };
+  // Six facts at level 4 and one at level 3 have paid 27.
   await seedProgress(page, {
-    version: 2,
+    ...freshProgress(),
     tables: [3],
     facts,
-    times: [],
-    records: [],
+    gems: 27,
   });
 
   expect(await meterShare(page, '3s')).toBeCloseTo(0.5, 2);
@@ -253,18 +247,25 @@ test('each tile carries a meter of the share of its facts at level 4, without nu
 });
 
 // A backup left by an earlier corrupt document, which the next one replaces.
-const EARLIER_BACKUP = '{"version":2,"tables":"old"}';
+const EARLIER_BACKUP = '{"version":3,"tables":"old"}';
 
 const corruptDocuments: ReadonlyArray<readonly [string, string]> = [
-  ['fails to parse', '{"version":2,'],
-  ['fails the schema', '{"version":2,"tables":[6],"facts":{},"times":[]}'],
+  ['fails to parse', '{"version":3,'],
   [
-    'holds a level out of range',
-    '{"version":2,"tables":[6],"facts":{"6x7":{"level":9,"fast":0,"slow":0,"missed":0}},"times":[],"records":[]}',
+    'fails the schema',
+    '{"version":3,"tables":[6],"facts":{},"gems":0,"character":"dragon","times":[]}',
   ],
   [
-    'has an unknown version',
-    '{"version":3,"tables":[6],"facts":{},"times":[],"records":[]}',
+    'holds a level out of range',
+    '{"version":3,"tables":[6],"facts":{"6x7":{"level":9,"best":9,"fast":0,"slow":0,"missed":0}},"gems":9,"character":"dragon","times":[],"records":[]}',
+  ],
+  [
+    'has a version that is not a whole number',
+    '{"version":"3","tables":[6],"facts":{},"gems":0,"character":"dragon","times":[],"records":[]}',
+  ],
+  [
+    'holds a character its gems have not unlocked',
+    '{"version":3,"tables":[6],"facts":{},"gems":24,"character":"cat","times":[],"records":[]}',
   ],
 ];
 

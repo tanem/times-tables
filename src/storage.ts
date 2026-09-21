@@ -13,17 +13,23 @@ export type ProgressStore = {
   removeItem: (key: string) => void;
 };
 
-// Reads the document once, at launch. An empty store starts fresh. A corrupt
-// document is copied to the backup key, overwriting any earlier backup, and
-// the app starts fresh. Either happens silently. A version 1 document is
-// corrupt like any other: there is no migration (ADR 0003).
-export function loadProgress(store: ProgressStore): Progress {
+// Reads the document once, at launch. An empty store starts fresh. A version
+// 2 document is migrated and written back as version 3 (ADR 0004). A corrupt
+// document, a version 1 document included, is copied to the backup key,
+// overwriting any earlier backup, and the app starts fresh. All of these
+// happen silently. A document from a newer build reads as 'newer' and
+// nothing is written: the caller must not save over it.
+export function loadProgress(store: ProgressStore): Progress | 'newer' {
   const text = store.getItem(PROGRESS_KEY);
   if (text === null) return freshProgress();
-  const progress = parseProgress(text);
-  if (progress) return progress;
-  write(store, BACKUP_KEY, text);
-  return freshProgress();
+  const read = parseProgress(text);
+  if (read.kind === 'newer') return 'newer';
+  if (read.kind === 'corrupt') {
+    write(store, BACKUP_KEY, text);
+    return freshProgress();
+  }
+  if (read.migrated) saveProgress(store, read.progress);
+  return read.progress;
 }
 
 // Writes the whole document back. A write that throws is ignored and the

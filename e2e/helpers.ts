@@ -2,7 +2,11 @@ import { expect, type Locator, type Page } from '@playwright/test';
 import { TABLES, type Table } from '../src/model/facts';
 import type { Outcome } from '../src/model/level';
 import { PACE_NEEDED } from '../src/model/pace';
-import type { DrillRecord, Progress } from '../src/model/progress';
+import {
+  freshProgress,
+  type DrillRecord,
+  type Progress,
+} from '../src/model/progress';
 import { PROGRESS_KEY } from '../src/storage';
 
 // The Progress heading, as the Parent view titles itself.
@@ -124,9 +128,8 @@ export async function openWithRecords(
   times: number[] = [],
 ): Promise<void> {
   const progress: Progress = {
-    version: 2,
+    ...freshProgress(),
     tables: [...SEEDED_TABLES],
-    facts: {},
     times,
     records,
   };
@@ -168,11 +171,9 @@ export async function startDrill(
   times: number[] = [],
 ): Promise<void> {
   await seedProgress(page, {
-    version: 2,
+    ...freshProgress(),
     tables: [...SEEDED_TABLES],
-    facts: {},
     times,
-    records: [],
   });
   await practiseButton(page).click();
 }

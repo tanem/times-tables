@@ -3,6 +3,7 @@ import { freshProgress, type Progress } from './model/progress';
 import {
   BACKUP_KEY,
   PROGRESS_KEY,
+  eraseProgress,
   loadProgress,
   saveProgress,
   type ProgressStore,
@@ -57,6 +58,30 @@ const VERSION_1 = JSON.stringify({
   ],
 });
 
+// A document the version 2 build accepts.
+const VERSION_2 = JSON.stringify({
+  version: 2,
+  tables: [3, 7],
+  facts: {
+    '3x7': { level: 4, fast: 5, slow: 0, missed: 0 },
+    '7x8': { level: 2, fast: 3, slow: 1, missed: 1 },
+  },
+  times: [1800, 2400],
+  records: [
+    {
+      at: '2026-01-03T09:00:00.000Z',
+      tables: [3, 7],
+      fast: 18,
+      slow: 1,
+      missed: 1,
+      quit: false,
+      pace: 2100,
+      known: 1,
+      median: 1900,
+    },
+  ],
+});
+
 describe('loadProgress', () => {
   it('starts fresh on an empty store and writes no backup', () => {
     const { store, items } = memoryStore();
@@ -64,12 +89,14 @@ describe('loadProgress', () => {
     expect(items.has(BACKUP_KEY)).toBe(false);
   });
 
-  it('reads back a version 2 document that was saved', () => {
+  it('reads back a version 3 document that was saved', () => {
     const { store, items } = memoryStore();
     const progress: Progress = {
-      version: 2,
+      version: 3,
       tables: [3, 7],
-      facts: { '3x7': { level: 4, fast: 5, slow: 0, missed: 0 } },
+      facts: { '3x7': { level: 4, best: 4, fast: 5, slow: 0, missed: 0 } },
+      gems: 26,
+      character: 'cat',
       times: [1800, 2400],
       records: [
         {
@@ -95,13 +122,66 @@ describe('loadProgress', () => {
       [PROGRESS_KEY]: VERSION_1,
       [BACKUP_KEY]: 'an earlier backup',
     });
-    expect(loadProgress(store)).toEqual({
-      version: 2,
-      tables: [],
-      facts: {},
-      times: [],
-      records: [],
-    });
+    expect(loadProgress(store)).toEqual(freshProgress());
     expect(items.get(BACKUP_KEY)).toBe(VERSION_1);
+  });
+
+  it('migrates a version 2 document, writes it back as version 3 and writes no backup', () => {
+    const { store, items } = memoryStore({ [PROGRESS_KEY]: VERSION_2 });
+    const loaded = loadProgress(store);
+    expect(loaded).toMatchObject({
+      version: 3,
+      tables: [3, 7],
+      facts: {
+        '3x7': { level: 4, best: 4, fast: 5, slow: 0, missed: 0 },
+        '7x8': { level: 2, best: 2, fast: 3, slow: 1, missed: 1 },
+      },
+      gems: 6,
+      character: 'dragon',
+      times: [1800, 2400],
+    });
+    expect(JSON.parse(items.get(PROGRESS_KEY) ?? '')).toEqual(loaded);
+    expect(items.has(BACKUP_KEY)).toBe(false);
+  });
+
+  it('carries on with the migrated document when writing it back throws', () => {
+    const { store } = memoryStore({ [PROGRESS_KEY]: VERSION_2 });
+    store.setItem = () => {
+      throw new Error('storage is full');
+    };
+    expect(loadProgress(store)).toMatchObject({ version: 3, gems: 6 });
+  });
+
+  it('starts fresh on a version 2 document that fails validation and backs it up', () => {
+    const text = JSON.stringify({ ...JSON.parse(VERSION_2), times: 'none' });
+    const { store, items } = memoryStore({ [PROGRESS_KEY]: text });
+    expect(loadProgress(store)).toEqual(freshProgress());
+    expect(items.get(BACKUP_KEY)).toBe(text);
+  });
+
+  it('reports a document from a newer build and leaves it and the backup untouched', () => {
+    const newer = JSON.stringify({ version: 4, learner: {} });
+    const { store, items } = memoryStore({
+      [PROGRESS_KEY]: newer,
+      [BACKUP_KEY]: 'an earlier backup',
+    });
+    expect(loadProgress(store)).toBe('newer');
+    expect(items.get(PROGRESS_KEY)).toBe(newer);
+    expect(items.get(BACKUP_KEY)).toBe('an earlier backup');
+  });
+});
+
+describe('eraseProgress', () => {
+  it('clears gems, the chosen character and the highest levels with everything else', () => {
+    const { store, items } = memoryStore({ [BACKUP_KEY]: 'an earlier backup' });
+    saveProgress(store, {
+      ...freshProgress(),
+      facts: { '3x7': { level: 0, best: 4, fast: 5, slow: 0, missed: 1 } },
+      gems: 26,
+      character: 'cat',
+    });
+    expect(eraseProgress(store)).toEqual(freshProgress());
+    expect(JSON.parse(items.get(PROGRESS_KEY) ?? '')).toEqual(freshProgress());
+    expect(items.has(BACKUP_KEY)).toBe(false);
   });
 });

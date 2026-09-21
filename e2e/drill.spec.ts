@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import type { Outcome } from '../src/model/level';
-import type { Progress } from '../src/model/progress';
+import { freshProgress, type Progress } from '../src/model/progress';
 import { expect, test } from './fixtures';
 import {
   advance,
@@ -569,6 +569,7 @@ test('the stored document holds the updated level and counts after each answer',
   await answerCard(page, 'fast');
   expect((await storedProgress(page)).facts[factKey]).toEqual({
     level: 1,
+    best: 1,
     fast: 1,
     slow: 0,
     missed: 0,
@@ -612,18 +613,18 @@ test('a drill record holds the number of facts at level 4 as the drill ended', a
 }) => {
   // The 6s, with two facts at level 4 from outside the 6s, which the drill
   // never presents, and every fact of the 6s one fast answer from level 4.
-  const atLevel4 = { level: 4, fast: 4, slow: 0, missed: 0 } as const;
-  const atLevel3 = { level: 3, fast: 3, slow: 0, missed: 0 } as const;
+  const atLevel4 = { level: 4, best: 4, fast: 4, slow: 0, missed: 0 } as const;
+  const atLevel3 = { level: 3, best: 3, fast: 3, slow: 0, missed: 0 } as const;
   const facts: Progress['facts'] = { '3x5': atLevel4, '4x9': atLevel4 };
   for (let n = 1; n <= 12; n++) {
     facts[`${Math.min(6, n)}x${Math.max(6, n)}`] = atLevel3;
   }
   const progress: Progress = {
-    version: 2,
+    ...freshProgress(),
     tables: [6],
     facts,
-    times: [],
-    records: [],
+    // Two facts at level 4 and twelve at level 3 have paid 44.
+    gems: 44,
   };
   await seedProgress(page, progress);
   await practiseButton(page).click();
