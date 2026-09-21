@@ -21,6 +21,16 @@ function cell(page: Page, label: string, level: number): Locator {
   });
 }
 
+// One of the trend's three figures, by its label.
+function figure(page: Page, label: string): Locator {
+  return page.getByRole('group', { name: label, exact: true });
+}
+
+// The chart of pace under the figures.
+function chart(page: Page): Locator {
+  return page.getByRole('img', { name: 'Pace drill by drill' });
+}
+
 // A legend swatch, by the level it stands for.
 function swatch(page: Page, level: number): Locator {
   return page.getByRole('img', { name: `Level ${level} colour`, exact: true });
@@ -69,21 +79,28 @@ test('a fresh document shows the empty states, an unlevelled grid and the legend
   await expect(page.getByText('No drills yet')).toBeVisible();
   await expect(page.getByText(/speed run/i)).toHaveCount(0);
 
+  // No trend yet: one line says when it shows, with no figures or chart.
+  await expect(
+    page.getByText('A trend shows here once there is practice to compare.'),
+  ).toBeVisible();
+  await expect(figure(page, 'Pace')).toHaveCount(0);
+  await expect(chart(page)).toHaveCount(0);
+
   await expect(page.getByRole('button', { name: /, level 0$/ })).toHaveCount(
     36,
   );
+  // The grid is a multiplication square: a cell shows its product.
+  await expect(cell(page, '6 × 7', 0)).toHaveText('42');
+  await expect(cell(page, '12 × 12', 0)).toHaveText('144');
   // A cell at level 0 is coloured the same as the legend's level-0 swatch.
   expect(await backgroundColor(cell(page, '6 × 1', 0))).toBe(
     await backgroundColor(swatch(page, 0)),
   );
 
-  await expect(
-    page.getByText('0, new or missed', { exact: true }),
-  ).toBeVisible();
-  await expect(page.getByText('1', { exact: true })).toBeVisible();
-  await expect(page.getByText('2', { exact: true })).toBeVisible();
-  await expect(page.getByText('3', { exact: true })).toBeVisible();
-  await expect(page.getByText('4, known', { exact: true })).toBeVisible();
+  const legend = page.getByRole('group', { name: 'Levels', exact: true });
+  for (const label of ['0, new or missed', '1', '2', '3', '4, known']) {
+    await expect(legend.getByText(label, { exact: true })).toBeVisible();
+  }
   const swatchColors: string[] = [];
   for (let level = 0; level <= 4; level++) {
     await expect(swatch(page, level)).toBeVisible();
@@ -225,6 +242,13 @@ test('a full drill and a quit drill show correctly on the Parent view', async ({
   await expect(target).toHaveAttribute('aria-pressed', 'false');
   await expect(other).toHaveAttribute('aria-pressed', 'true');
 
+  // The figures show from the first drill. The pace is the one second the
+  // drill opened on, and nothing is four weeks old.
+  await expect(figure(page, 'Pace')).toContainText('1.0 s');
+  await expect(figure(page, 'Pace')).toContainText('nothing to compare yet');
+  await expect(figure(page, 'Facts known')).toContainText('0 of 33');
+  await expect(figure(page, 'Fast answers')).toContainText('68%');
+
   // The week line: both drills count, the quit one too; facts answered
   // sums fast + slow + missed across them: 20 + 2, of which 14 + 1 fast.
   await expect(
@@ -240,6 +264,86 @@ test('a full drill and a quit drill show correctly on the Parent view', async ({
   await expect(rows.nth(1)).toHaveText(
     'Today · 6s, 8s and 12s · 14 fast · 4 slow · 2 missed',
   );
+});
+
+// A finished drill on the 6s with the figures the trend reads.
+function trendRecord(
+  at: string,
+  pace: number | null,
+  known: number,
+  fast: number,
+  tables: DrillRecord['tables'] = [6],
+): DrillRecord {
+  return {
+    at,
+    tables,
+    fast,
+    slow: 20 - fast,
+    missed: 0,
+    quit: false,
+    pace,
+    known,
+    median: pace,
+  };
+}
+
+test('weeks of practice show as figures against four weeks ago over a chart of pace', async ({
+  page,
+}) => {
+  await openWithRecords(
+    page,
+    [
+      // 30 days before the fixed date: inside the earlier week.
+      trendRecord('2025-12-02T09:00:00.000Z', 5200, 3, 10),
+      trendRecord('2025-12-10T09:00:00.000Z', 4800, 5, 12),
+      trendRecord('2025-12-18T09:00:00.000Z', 4100, 8, 14, [6, 8]),
+      trendRecord('2025-12-26T09:00:00.000Z', 3500, 10, 15, [6, 8]),
+      trendRecord('2026-01-01T09:00:00.000Z', 3000, 12, 17, [6, 8]),
+    ],
+    PACE_TIMES,
+  );
+  await openParent(page);
+
+  await expect(figure(page, 'Pace')).toContainText('3.0 s');
+  await expect(figure(page, 'Pace')).toContainText('5.2 s four weeks ago');
+  await expect(figure(page, 'Facts known')).toContainText('12 of 33');
+  await expect(figure(page, 'Facts known')).toContainText('3 four weeks ago');
+  await expect(figure(page, 'Fast answers')).toContainText('80%');
+  await expect(figure(page, 'Fast answers')).toContainText(
+    '50% four weeks ago',
+  );
+
+  await expect(chart(page)).toBeVisible();
+  await expect(page.getByText('8s added')).toBeVisible();
+  await expect(page.getByText('5 weeks ago', { exact: true })).toBeVisible();
+  await expect(page.getByText('highest 5.2 s')).toBeVisible();
+  await expect(page.getByText('Today', { exact: true })).toBeVisible();
+  await expect(
+    page.getByText(/^Pace is the usual time to answer/),
+  ).toBeVisible();
+  await expect(page.getByText(/No pace yet/)).toHaveCount(0);
+});
+
+test('early practice shows the figures with nothing to compare, and no chart', async ({
+  page,
+}) => {
+  await openWithRecords(
+    page,
+    [
+      trendRecord('2025-12-30T09:00:00.000Z', null, 0, 4),
+      trendRecord('2026-01-01T09:00:00.000Z', null, 0, 3),
+    ],
+    [2000, 2100, 1900, 2000, 2050, 1950, 2000],
+  );
+  await openParent(page);
+
+  await expect(
+    page.getByText('No pace yet: it starts after 20 right answers (7 so far).'),
+  ).toBeVisible();
+  for (const label of ['Pace', 'Facts known', 'Fast answers']) {
+    await expect(figure(page, label)).toContainText('nothing to compare yet');
+  }
+  await expect(chart(page)).toHaveCount(0);
 });
 
 test('older history reads with its date wording', async ({ page }) => {

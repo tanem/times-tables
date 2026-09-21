@@ -463,7 +463,7 @@ button {
 /* The Parent view: a scrolling document, not a fixed viewport, since its
    content is read rather than played. */
 .parent {
-  max-width: 640px;
+  max-width: 760px;
   margin: 0 auto;
   padding: 24px 16px 40px;
   display: flex;
@@ -497,7 +497,110 @@ button {
   font-size: 1rem;
 }
 
-/* One row per table, twelve cells across. The cells wrap to two lines of
+/* The trend: a line for the early states, then three figures, each now
+   over four weeks ago. */
+.parent .early {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+
+.parent .note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.figures {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 480px) {
+  .figures {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.figure {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 14px;
+  border: 2px solid var(--track);
+  border-radius: 16px;
+  background: white;
+}
+
+.figure-label {
+  color: var(--muted);
+  font-family: var(--font-heading);
+  font-weight: 600;
+}
+
+.figure-now {
+  font-family: var(--font-heading);
+  font-size: 2rem;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.figure-then {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* The line of pace. The svg stretches to the page width, so the strokes
+   keep their own width. The marks' labels sit over it, placed by the
+   screen. */
+.chart {
+  position: relative;
+}
+
+.chart svg {
+  display: block;
+  width: 100%;
+  height: 170px;
+}
+
+.chart path {
+  vector-effect: non-scaling-stroke;
+  fill: none;
+  stroke: var(--tile);
+  stroke-width: 2.5;
+  stroke-linejoin: round;
+}
+
+.chart line {
+  vector-effect: non-scaling-stroke;
+  stroke: var(--muted);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.chart-mark {
+  position: absolute;
+  padding-left: 4px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  white-space: nowrap;
+}
+
+.chart-mark-left {
+  padding: 0 4px 0 0;
+}
+
+.chart-axis {
+  display: flex;
+  justify-content: space-between;
+  margin-top: -12px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+/* The fact grid, a multiplication square: a header of multipliers, then one
+   row per table, twelve cells across. The cells wrap to two lines of
    six at phone widths; an iPad in either orientation keeps them on one
    line. */
 .grid-row {
@@ -507,7 +610,13 @@ button {
 }
 
 .grid-row + .grid-row {
-  margin-top: 8px;
+  margin-top: 4px;
+}
+
+.grid-head {
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-align: center;
 }
 
 .row-label {
@@ -533,17 +642,15 @@ button {
 }
 
 .cell {
-  aspect-ratio: 1;
+  aspect-ratio: 1.6;
   min-width: 0;
   border: 2px solid transparent;
   border-radius: 8px;
   color: var(--ink);
-  font-size: clamp(0.625rem, 1.8vmin, 0.75rem);
+  font-size: 0.8125rem;
   line-height: 1.05;
   font-variant-numeric: tabular-nums;
   padding: 2px;
-  white-space: normal;
-  overflow-wrap: anywhere;
 }
 
 .cell[aria-pressed='true'] {
