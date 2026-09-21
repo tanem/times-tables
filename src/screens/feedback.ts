@@ -38,15 +38,11 @@ export type FeedbackOptions = {
   // Consecutive fast outcomes, this one included.
   streak: number;
   onAdvance: () => void;
-  // Called when the learner owns up to a wrong answer. The caller gives it
-  // only where a correction is allowed: a got outcome in a drill.
-  onCorrect?: () => void;
 };
 
 // Builds the feedback screen: the fact with its answer, the dragon, a word,
 // and the streak from two fast answers in a row. It holds for a moment, and
-// a tap anywhere moves on at once. Given onCorrect, a small button
-// bottom-left lets the learner correct the answer to missed instead.
+// a tap anywhere moves on at once.
 export function renderFeedback(options: FeedbackOptions): HTMLElement {
   const { presentation, outcome } = options;
 
@@ -85,31 +81,26 @@ export function renderFeedback(options: FeedbackOptions): HTMLElement {
   hint.textContent = 'Tap to go on';
   screen.append(hint);
 
-  // The screen leaves once, by the hold, a tap or a correction.
+  // The screen leaves once, by the hold or by a tap.
   let left = false;
-  const leave = (act: () => void) => {
+  const advance = () => {
     if (left) return;
     left = true;
     cancel();
-    act();
+    options.onAdvance();
   };
-  const advance = () => leave(options.onAdvance);
   const cancel = schedule(advance, HOLD[outcome]);
-  screen.addEventListener('click', advance);
 
-  const { onCorrect } = options;
-  if (onCorrect) {
-    const correction = document.createElement('button');
-    correction.type = 'button';
-    correction.className = 'correction';
-    correction.textContent = 'Oops, I was wrong';
-    correction.addEventListener('click', (event) => {
-      // The tap on the button is not the tap anywhere that moves on.
-      event.stopPropagation();
-      leave(onCorrect);
-    });
-    screen.append(correction);
-  }
+  // Enter on the card acts on the press, so the release of that same touch
+  // lands a click here the moment the screen goes up. A tap moves on only
+  // once this screen has seen the press behind it.
+  let pressed = false;
+  screen.addEventListener('pointerdown', () => {
+    pressed = true;
+  });
+  screen.addEventListener('click', () => {
+    if (pressed) advance();
+  });
 
   return screen;
 }

@@ -1,5 +1,6 @@
 import { pool, type Fact, type Table } from './facts';
 import { weightOf, type Level, type Outcome } from './level';
+import { keepTime, medianTime } from './pace';
 import type { DrillRecord, OutcomeCounts } from './progress';
 
 // The number of presentations in a drill.
@@ -21,13 +22,6 @@ export type Presentation = {
   readonly y: number;
 };
 
-// The outcome given to the current presentation, with the best streak as it
-// was before it, so that a correction can restore it.
-export type LastOutcome = {
-  readonly outcome: Outcome;
-  readonly bestStreak: number;
-};
-
 // One sitting of practice. Every function here returns a new drill and
 // leaves the given one as it was.
 export type Drill = Readonly<OutcomeCounts> & {
@@ -35,10 +29,10 @@ export type Drill = Readonly<OutcomeCounts> & {
   readonly pool: readonly Fact[];
   // The presentation on the card, or the one just answered.
   readonly current: Presentation;
-  // The outcome given to the current presentation, or null while it is on
-  // the card.
-  readonly last: LastOutcome | null;
   readonly answered: number;
+  // The answer times of the drill's own right answers under the cap, oldest
+  // first, which the drill record's median comes from.
+  readonly times: readonly number[];
   // Consecutive fast outcomes, and the longest run of them in this drill.
   readonly streak: number;
   readonly bestStreak: number;
@@ -87,13 +81,13 @@ export function startDrill(
     tables: [...tables],
     pool: pool(tables),
     answered: 0,
+    times: [],
     fast: 0,
     slow: 0,
     missed: 0,
     streak: 0,
     bestStreak: 0,
     recent: [],
-    last: null,
     quit: false,
   };
   return { ...drill, current: draw(drill, levelOf, random) };
@@ -111,41 +105,23 @@ function draw(
 // The drill with the next fact drawn and on the card. The levels are read
 // afresh so that the answer just given weighs on the draw.
 export function present(drill: Drill, levelOf: LevelOf, random: Random): Drill {
-  return { ...drill, current: draw(drill, levelOf, random), last: null };
+  return { ...drill, current: draw(drill, levelOf, random) };
 }
 
-// The drill after the learner's outcome on the current presentation: the
-// tally, the streak and the recent facts move on. The presentation stays
-// current until the next one is drawn.
-export function answer(drill: Drill, outcome: Outcome): Drill {
+// The drill after the outcome on the current presentation, with the answer
+// time it took: the tally, the streak and the recent facts move on, and a
+// right answer's time under the cap is kept. The presentation stays current
+// until the next one is drawn.
+export function answer(drill: Drill, outcome: Outcome, time: number): Drill {
   const streak = outcome === 'fast' ? drill.streak + 1 : 0;
   return {
     ...drill,
     [outcome]: drill[outcome] + 1,
     answered: drill.answered + 1,
+    times: outcome === 'missed' ? drill.times : keepTime(drill.times, time),
     streak,
     bestStreak: Math.max(drill.bestStreak, streak),
     recent: [...drill.recent, drill.current.fact.key].slice(-RECENT_LENGTH),
-    last: { outcome, bestStreak: drill.bestStreak },
-  };
-}
-
-// The drill with the answer to the current presentation re-graded as
-// missed: the tally moves from the outcome given to missed, the best streak
-// goes back to what it was before the outcome, and the streak resets. Only a
-// got outcome can be corrected.
-export function correct(drill: Drill): Drill {
-  const { last } = drill;
-  if (!last || last.outcome === 'missed') {
-    throw new Error('there is no got outcome to correct');
-  }
-  return {
-    ...drill,
-    [last.outcome]: drill[last.outcome] - 1,
-    missed: drill.missed + 1,
-    streak: 0,
-    bestStreak: last.bestStreak,
-    last: { ...last, outcome: 'missed' },
   };
 }
 
@@ -172,13 +148,13 @@ export function bandOf(drill: Drill): Band {
 }
 
 // The entry the drill leaves in the progress, timestamped with when it
-// ended, with the number of facts at level 4 as it ended. The learner still
-// answers aloud, so there are no answer times: the pace and the median are
-// null until the keypad card and the pace rule land.
+// ended, with the learner's pace and the number of facts at level 4 as it
+// ended, and the median of the drill's own answer times.
 export function drillRecord(
   drill: Drill,
   at: string,
   known: number,
+  pace: number | null,
 ): DrillRecord {
   return {
     at,
@@ -187,8 +163,8 @@ export function drillRecord(
     slow: drill.slow,
     missed: drill.missed,
     quit: drill.quit,
-    pace: null,
+    pace,
     known,
-    median: null,
+    median: medianTime(drill.times),
   };
 }
