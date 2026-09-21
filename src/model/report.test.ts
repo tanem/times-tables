@@ -185,22 +185,34 @@ describe('recentRows', () => {
 });
 
 describe('gridRows', () => {
-  it('gives three rows of twelve cells labelled by table and multiplier', () => {
+  it('gives eleven rows of twelve cells labelled by table and multiplier', () => {
     const rows = gridRows(freshProgress());
-    expect(rows.map((row) => row.label)).toEqual(['6s', '8s', '12s']);
+    expect(rows.map((row) => row.label)).toEqual([
+      '2s',
+      '3s',
+      '4s',
+      '5s',
+      '6s',
+      '7s',
+      '8s',
+      '9s',
+      '10s',
+      '11s',
+      '12s',
+    ]);
     for (const row of rows) expect(row.cells).toHaveLength(12);
 
     const first = rows[0]?.cells[0];
     expect(first).toMatchObject({
-      label: '6 × 1',
+      label: '2 × 1',
       level: 0,
       counts: { fast: 0, slow: 0, missed: 0 },
-      ariaLabel: '6 × 1, level 0',
+      ariaLabel: '2 × 1, level 0',
     });
   });
 
   it('gives each cell the product it shows, under columns 1 to 12', () => {
-    const sixes = gridRows(freshProgress())[0];
+    const sixes = gridRows(freshProgress())[4];
     expect(sixes?.cells.map((cell) => cell.product)).toEqual([
       6, 12, 18, 24, 30, 36, 42, 48, 54, 60, 66, 72,
     ]);
@@ -211,8 +223,8 @@ describe('gridRows', () => {
     const progress = applyOutcome(freshProgress(), '6x8', 'fast');
     const rows = gridRows(progress);
 
-    const inSixes = rows[0]?.cells.find((cell) => cell.label === '6 × 8');
-    const inEights = rows[1]?.cells.find((cell) => cell.label === '8 × 6');
+    const inSixes = rows[4]?.cells.find((cell) => cell.label === '6 × 8');
+    const inEights = rows[6]?.cells.find((cell) => cell.label === '8 × 6');
     expect(inSixes?.level).toBe(1);
     expect(inEights?.level).toBe(1);
     expect(inSixes?.counts).toEqual(inEights?.counts);
@@ -227,7 +239,7 @@ describe('countsLine', () => {
       '6x7',
       'slow',
     );
-    const cell = gridRows(progress)[0]?.cells.find(
+    const cell = gridRows(progress)[4]?.cells.find(
       (candidate) => candidate.label === '6 × 7',
     );
     if (!cell) throw new Error('cell not found');
@@ -255,7 +267,7 @@ describe('trendFigures', () => {
     ];
     expect(trendFigures(records, dayOfStub, today)).toEqual([
       { label: 'Pace', now: '3.0 s', earlier: '5.2 s four weeks ago' },
-      { label: 'Facts known', now: '21 of 33', earlier: '9 four weeks ago' },
+      { label: 'Facts known', now: '21 of 77', earlier: '9 four weeks ago' },
       { label: 'Fast answers', now: '83%', earlier: '38% four weeks ago' },
     ]);
   });
@@ -268,7 +280,7 @@ describe('trendFigures', () => {
       { label: 'Pace', now: '–', earlier: 'nothing to compare yet' },
       {
         label: 'Facts known',
-        now: '0 of 33',
+        now: '0 of 77',
         earlier: 'nothing to compare yet',
       },
       { label: 'Fast answers', now: '75%', earlier: 'nothing to compare yet' },
@@ -281,7 +293,7 @@ describe('trendFigures', () => {
       { label: 'Pace', now: '4.0 s', earlier: 'nothing to compare yet' },
       {
         label: 'Facts known',
-        now: '12 of 33',
+        now: '12 of 77',
         earlier: 'nothing to compare yet',
       },
       { label: 'Fast answers', now: '–', earlier: 'nothing to compare yet' },

@@ -1,8 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
-import { OFFERED_TABLES } from '../src/model/facts';
 import type { Outcome } from '../src/model/level';
 import type { Progress } from '../src/model/progress';
-import { PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
 import {
   advance,
@@ -13,12 +11,16 @@ import {
   factOnScreen,
   key,
   PACE_TIMES,
+  practiseButton,
   pressEnter,
+  SEEDED_TABLES,
+  seedProgress,
   slot,
   SLOW_TIME,
   sparkles,
   startDrill,
   storedProgress,
+  tile,
   typeAnswer,
 } from './helpers';
 
@@ -56,7 +58,7 @@ test('Practise shows the first fact at once with the position, the keypad and an
   await startDrill(page);
 
   const { x, y } = await factOnScreen(page);
-  const tables: readonly number[] = OFFERED_TABLES;
+  const tables: readonly number[] = SEEDED_TABLES;
   expect(tables.includes(x) || tables.includes(y)).toBe(true);
   await expect(page.getByText('1 / 20')).toBeVisible();
   for (const digit of '0123456789') {
@@ -139,9 +141,8 @@ test('a right answer typed with a leading zero is still right', async ({
   // The 6s alone, whose products are all two digits at most, so the leading
   // zero fits inside the three digits the answer holds.
   await page.goto('./');
-  await page.getByRole('button', { name: '8s' }).click();
-  await page.getByRole('button', { name: '12s' }).click();
-  await page.getByRole('button', { name: 'Practise', exact: true }).click();
+  await tile(page, '6s').click();
+  await practiseButton(page).click();
 
   await typeAnswer(page, `0${await productOnScreen(page)}`);
   await pressEnter(page);
@@ -623,9 +624,8 @@ test('quitting from the card ends the drill with the answers given so far', asyn
 test('a drill record holds the number of facts at level 4 as the drill ended', async ({
   page,
 }) => {
-  // The 6s, with two facts at level 4 from outside the offered tables, which
-  // the drill never presents, and every fact of the 6s one fast answer from
-  // level 4.
+  // The 6s, with two facts at level 4 from outside the 6s, which the drill
+  // never presents, and every fact of the 6s one fast answer from level 4.
   const atLevel4 = { level: 4, fast: 4, slow: 0, missed: 0 } as const;
   const atLevel3 = { level: 3, fast: 3, slow: 0, missed: 0 } as const;
   const facts: Progress['facts'] = { '3x5': atLevel4, '4x9': atLevel4 };
@@ -639,11 +639,8 @@ test('a drill record holds the number of facts at level 4 as the drill ended', a
     times: [],
     records: [],
   };
-  await page.addInitScript(([key, text]) => localStorage.setItem(key, text), [
-    PROGRESS_KEY,
-    JSON.stringify(progress),
-  ] as const);
-  await startDrill(page);
+  await seedProgress(page, progress);
+  await practiseButton(page).click();
 
   await answerCard(page, 'fast');
   await advance(page);
@@ -658,8 +655,9 @@ test('Go again starts a new drill on the same tables and Home returns to the Sta
   page,
 }) => {
   await page.goto('./');
-  await page.getByRole('button', { name: '12s' }).click();
-  await page.getByRole('button', { name: 'Practise', exact: true }).click();
+  await tile(page, '6s').click();
+  await tile(page, '8s').click();
+  await practiseButton(page).click();
   await answerCard(page, 'fast');
   await advance(page);
   await page.getByRole('button', { name: 'Quit' }).click();
@@ -676,9 +674,8 @@ test('Go again starts a new drill on the same tables and Home returns to the Sta
 
   await page.getByRole('button', { name: 'Home' }).click();
   await expect(page.getByText('Which tables?')).toBeVisible();
-  await expect(
-    page.getByRole('button', { name: '12s', pressed: false }),
-  ).toBeVisible();
+  await expect(tile(page, '8s')).toHaveAttribute('aria-pressed', 'true');
+  await expect(tile(page, '12s')).toHaveAttribute('aria-pressed', 'false');
 });
 
 test('progress survives a reload', async ({ page }) => {
@@ -688,7 +685,7 @@ test('progress survives a reload', async ({ page }) => {
   await page.getByRole('button', { name: 'Quit' }).click();
 
   await page.reload();
-  await page.getByRole('button', { name: 'Practise', exact: true }).click();
+  await practiseButton(page).click();
   await answerCard(page, 'missed');
   await advance(page);
   await page.getByRole('button', { name: 'Quit' }).click();
@@ -707,7 +704,10 @@ test('a drill carries on after a write that throws', async ({ page }) => {
       throw new Error('storage is full');
     };
   });
-  await startDrill(page);
+  // Nothing can be seeded, so the table is switched on by hand.
+  await page.goto('./');
+  await tile(page, '6s').click();
+  await practiseButton(page).click();
   await answerCard(page, 'fast');
   await advance(page);
   await answerCard(page, 'fast');

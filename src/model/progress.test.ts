@@ -7,6 +7,7 @@ import {
   freshProgress,
   keepAnswerTime,
   knownCount,
+  knownShare,
   parseProgress,
   type DrillRecord,
   type Progress,
@@ -53,10 +54,10 @@ function withRecord(fields: Record<string, unknown>): unknown {
 }
 
 describe('freshProgress', () => {
-  it('starts at version 2 with the 6s, 8s and 12s on and nothing learnt', () => {
+  it('starts at version 2 with no table on and nothing learnt', () => {
     expect(freshProgress()).toEqual({
       version: 2,
-      tables: [6, 8, 12],
+      tables: [],
       facts: {},
       times: [],
       records: [],
@@ -65,8 +66,8 @@ describe('freshProgress', () => {
 
   it('gives each caller its own document', () => {
     const first = freshProgress();
-    first.tables.pop();
-    expect(freshProgress().tables).toEqual([6, 8, 12]);
+    first.tables.push(6);
+    expect(freshProgress().tables).toEqual([]);
   });
 });
 
@@ -277,6 +278,43 @@ describe('knownCount', () => {
       },
     };
     expect(knownCount(progress)).toBe(2);
+  });
+});
+
+describe('knownShare', () => {
+  const known = { level: 4, fast: 9, slow: 0, missed: 0 } as const;
+
+  it('is 0 for every table of a fresh document', () => {
+    expect(knownShare(freshProgress(), 7)).toBe(0);
+  });
+
+  it('is the share of the table’s twelve facts at level 4', () => {
+    const progress: Progress = {
+      ...freshProgress(),
+      facts: {
+        '1x6': known,
+        '6x7': known,
+        '6x8': known,
+        '6x9': { level: 3, fast: 5, slow: 0, missed: 1 },
+        '3x5': known,
+      },
+    };
+    expect(knownShare(progress, 6)).toBe(0.25);
+  });
+
+  it('counts a fact towards both of its tables', () => {
+    const progress: Progress = {
+      ...freshProgress(),
+      facts: { '6x8': known },
+    };
+    expect(knownShare(progress, 6)).toBe(1 / 12);
+    expect(knownShare(progress, 8)).toBe(1 / 12);
+  });
+
+  it('is 1 when the whole table is known', () => {
+    const facts: Progress['facts'] = {};
+    for (let n = 1; n <= 12; n++) facts[n <= 9 ? `${n}x9` : `9x${n}`] = known;
+    expect(knownShare({ ...freshProgress(), facts }, 9)).toBe(1);
   });
 });
 

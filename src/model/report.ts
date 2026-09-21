@@ -2,7 +2,7 @@
 // calendar days to the strings and data the screen shows. No clock, no DOM.
 
 import { DRILL_LENGTH } from './drill';
-import { factKey, OFFERED_TABLES, pool, TABLES, type Table } from './facts';
+import { factKey, FACTS, TABLES, tablesList, type Table } from './facts';
 import type { Level } from './level';
 import { PACE_NEEDED, paceOf, TIMES_KEPT } from './pace';
 import {
@@ -86,16 +86,6 @@ export function weekLine(
   return share === null ? line : `${line}, ${share}% fast`;
 }
 
-// Tables listed with "and" before the last: "6s", "6s and 8s", "6s, 8s and
-// 12s".
-function tablesList(tables: readonly Table[]): string {
-  const names = tables.map((table) => `${table}s`);
-  const last = names.at(-1) ?? '';
-  return names.length < 2
-    ? last
-    : `${names.slice(0, -1).join(', ')} and ${last}`;
-}
-
 // The tables a record covers: the list, or "All tables" for all eleven.
 function tablesWording(tables: readonly Table[]): string {
   return tables.length === TABLES.length ? 'All tables' : tablesList(tables);
@@ -134,9 +124,6 @@ function seconds(time: number): string {
 
 // How many days before today the trend's earlier week ends.
 const EARLIER_DAYS_AGO = 28;
-
-// The facts of the offered tables: what "facts known" is out of.
-const OFFERED_FACTS = pool(OFFERED_TABLES).length;
 
 // One figure of the trend: its value now, and its value four weeks ago or
 // that there is nothing to compare yet.
@@ -194,7 +181,7 @@ export function trendFigures(
     ),
     figure(
       'Facts known',
-      `${now.known} of ${OFFERED_FACTS}`,
+      `${now.known} of ${FACTS.length}`,
       earlier ? `${earlier.known}` : null,
     ),
     figure(
@@ -310,11 +297,11 @@ export type GridRow = {
   cells: GridCell[];
 };
 
-// The fact grid, a multiplication square: one row per offered table, one
-// cell per column. An overlap fact, such as 6 × 8, reads the same level from
-// whichever row shows it.
+// The fact grid, a multiplication square: one row per table, one cell per
+// column. An overlap fact, such as 6 × 8, reads the same level from whichever
+// row shows it.
 export function gridRows(progress: Progress): GridRow[] {
-  return OFFERED_TABLES.map((table) => ({
+  return TABLES.map((table) => ({
     label: `${table}s`,
     cells: GRID_COLUMNS.map((n) => {
       const key = factKey(table, n);

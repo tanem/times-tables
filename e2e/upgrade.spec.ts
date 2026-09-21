@@ -3,9 +3,11 @@ import { expect, test } from './fixtures';
 import {
   advance,
   answerCard,
-  expectAllTablesOn,
+  expectNoTableOn,
   openParent,
   storedProgress,
+  practiseButton,
+  tile,
 } from './helpers';
 
 // A document the version 1 build accepts: a table selection, some levels, a
@@ -50,7 +52,7 @@ test('a version 1 document is backed up, the app starts fresh and a drill saves 
   ] as const);
   await page.goto('./');
 
-  await expectAllTablesOn(page);
+  await expectNoTableOn(page);
   expect(
     await page.evaluate((key) => localStorage.getItem(key), BACKUP_KEY),
   ).toBe(VERSION_1);
@@ -59,18 +61,19 @@ test('a version 1 document is backed up, the app starts fresh and a drill saves 
   await expect(page.getByText('No practice this week')).toBeVisible();
   await expect(page.getByText('No drills yet')).toBeVisible();
   await expect(page.getByRole('button', { name: /, level 0$/ })).toHaveCount(
-    36,
+    132,
   );
   await page.getByRole('button', { name: 'Back' }).click();
 
-  await page.getByRole('button', { name: 'Practise', exact: true }).click();
+  await tile(page, '6s').click();
+  await practiseButton(page).click();
   await answerCard(page, 'fast');
   await advance(page);
   await page.getByRole('button', { name: 'Quit' }).click();
 
   const stored = await storedProgress(page);
   expect(stored.version).toBe(2);
-  expect(stored.tables).toEqual([6, 8, 12]);
+  expect(stored.tables).toEqual([6]);
   // The one right answer, given on the instant, starts the answer times.
   expect(stored.times).toEqual([0]);
   expect(Object.values(stored.facts)).toEqual([
@@ -79,7 +82,7 @@ test('a version 1 document is backed up, the app starts fresh and a drill saves 
   expect(stored.records).toEqual([
     {
       at: '2026-01-01T09:00:00.000Z',
-      tables: [6, 8, 12],
+      tables: [6],
       fast: 1,
       slow: 0,
       missed: 0,

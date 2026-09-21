@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import { TABLES, type Table } from '../src/model/facts';
 import type { Outcome } from '../src/model/level';
 import { PACE_NEEDED } from '../src/model/pace';
 import type { DrillRecord, Progress } from '../src/model/progress';
@@ -20,17 +21,34 @@ export async function openParent(page: Page): Promise<void> {
   await expect(progressHeading(page)).toBeVisible();
 }
 
-export const TILES = ['6s', '8s', '12s'];
+// The Start screen's table tiles, in order, and the All tile that follows
+// them.
+export const TILES = TABLES.map((table) => `${table}s`);
+export const ALL_TILES = [...TILES, 'All'];
 
-// All three offered table tiles pressed, as the Start screen shows with
-// nothing toggled off.
-export async function expectAllTablesOn(page: Page): Promise<void> {
-  for (const table of TILES) {
-    await expect(
-      page.getByRole('button', { name: table, pressed: true }),
-    ).toBeVisible();
-  }
+// A tile of the Start screen by its name, "7s" or "All".
+export function tile(page: Page, name: string): Locator {
+  return page.getByRole('button', { name, exact: true });
 }
+
+export function practiseButton(page: Page): Locator {
+  return page.getByRole('button', { name: 'Practise', exact: true });
+}
+
+// The Start screen as a first launch or a fresh start shows it: no tile
+// pressed, the heading asking for a tap and Practise disabled.
+export async function expectNoTableOn(page: Page): Promise<void> {
+  await expect(page.getByRole('button', { pressed: true })).toHaveCount(0);
+  await expect(page.getByText('Tap the tables you want')).toBeVisible();
+  await expect(practiseButton(page)).toBeDisabled();
+  await expect(practiseButton(page)).toHaveAccessibleDescription(
+    'Pick a table to practise',
+  );
+}
+
+// The tables the seeded documents switch on. Their pool is 33 facts, small
+// enough for a drill to come back to a fact.
+export const SEEDED_TABLES: readonly Table[] = [6, 8, 12];
 
 // The fact on the card or the feedback, read the way the learner reads it.
 export async function factOnScreen(
@@ -99,7 +117,7 @@ export async function pressEnter(page: Page): Promise<void> {
 }
 
 // Opens the app on a stored document holding the given records and answer
-// times, with the three offered tables on.
+// times, with the seeded tables on.
 export async function openWithRecords(
   page: Page,
   records: DrillRecord[],
@@ -107,7 +125,7 @@ export async function openWithRecords(
 ): Promise<void> {
   const progress: Progress = {
     version: 2,
-    tables: [6, 8, 12],
+    tables: [...SEEDED_TABLES],
     facts: {},
     times,
     records,
@@ -142,22 +160,21 @@ export async function seedProgress(
   await page.goto('./');
 }
 
-// Taps Practise and lands on the first card of a drill. Given answer times,
-// the drill opens on a document holding them, so that the learner has a
-// pace and an answer can be graded slow.
-export async function startDrill(page: Page, times?: number[]): Promise<void> {
-  if (times) {
-    await seedProgress(page, {
-      version: 2,
-      tables: [6, 8, 12],
-      facts: {},
-      times,
-      records: [],
-    });
-  } else {
-    await page.goto('./');
-  }
-  await page.getByRole('button', { name: 'Practise', exact: true }).click();
+// Opens the app with the seeded tables on, taps Practise and lands on the
+// first card of a drill. Given answer times, the document holds them too, so
+// that the learner has a pace and an answer can be graded slow.
+export async function startDrill(
+  page: Page,
+  times: number[] = [],
+): Promise<void> {
+  await seedProgress(page, {
+    version: 2,
+    tables: [...SEEDED_TABLES],
+    facts: {},
+    times,
+    records: [],
+  });
+  await practiseButton(page).click();
 }
 
 // Answers the card the given way and lands on the feedback: the product

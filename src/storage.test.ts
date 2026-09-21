@@ -97,7 +97,7 @@ describe('loadProgress', () => {
     });
     expect(loadProgress(store)).toEqual({
       version: 2,
-      tables: [6, 8, 12],
+      tables: [],
       facts: {},
       times: [],
       records: [],

@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-  FACTS,
-  OFFERED_TABLES,
-  TABLES,
-  factKey,
-  pool,
-  type Table,
-} from './facts';
+import { FACTS, TABLES, factKey, pool, tablesList, type Table } from './facts';
 
 describe('factKey', () => {
   it('puts the smaller factor first', () => {
@@ -22,9 +15,12 @@ describe('TABLES', () => {
   });
 });
 
-describe('OFFERED_TABLES', () => {
-  it('holds the 6s, 8s and 12s', () => {
-    expect(OFFERED_TABLES).toEqual([6, 8, 12]);
+describe('tablesList', () => {
+  it('lists tables with "and" before the last', () => {
+    expect(tablesList([])).toBe('');
+    expect(tablesList([6])).toBe('6s');
+    expect(tablesList([6, 8])).toBe('6s and 8s');
+    expect(tablesList([2, 5, 10])).toBe('2s, 5s and 10s');
   });
 });
 
