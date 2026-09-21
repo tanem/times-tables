@@ -16,7 +16,7 @@ The progress lives only inside the installed app on that iPad. Deleting the icon
 
 Node 24, as pinned in `.nvmrc`. Install the dependencies with `npm ci`, then install the browsers the end-to-end tests run in with `npx playwright install chromium webkit`. Installing also sets up a `commit-msg` hook that checks each commit message against Conventional Commits.
 
-`npm run check` runs every check, in order: the Prettier format check, `tsc --noEmit`, the Vitest tests, the production build, and the Playwright tests against the built app served by `vite preview`. `npm run dev` starts the Vite dev server.
+`npm run check` runs every check, in order: the Prettier format check, `tsc --noEmit`, the Vitest tests, the production build, and the Playwright tests against the built app served by `vite preview`. `npm run dev` starts the Vite dev server. CI runs the same checks on every pull request and on every push to `main`.
 
 `npm run icons` regenerates the icons in `public/` from `public/icon.svg`, following `pwa-assets.config.ts`. The generated files are committed, so the script is only run when the source drawing changes.
 
