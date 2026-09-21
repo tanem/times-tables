@@ -78,9 +78,10 @@ export async function openWithRecords(
   records: DrillRecord[],
 ): Promise<void> {
   const progress: Progress = {
-    version: 1,
+    version: 2,
     tables: [6, 8, 12],
     facts: {},
+    times: [],
     records,
   };
   await page.addInitScript(([key, text]) => localStorage.setItem(key, text), [

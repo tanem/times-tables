@@ -45,22 +45,13 @@ function drill(
   quit = false,
   tables: DrillRecord['tables'] = [6],
 ): DrillRecord {
-  return { mode: 'drill', at, tables, quit, time: null, ...outcomes };
-}
-
-// A speed run record, as a version 1 document from before the speed run was
-// removed can still hold.
-function speedRun(
-  at: string,
-  outcomes: OutcomeCounts,
-  time: number | null = 100000,
-): DrillRecord {
   return {
-    mode: 'speed',
     at,
-    tables: [6, 8, 12],
-    quit: time === null,
-    time,
+    tables,
+    quit,
+    pace: null,
+    known: 0,
+    median: null,
     ...outcomes,
   };
 }
@@ -100,19 +91,6 @@ describe('weekLine', () => {
     ];
     expect(weekLine(records, dayOfStub, today)).toBe(
       'This week: 2 drills, 20 facts answered, 60% fast',
-    );
-  });
-
-  it('leaves a stored speed run out of the week', () => {
-    const records = [
-      drill('2026-09-15', { fast: 10, slow: 2, missed: 1 }),
-      speedRun('2026-09-13', { fast: 30, slow: 2, missed: 1 }),
-    ];
-    expect(weekLine(records, dayOfStub, today)).toBe(
-      'This week: 1 drill, 13 facts answered, 77% fast',
-    );
-    expect(weekLine(records.slice(1), dayOfStub, today)).toBe(
-      'No practice this week',
     );
   });
 
@@ -164,20 +142,6 @@ describe('recentRows', () => {
     expect(recentRows(records, dayOfStub, today)).toEqual([
       'Today · 6s, 8s and 12s · 2 fast · 0 slow · 1 missed · stopped at 3 of 20',
     ]);
-  });
-
-  it('leaves stored speed runs out, and still shows ten drills', () => {
-    const records = [
-      ...Array.from({ length: 10 }, (_, i) =>
-        drill('2026-09-01', { fast: i, slow: 0, missed: 0 }),
-      ),
-      speedRun('2026-09-15', { fast: 33, slow: 0, missed: 2 }),
-      speedRun('2026-09-15', { fast: 10, slow: 0, missed: 3 }, null),
-    ];
-    const rows = recentRows(records, dayOfStub, today);
-    expect(rows).toHaveLength(10);
-    expect(rows[0]).toBe('Sun 1 Sep · 6s · 9 fast · 0 slow · 0 missed');
-    expect(rows[9]).toBe('Sun 1 Sep · 6s · 0 fast · 0 slow · 0 missed');
   });
 
   it('shows the ten most recent records newest first', () => {

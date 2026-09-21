@@ -172,16 +172,23 @@ export function bandOf(drill: Drill): Band {
 }
 
 // The entry the drill leaves in the progress, timestamped with when it
-// ended.
-export function drillRecord(drill: Drill, at: string): DrillRecord {
+// ended, with the number of facts at level 4 as it ended. The learner still
+// answers aloud, so there are no answer times: the pace and the median are
+// null until the keypad card and the pace rule land.
+export function drillRecord(
+  drill: Drill,
+  at: string,
+  known: number,
+): DrillRecord {
   return {
-    mode: 'drill',
     at,
     tables: [...drill.tables],
     fast: drill.fast,
     slow: drill.slow,
     missed: drill.missed,
     quit: drill.quit,
-    time: null,
+    pace: null,
+    known,
+    median: null,
   };
 }

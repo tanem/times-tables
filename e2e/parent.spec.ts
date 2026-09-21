@@ -1,5 +1,5 @@
 import type { Locator, Page } from '@playwright/test';
-import { TABLES } from '../src/model/facts';
+import { OFFERED_TABLES } from '../src/model/facts';
 import type { DrillRecord } from '../src/model/progress';
 import { expect, test } from './fixtures';
 import {
@@ -43,7 +43,7 @@ function labelOf(key: string): string {
   const [a, b] = key.split('x').map(Number);
   if (a === undefined || b === undefined)
     throw new Error(`bad fact key ${key}`);
-  return (TABLES as readonly number[]).includes(a)
+  return (OFFERED_TABLES as readonly number[]).includes(a)
     ? `${a} × ${b}`
     : `${b} × ${a}`;
 }
@@ -103,7 +103,7 @@ test('a fresh document shows the empty states, an unlevelled grid and the legend
   await expect(page.getByRole('img', { name: /dragon/i })).toHaveCount(0);
 
   // Each row groups its twelve cells under an accessible name.
-  for (const table of TABLES) {
+  for (const table of OFFERED_TABLES) {
     await expect(
       page
         .getByRole('group', { name: `${table}s`, exact: true })
@@ -240,52 +240,30 @@ test('a full drill and a quit drill show correctly on the Parent view', async ({
   );
 });
 
-test('older history reads with its date wording, and stored speed runs are left out', async ({
-  page,
-}) => {
-  // A version 1 document from before the speed run was removed can hold
-  // speed run records, completed and quit.
-  const completedRun: DrillRecord = {
-    mode: 'speed',
-    at: '2025-12-23T09:00:00.000Z',
-    tables: [...TABLES],
-    fast: 33,
-    slow: 0,
-    missed: 0,
-    quit: false,
-    time: 30000,
-  };
-  const quitRun: DrillRecord = {
-    mode: 'speed',
-    at: '2025-12-31T10:00:00.000Z',
-    tables: [...TABLES],
-    fast: 10,
-    slow: 0,
-    missed: 3,
-    quit: true,
-    time: null,
-  };
+test('older history reads with its date wording', async ({ page }) => {
   const older: DrillRecord = {
-    mode: 'drill',
     at: '2025-12-23T10:00:00.000Z',
     tables: [8],
     fast: 12,
     slow: 5,
     missed: 3,
     quit: false,
-    time: null,
+    pace: null,
+    known: 0,
+    median: null,
   };
   const yesterday: DrillRecord = {
-    mode: 'drill',
     at: '2025-12-31T09:00:00.000Z',
     tables: [6],
     fast: 5,
     slow: 0,
     missed: 0,
     quit: true,
-    time: null,
+    pace: null,
+    known: 0,
+    median: null,
   };
-  await openWithRecords(page, [completedRun, older, yesterday, quitRun]);
+  await openWithRecords(page, [older, yesterday]);
   await openParent(page);
 
   const rows = page.getByRole('listitem');
@@ -297,43 +275,36 @@ test('older history reads with its date wording, and stored speed runs are left 
     'Tue 23 Dec · 8s · 12 fast · 5 slow · 3 missed',
   );
 
-  // The week holds yesterday's drill alone: the quit run is not counted.
+  // The week holds yesterday's drill alone.
   await expect(
     page.getByText('This week: 1 drill, 5 facts answered, 100% fast'),
   ).toBeVisible();
-  await expect(page.getByText(/speed run|best/i)).toHaveCount(0);
-
-  // The speed run records stay in the stored document, through a later
-  // write too.
-  await page.getByRole('button', { name: 'Back' }).click();
-  await page.getByRole('button', { name: '12s' }).click();
-  const stored = await storedProgress(page);
-  expect(stored.tables).toEqual([6, 8]);
-  expect(stored.records).toEqual([completedRun, older, yesterday, quitRun]);
 });
 
 test('a record six days old counts in the week and one seven days old does not', async ({
   page,
 }) => {
   const sixDaysOld: DrillRecord = {
-    mode: 'drill',
     at: '2025-12-26T09:00:00.000Z',
     tables: [6],
     fast: 1,
     slow: 0,
     missed: 0,
     quit: false,
-    time: null,
+    pace: null,
+    known: 0,
+    median: null,
   };
   const sevenDaysOld: DrillRecord = {
-    mode: 'drill',
     at: '2025-12-25T09:00:00.000Z',
     tables: [6],
     fast: 1,
     slow: 0,
     missed: 0,
     quit: false,
-    time: null,
+    pace: null,
+    known: 0,
+    median: null,
   };
   await openWithRecords(page, [sevenDaysOld, sixDaysOld]);
   await openParent(page);
@@ -347,14 +318,15 @@ test('only the ten most recent records show, newest first', async ({
   page,
 }) => {
   const records: DrillRecord[] = Array.from({ length: 12 }, (_, i) => ({
-    mode: 'drill',
     at: `2025-12-${String(i + 1).padStart(2, '0')}T09:00:00.000Z`,
     tables: [6],
     fast: i + 1,
     slow: 0,
     missed: 0,
     quit: false,
-    time: null,
+    pace: null,
+    known: 0,
+    median: null,
   }));
   await openWithRecords(page, records);
   await openParent(page);

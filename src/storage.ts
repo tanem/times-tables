@@ -15,7 +15,8 @@ export type ProgressStore = {
 
 // Reads the document once, at launch. An empty store starts fresh. A corrupt
 // document is copied to the backup key, overwriting any earlier backup, and
-// the app starts fresh. Either happens silently.
+// the app starts fresh. Either happens silently. A version 1 document is
+// corrupt like any other: there is no migration (ADR 0003).
 export function loadProgress(store: ProgressStore): Progress {
   const text = store.getItem(PROGRESS_KEY);
   if (text === null) return freshProgress();
