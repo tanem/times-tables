@@ -15,6 +15,7 @@ import {
   pressEnter,
   SEEDED_TABLES,
   seedProgress,
+  setVisibility,
   slot,
   SLOW_TIME,
   sparkles,
@@ -35,21 +36,6 @@ async function heightOf(part: Locator): Promise<number> {
 async function productOnScreen(page: Page): Promise<string> {
   const { x, y } = await factOnScreen(page);
   return String(x * y);
-}
-
-// Makes the page report the given visibility and announces the change, as
-// the iPad does when the app goes to the background and comes back.
-async function setVisibility(
-  page: Page,
-  state: 'hidden' | 'visible',
-): Promise<void> {
-  await page.evaluate((value) => {
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      get: () => value,
-    });
-    document.dispatchEvent(new Event('visibilitychange'));
-  }, state);
 }
 
 test('Practise shows the first fact at once with the position, the keypad and an empty slot', async ({

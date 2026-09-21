@@ -1,4 +1,5 @@
 import { bandOf, type Band, type Drill } from '../model/drill';
+import { sound } from '../sound';
 import {
   renderConfetti,
   renderDragon,
@@ -27,14 +28,16 @@ export type EndOptions = {
 
 // Builds the end screen: the dragon, a heading, the tally of fast, slow and
 // missed, the best streak, then Home and Go again. The dragon celebrates by
-// the drill's band.
+// the drill's band, and a run up plays that is longer for a higher band.
 export function renderEnd(options: EndOptions): HTMLElement {
   const { drill } = options;
 
   const screen = document.createElement('main');
   screen.className = 'end';
 
-  const celebration = CELEBRATIONS[bandOf(drill)];
+  const band = bandOf(drill);
+  const celebration = CELEBRATIONS[band];
+  sound.end(band);
   const dragon = renderDragon(celebration);
 
   const heading = document.createElement('h1');

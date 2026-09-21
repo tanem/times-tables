@@ -177,17 +177,38 @@ export async function startDrill(
   await practiseButton(page).click();
 }
 
-// Answers the card the given way and lands on the feedback: the product
-// typed for a right answer, one past it for a wrong one. A slow answer needs
-// the pace startDrill seeds with PACE_TIMES.
-export async function answerCard(page: Page, outcome: Outcome): Promise<void> {
+// The digits that answer the fact on screen the given way: the product for a
+// right answer, one past it for a wrong one.
+export async function digitsFor(page: Page, outcome: Outcome): Promise<string> {
   const { x, y } = await factOnScreen(page);
+  return String(outcome === 'missed' ? x * y + 1 : x * y);
+}
+
+// Answers the card the given way and lands on the feedback. A slow answer
+// needs the pace startDrill seeds with PACE_TIMES.
+export async function answerCard(page: Page, outcome: Outcome): Promise<void> {
+  const digits = await digitsFor(page, outcome);
   if (outcome === 'slow') await page.clock.runFor(SLOW_TIME);
-  await typeAnswer(page, String(outcome === 'missed' ? x * y + 1 : x * y));
+  await typeAnswer(page, digits);
   await pressEnter(page);
 }
 
 // Taps the feedback to move on.
 export async function advance(page: Page): Promise<void> {
   await page.getByText('Tap to go on').click();
+}
+
+// Makes the page report the given visibility and announces the change, as
+// the iPad does when the app goes to the background and comes back.
+export async function setVisibility(
+  page: Page,
+  state: 'hidden' | 'visible',
+): Promise<void> {
+  await page.evaluate((value) => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => value,
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, state);
 }

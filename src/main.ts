@@ -27,6 +27,7 @@ import { renderEnd } from './screens/end';
 import { renderFeedback } from './screens/feedback';
 import { renderParent } from './screens/parent';
 import { renderStart } from './screens/start';
+import { mountSound } from './sound';
 import {
   eraseProgress,
   loadProgress,
@@ -49,6 +50,8 @@ function browserStore(): ProgressStore {
 // Asks the browser to keep the store, so that progress survives the
 // device's own storage cleanup. A refusal changes nothing.
 navigator.storage?.persist?.().catch(() => {});
+
+mountSound();
 
 const store = browserStore();
 let progress = loadProgress(store);
