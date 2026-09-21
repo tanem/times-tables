@@ -71,7 +71,8 @@ test('a version 1 document is backed up, the app starts fresh and a drill saves 
   const stored = await storedProgress(page);
   expect(stored.version).toBe(2);
   expect(stored.tables).toEqual([6, 8, 12]);
-  expect(stored.times).toEqual([]);
+  // The one right answer, given on the instant, starts the answer times.
+  expect(stored.times).toEqual([0]);
   expect(Object.values(stored.facts)).toEqual([
     { level: 1, fast: 1, slow: 0, missed: 0 },
   ]);
@@ -85,7 +86,7 @@ test('a version 1 document is backed up, the app starts fresh and a drill saves 
       quit: true,
       pace: null,
       known: 0,
-      median: null,
+      median: 0,
     },
   ]);
 });

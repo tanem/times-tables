@@ -3,7 +3,6 @@ import { registerSW } from 'virtual:pwa-register';
 import { buildInfo } from './build';
 import {
   answer,
-  correct,
   drillRecord,
   isComplete,
   present,
@@ -12,12 +11,13 @@ import {
   type Drill,
 } from './model/drill';
 import type { Table } from './model/facts';
-import type { GotOutcome, Outcome } from './model/level';
+import type { Outcome } from './model/level';
+import { gradeAnswer, paceOf } from './model/pace';
 import {
   addRecord,
   applyOutcome,
-  correctOutcome,
   factLevel,
+  keepAnswerTime,
   knownCount,
 } from './model/progress';
 import { random } from './random';
@@ -126,28 +126,23 @@ function showCard(drill: Drill, entering: boolean): void {
       presentation: drill.current,
       position: drill.answered + 1,
       entering,
-      onAnswer: (outcome) => recordAnswer(drill, outcome),
+      onAnswer: (right, time) => recordAnswer(drill, right, time),
       onQuit: () => endDrill(quitDrill(drill)),
     }),
   );
 }
 
-// The outcome moves the fact's level and counts at once and the whole
-// document is written back before the feedback shows. The next fact is
-// drawn when the feedback moves on, with the levels as they now are.
-function recordAnswer(before: Drill, outcome: Outcome): void {
+// The answer is graded against the pace as it stood before it. The outcome
+// moves the fact's level and counts at once, a right answer's time joins the
+// times pace is worked out from, and the whole document is written back
+// before the feedback shows. The next fact is drawn when the feedback moves
+// on, with the levels as they now are.
+function recordAnswer(before: Drill, right: boolean, time: number): void {
+  const outcome = gradeAnswer(right, time, paceOf(progress.times));
   progress = applyOutcome(progress, before.current.fact.key, outcome);
+  if (right) progress = keepAnswerTime(progress, time);
   saveProgress(store, progress);
-  showFeedback(answer(before, outcome), outcome);
-}
-
-// A correction re-grades the answer just given as missed, in the document
-// and the drill alike, and shows the missed feedback in place of the one
-// that was up.
-function correctAnswer(drill: Drill, outcome: GotOutcome): void {
-  progress = correctOutcome(progress, drill.current.fact.key, outcome);
-  saveProgress(store, progress);
-  showFeedback(correct(drill), 'missed');
+  showFeedback(answer(before, outcome, time), outcome);
 }
 
 function showFeedback(drill: Drill, outcome: Outcome): void {
@@ -161,8 +156,6 @@ function showFeedback(drill: Drill, outcome: Outcome): void {
         if (isComplete(drill)) endDrill(drill);
         else showCard(present(drill, levelOf, random), false);
       },
-      onCorrect:
-        outcome === 'missed' ? undefined : () => correctAnswer(drill, outcome),
     }),
   );
 }
@@ -171,7 +164,12 @@ function showFeedback(drill: Drill, outcome: Outcome): void {
 function endDrill(drill: Drill): void {
   progress = addRecord(
     progress,
-    drillRecord(drill, timestamp(), knownCount(progress)),
+    drillRecord(
+      drill,
+      timestamp(),
+      knownCount(progress),
+      paceOf(progress.times),
+    ),
   );
   saveProgress(store, progress);
   show(

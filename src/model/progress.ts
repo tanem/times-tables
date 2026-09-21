@@ -1,5 +1,6 @@
 import { FACTS, OFFERED_TABLES, TABLES, type Table } from './facts';
-import { grade, type GotOutcome, type Level, type Outcome } from './level';
+import { grade, type Level, type Outcome } from './level';
+import { keepTime, TIME_CAP, TIMES_KEPT } from './pace';
 
 // How many of each outcome, for one fact over its lifetime or for one drill.
 export type OutcomeCounts = {
@@ -41,13 +42,6 @@ export type Progress = {
   times: number[];
   records: DrillRecord[];
 };
-
-// An answer time stops counting at the cap, in milliseconds, so every stored
-// time is under it.
-const TIME_CAP = 20_000;
-
-// How many answer times the document keeps.
-const TIMES_KEPT = 60;
 
 // The document for a first launch or a fresh start: the offered tables on
 // and nothing learnt.
@@ -104,20 +98,10 @@ export function applyOutcome(
   }));
 }
 
-// The document after a got outcome on a fact is corrected to missed: that
-// outcome's count goes back down, the missed count goes up and the level
-// goes to 0. The outcome must be the one just applied to the fact.
-export function correctOutcome(
-  progress: Progress,
-  key: string,
-  outcome: GotOutcome,
-): Progress {
-  return updateFact(progress, key, (before) => ({
-    ...before,
-    level: grade(before.level, 'missed'),
-    [outcome]: before[outcome] - 1,
-    missed: before.missed + 1,
-  }));
+// The document with one more answer time kept towards pace (ADR 0002). Only
+// the times of right answers are ever passed.
+export function keepAnswerTime(progress: Progress, time: number): Progress {
+  return { ...progress, times: keepTime(progress.times, time) };
 }
 
 // The document with a record appended. The given document is left as it was.

@@ -156,10 +156,15 @@ button {
   text-align: center;
 }
 
-/* The card: the top bar, then the fact and the bar in the middle, then the
-   two answer buttons pinned to the bottom, in portrait and landscape. */
+/* The card: the top bar, then the fact with its slot and the keypad. Fast
+   repeated taps must not zoom the page, select the labels or call up iOS's
+   own menus. */
 .card {
   gap: clamp(8px, 2vmin, 24px);
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 .card.entering {
@@ -207,72 +212,113 @@ button {
 }
 
 .fact {
-  margin-top: auto;
-  font-size: clamp(4rem, 18vmin, 11rem);
+  margin: 0;
+  font-size: clamp(3.5rem, 15vmin, 9rem);
   line-height: 1;
   font-variant-numeric: tabular-nums;
 }
 
-.bar {
-  width: min(100%, 560px);
-  height: clamp(20px, 3vmin, 28px);
-  border-radius: 999px;
-  background: var(--track);
-  overflow: hidden;
-}
-
-.bar .fill {
-  height: 100%;
-  width: 100%;
-  border-radius: inherit;
-  background: var(--fast);
-}
-
-.bar.drained .fill {
-  background: var(--slow);
-}
-
-.card .caption {
-  margin-bottom: auto;
-  min-height: 1.4em;
-}
-
-.caption.warn {
-  color: var(--slow);
-}
-
-.answers {
+/* The fact and the keypad share the room left under the top bar: stacked in
+   portrait, side by side in landscape. */
+.card-body {
+  flex: 1;
   width: 100%;
   display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: space-evenly;
   gap: 16px;
 }
 
-.answer {
-  flex: 1;
-  min-height: clamp(88px, 14vmin, 120px);
-  border: none;
-  border-radius: 24px;
-  color: white;
+.question {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 2vmin, 20px);
+}
+
+/* The line the typed digits land on, under the fact. */
+.slot {
+  min-width: 3.2ch;
+  min-height: 1.25em;
+  padding: 0 0.2ch;
+  border-bottom: 6px solid var(--track);
+  color: var(--tile);
   font-family: var(--font-heading);
   font-weight: 600;
-  font-size: clamp(1.75rem, 5vmin, 2.5rem);
-  transition: background-color 0.3s ease;
+  font-size: clamp(3rem, 12vmin, 7rem);
+  line-height: 1.15;
+  font-variant-numeric: tabular-nums;
 }
 
-.answer.fast {
-  background: var(--fast);
+/* Giving up sits under the slot, away from the pad and small beside it. */
+.dont-know {
+  min-height: 56px;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 20px;
+  background: transparent;
+  color: var(--muted);
+  font-family: var(--font-heading);
+  font-size: clamp(1rem, 2.6vmin, 1.5rem);
 }
 
-.answer.slow {
-  background: var(--slow);
+/* A 3 × 4 phone pad: 1-2-3 on the top row, then delete, 0 and Enter along
+   the bottom. */
+.pad {
+  display: grid;
+  grid-template-columns: repeat(3, clamp(80px, 17vmin, 136px));
+  grid-auto-rows: clamp(64px, 12.5vmin, 100px);
+  gap: 12px;
 }
 
-.answer.missed {
-  background: var(--missed);
+.key {
+  border: none;
+  border-radius: 20px;
+  background: white;
+  box-shadow: 0 4px 0 var(--track);
+  color: var(--ink);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: clamp(1.75rem, 6vmin, 3.25rem);
+  font-variant-numeric: tabular-nums;
 }
 
-/* The feedback: the sum, the dragon and the word in the middle. After a got
-   outcome the dragon is the biggest thing on screen; a miss makes the sum
+.key:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 var(--track);
+  background: #eef1fb;
+}
+
+.key.delete {
+  color: var(--muted);
+}
+
+.key.enter {
+  background: var(--go);
+  /* A darker --go, so the key's edge reads against its own face. */
+  box-shadow: 0 4px 0 #237a34;
+  color: white;
+}
+
+.key.enter:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+@media (orientation: landscape) {
+  .card-body {
+    flex-direction: row;
+  }
+
+  .pad {
+    grid-auto-rows: clamp(64px, 15vmin, 120px);
+  }
+}
+
+/* The feedback: the sum, the dragon and the word in the middle. After a right
+   answer the dragon is the biggest thing on screen; a miss makes the sum
    the biggest and puts the dragon small in the top corner. */
 .feedback {
   position: relative;
@@ -332,20 +378,6 @@ button {
 
 .feedback .hint {
   margin: 0;
-  color: var(--muted);
-  font-size: clamp(0.875rem, 2vmin, 1.125rem);
-}
-
-/* The correction button sits small in the bottom-left corner, out of the
-   way of the tap anywhere that moves on. */
-.correction {
-  position: absolute;
-  left: 16px;
-  bottom: 16px;
-  padding: 12px 20px;
-  border: 2px solid var(--track);
-  border-radius: 999px;
-  background: white;
   color: var(--muted);
   font-size: clamp(0.875rem, 2vmin, 1.125rem);
 }

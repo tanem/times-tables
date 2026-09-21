@@ -7,6 +7,7 @@ import {
   answerCard,
   openParent,
   openWithRecords,
+  PACE_TIMES,
   startDrill,
   startHeading,
   storedProgress,
@@ -113,7 +114,8 @@ test('a fresh document shows the empty states, an unlevelled grid and the legend
 });
 
 // A whole drill: 14 fast, 4 slow and 2 missed, the same mix drill.spec.ts
-// drives. The 4 slow answers each cost 3 seconds of clock time.
+// drives. The 4 slow answers each cost 3 seconds of clock time, and they
+// need a pace to be graded against, so the drill opens on PACE_TIMES.
 const FULL_DRILL = [
   'fast',
   'fast',
@@ -139,7 +141,7 @@ const FULL_DRILL = [
 
 // Drives a full drill and returns to the Start screen.
 async function driveFullDrill(page: Page): Promise<void> {
-  await startDrill(page);
+  await startDrill(page, PACE_TIMES);
   for (const outcome of FULL_DRILL) {
     await answerCard(page, outcome);
     await advance(page);

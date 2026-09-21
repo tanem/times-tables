@@ -3,7 +3,6 @@ import {
   DRILL_LENGTH,
   answer,
   bandOf,
-  correct,
   drawFact,
   drillRecord,
   isComplete,
@@ -13,7 +12,7 @@ import {
   type Drill,
 } from './drill';
 import { FACTS, TABLES, pool, type Fact } from './facts';
-import type { Level } from './level';
+import type { Level, Outcome } from './level';
 
 // A random source that hands out the given values in turn, then fails.
 function sequence(values: number[]): () => number {
@@ -120,14 +119,15 @@ describe('startDrill', () => {
   });
 });
 
-// A drill of the 6s answered with the given outcomes, presenting the next
-// fact after each answer with a random source that always draws the first
-// eligible fact.
-function drillAfter(outcomes: Array<'fast' | 'slow' | 'missed'>): Drill {
+// A drill of the 6s answered with the given outcomes, each either bare or
+// with its answer time beside it, presenting the next fact after each answer
+// with a random source that always draws the first eligible fact.
+function drillAfter(outcomes: Array<Outcome | [Outcome, number]>): Drill {
   const random = () => 0;
   let drill = startDrill([6], levels({}), random);
-  for (const outcome of outcomes) {
-    drill = answer(drill, outcome);
+  for (const entry of outcomes) {
+    const [outcome, time] = Array.isArray(entry) ? entry : [entry, 0];
+    drill = answer(drill, outcome, time);
     if (!isComplete(drill)) drill = present(drill, levels({}), random);
   }
   return drill;
@@ -157,6 +157,24 @@ describe('answer', () => {
     expect(drill.bestStreak).toBe(3);
   });
 
+  it('keeps the answer times of the right answers alone', () => {
+    const drill = drillAfter([
+      ['fast', 1200],
+      ['missed', 800],
+      ['slow', 5000],
+    ]);
+    expect(drill.times).toEqual([1200, 5000]);
+  });
+
+  it('does not keep an answer time at the cap', () => {
+    expect(
+      drillAfter([
+        ['fast', 1200],
+        ['slow', 20000],
+      ]).times,
+    ).toEqual([1200]);
+  });
+
   it('completes the drill after the twentieth answer', () => {
     const drill = drillAfter(Array<'fast'>(DRILL_LENGTH).fill('fast'));
     expect(isComplete(drill)).toBe(true);
@@ -173,7 +191,7 @@ describe('present', () => {
       const key = drill.current.fact.key;
       expect(shown.slice(-3)).not.toContain(key);
       shown.push(key);
-      drill = answer(drill, 'fast');
+      drill = answer(drill, 'fast', 0);
       if (!isComplete(drill)) drill = present(drill, levels({}), random);
     }
     expect(shown).toHaveLength(DRILL_LENGTH);
@@ -183,7 +201,7 @@ describe('present', () => {
     const second = six(1);
     const random = () => 0;
     let drill = startDrill([6], levels({}), random);
-    drill = answer(drill, 'fast');
+    drill = answer(drill, 'fast', 0);
     // The levels handed in decide the weights. With the first fact just
     // shown, the second at level 0 and the other ten at level 4, the weights
     // are 8 and ten 1s, so 0.4 of the total lands on the second; were every
@@ -206,13 +224,13 @@ describe('quitDrill', () => {
 });
 
 describe('drillRecord', () => {
-  it('records a finished drill with its tally, the known count and no pace or median', () => {
+  it('records a finished drill with its tally, the known count and no pace', () => {
     const drill = drillAfter([
       ...Array<'fast'>(14).fill('fast'),
       ...Array<'slow'>(4).fill('slow'),
       ...Array<'missed'>(2).fill('missed'),
     ]);
-    expect(drillRecord(drill, '2026-01-01T09:05:00.000Z', 5)).toEqual({
+    expect(drillRecord(drill, '2026-01-01T09:05:00.000Z', 5, null)).toEqual({
       at: '2026-01-01T09:05:00.000Z',
       tables: [6],
       fast: 14,
@@ -221,18 +239,51 @@ describe('drillRecord', () => {
       quit: false,
       pace: null,
       known: 5,
-      median: null,
+      median: 0,
+    });
+  });
+
+  it('has no median when the drill had no right answer under the cap', () => {
+    const drill = drillAfter([
+      ['missed', 1500],
+      ['fast', 20000],
+    ]);
+    expect(
+      drillRecord(drill, '2026-01-01T09:05:00.000Z', 0, null),
+    ).toMatchObject({ median: null });
+  });
+
+  it('records the pace it is given and the median of the drill’s own answer times', () => {
+    const drill = drillAfter([
+      ['fast', 1000],
+      ['fast', 2000],
+      ['missed', 9000],
+      ['slow', 4200],
+    ]);
+    expect(drillRecord(drill, '2026-01-01T09:05:00.000Z', 5, 2600)).toEqual({
+      at: '2026-01-01T09:05:00.000Z',
+      tables: [6],
+      fast: 2,
+      slow: 1,
+      missed: 1,
+      quit: false,
+      pace: 2600,
+      known: 5,
+      median: 2000,
     });
   });
 
   it('records a quit drill with the answers given so far', () => {
     const drill = quitDrill(drillAfter(['fast', 'slow', 'slow']));
-    expect(drillRecord(drill, '2026-01-01T09:05:00.000Z', 3)).toMatchObject({
+    expect(
+      drillRecord(drill, '2026-01-01T09:05:00.000Z', 3, 2600),
+    ).toMatchObject({
       fast: 1,
       slow: 2,
       missed: 0,
       quit: true,
       known: 3,
+      pace: 2600,
     });
   });
 });
@@ -240,62 +291,6 @@ describe('drillRecord', () => {
 describe('the fact set', () => {
   it('is the source of the drill pool', () => {
     expect(startDrill([...TABLES], levels({}), () => 0).pool).toEqual(FACTS);
-  });
-});
-
-describe('correct', () => {
-  // A drill of the 6s with the given outcomes answered and moved on from,
-  // then one more answered and left on the feedback.
-  function answeredAfter(
-    outcomes: Array<'fast' | 'slow' | 'missed'>,
-    outcome: 'fast' | 'slow' | 'missed',
-  ): Drill {
-    return answer(drillAfter(outcomes), outcome);
-  }
-
-  it('re-grades a fast answer as missed and resets the streak', () => {
-    const drill = correct(answeredAfter(['fast', 'slow'], 'fast'));
-    expect(drill).toMatchObject({
-      fast: 1,
-      slow: 1,
-      missed: 1,
-      answered: 3,
-      streak: 0,
-    });
-  });
-
-  it('re-grades a slow answer as missed', () => {
-    const drill = correct(answeredAfter(['fast'], 'slow'));
-    expect(drill).toMatchObject({ fast: 1, slow: 0, missed: 1, answered: 2 });
-  });
-
-  it('restores the best streak from before the corrected answer', () => {
-    const third = answeredAfter(['fast', 'fast'], 'fast');
-    expect(third.bestStreak).toBe(3);
-    const drill = correct(third);
-    expect(drill.streak).toBe(0);
-    expect(drill.bestStreak).toBe(2);
-  });
-
-  it('keeps a best streak set earlier in the drill', () => {
-    const drill = correct(
-      answeredAfter(['fast', 'fast', 'fast', 'missed', 'fast'], 'fast'),
-    );
-    expect(drill.bestStreak).toBe(3);
-  });
-
-  it('cannot turn a missed answer into a got one', () => {
-    expect(() => correct(answeredAfter(['fast'], 'missed'))).toThrow();
-  });
-
-  it('cannot correct a presentation still on the card', () => {
-    expect(() => correct(drillAfter(['fast']))).toThrow();
-    expect(() => correct(correct(answeredAfter([], 'fast')))).toThrow();
-  });
-
-  it('leaves the corrected fact in the recent facts', () => {
-    const drill = correct(answeredAfter([], 'fast'));
-    expect(drill.recent).toEqual([drill.current.fact.key]);
   });
 });
 

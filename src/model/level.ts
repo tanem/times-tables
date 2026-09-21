@@ -1,23 +1,9 @@
 // How well the learner knows a fact, from 0 (new or just missed) to 4.
 export type Level = 0 | 1 | 2 | 3 | 4;
 
-// The learner's grade for one presentation.
+// The app's grade for one presentation. The rule that picks it is in
+// pace.ts.
 export type Outcome = 'fast' | 'slow' | 'missed';
-
-// An outcome where the learner got the answer: the ones a correction can
-// re-grade as missed.
-export type GotOutcome = Exclude<Outcome, 'missed'>;
-
-// How long the learner has to answer fast, in milliseconds.
-export const TIME_LIMIT = 3000;
-
-// The outcome of an answer timed from its presentation appearing: got inside
-// the limit is fast, got at the limit or after it is slow, and not got is
-// missed whatever the time.
-export function timedOutcome(got: boolean, elapsed: number): Outcome {
-  if (!got) return 'missed';
-  return elapsed < TIME_LIMIT ? 'fast' : 'slow';
-}
 
 // The draw weight of a fact at each level, so that low-level facts come round
 // more often and no fact is ever retired.
