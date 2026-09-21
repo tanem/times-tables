@@ -1,19 +1,18 @@
 import js from '@eslint/js';
+import { defineConfig, globalIgnores } from 'eslint/config';
 import eslintConfigPrettier from 'eslint-config-prettier';
 import tseslint from 'typescript-eslint';
 
-export default tseslint.config(
-  {
-    ignores: [
-      'dist',
-      'node_modules',
-      'test-results',
-      'playwright-report',
-      'blob-report',
-      'public',
-      '.claude',
-    ],
-  },
+export default defineConfig(
+  globalIgnores([
+    'dist',
+    'node_modules',
+    'test-results',
+    'playwright-report',
+    'blob-report',
+    'public',
+    '.claude',
+  ]),
   js.configs.recommended,
   tseslint.configs.recommendedTypeChecked,
   {
