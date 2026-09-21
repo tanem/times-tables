@@ -1,6 +1,7 @@
 {
   "name": "times-tables",
   "private": true,
+  "license": "MIT",
   "version": "0.1.0",
   "type": "module",
   "engines": {
@@ -16,7 +17,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
-    "check": "npm run format:check && npm run typecheck && npm run test && npm run build && npm run test:e2e"
+    "check": "npm run format:check && npm run typecheck && npm run test && npm run build && npm run test:e2e",
+    "prepare": "simple-git-hooks"
   },
   "devDependencies": {
     "@commitlint/cli": "^21.2.2",
@@ -25,6 +27,7 @@
     "@types/node": "^26.6.1",
     "@vite-pwa/assets-generator": "^1.0.4",
     "prettier": "^3.9.8",
+    "simple-git-hooks": "^2.14.0",
     "typescript": "^7.0.2",
     "vite": "^8.3.0",
     "vite-plugin-pwa": "^1.3.0",
@@ -34,5 +37,8 @@
   "dependencies": {
     "@fontsource/fredoka": "^5.3.0",
     "@fontsource/nunito": "^5.3.0"
+  },
+  "simple-git-hooks": {
+    "commit-msg": "npx --no -- commitlint --edit \"$1\""
   }
 }

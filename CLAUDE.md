@@ -4,6 +4,8 @@ The wayfinder map is the issue labelled `wayfinder:map`; its tickets are that is
 
 Public-facing content (README, issues, commits) carries no personal details about the learner, their school, or the competition.
 
+Run `npm run check` and confirm it passes before opening a pull request.
+
 ## Agent skills
 
 ### Issue tracker
