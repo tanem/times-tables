@@ -1,10 +1,10 @@
 // When a service worker update is taken up. It comes in two steps: the app
 // hands the waiting worker the go-ahead, and the page is loaded again once
 // that worker has taken control. Both wait for the Start screen, per
-// docs/adr/0001, because the reload would otherwise end a drill or a speed
-// run and lose its record. The takeover can also come of another tab of the
-// app applying the update, so the reload waits whether or not this app was
-// the one that applied.
+// docs/adr/0001, because the reload would otherwise end a drill and lose its
+// record. The takeover can also come of another tab of the app applying the
+// update, so the reload waits whether or not this app was the one that
+// applied.
 
 export type Updater = {
   // The plugin reports a worker waiting to take over.

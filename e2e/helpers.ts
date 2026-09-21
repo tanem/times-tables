@@ -108,31 +108,3 @@ export async function answerCard(page: Page, outcome: Outcome): Promise<void> {
 export async function advance(page: Page): Promise<void> {
   await page.getByText('Tap to go on').click();
 }
-
-// Taps Speed run and lands on the countdown.
-export async function startCountdown(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Speed run' }).click();
-  await expect(
-    page.getByRole('heading', { level: 1, name: '3' }),
-  ).toBeVisible();
-}
-
-// Taps Speed run and waits out the countdown, landing on the first fact.
-export async function startRun(page: Page): Promise<void> {
-  await startCountdown(page);
-  await page.clock.runFor(3000);
-  await expect(page.getByRole('timer', { name: 'Time' })).toBeVisible();
-}
-
-// Answers every fact remaining in a speed run with Got it, taking the
-// given time over each, until the run ends.
-export async function getEveryFact(
-  page: Page,
-  msPerFact: number,
-): Promise<void> {
-  const got = page.getByRole('button', { name: 'Got it' });
-  while (await got.isVisible()) {
-    await page.clock.runFor(msPerFact);
-    await got.click();
-  }
-}

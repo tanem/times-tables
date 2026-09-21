@@ -8,7 +8,6 @@ import {
 } from './progress';
 import type { Day } from '../time';
 import {
-  bestLine,
   countsLine,
   dateWording,
   gridRows,
@@ -49,6 +48,8 @@ function drill(
   return { mode: 'drill', at, tables, quit, time: null, ...outcomes };
 }
 
+// A speed run record, as a version 1 document from before the speed run was
+// removed can still hold.
 function speedRun(
   at: string,
   outcomes: OutcomeCounts,
@@ -92,14 +93,26 @@ describe('weekLine', () => {
     expect(weekLine([], dayOfStub, today)).toBe('No practice this week');
   });
 
-  it('counts a drill, a quit drill and a speed run alike, and sums the facts answered', () => {
+  it('counts a drill and a quit drill alike, and sums the facts answered', () => {
     const records = [
       drill('2026-09-15', { fast: 10, slow: 2, missed: 1 }),
       drill('2026-09-14', { fast: 2, slow: 0, missed: 5 }, true),
+    ];
+    expect(weekLine(records, dayOfStub, today)).toBe(
+      'This week: 2 drills, 20 facts answered, 60% fast',
+    );
+  });
+
+  it('leaves a stored speed run out of the week', () => {
+    const records = [
+      drill('2026-09-15', { fast: 10, slow: 2, missed: 1 }),
       speedRun('2026-09-13', { fast: 30, slow: 2, missed: 1 }),
     ];
     expect(weekLine(records, dayOfStub, today)).toBe(
-      'This week: 3 drills, 53 facts answered, 79% fast',
+      'This week: 1 drill, 13 facts answered, 77% fast',
+    );
+    expect(weekLine(records.slice(1), dayOfStub, today)).toBe(
+      'No practice this week',
     );
   });
 
@@ -130,47 +143,6 @@ describe('weekLine', () => {
   });
 });
 
-describe('bestLine', () => {
-  const withBest = (at: string): Progress => ({
-    ...freshProgress(),
-    records: [speedRun(at, { fast: 33, slow: 0, missed: 0 })],
-  });
-
-  it('reads no completed speed run as none', () => {
-    expect(bestLine(freshProgress(), dayOfStub, today)).toBe(
-      'No completed speed run yet',
-    );
-  });
-
-  it('gives the best time with a dated wording', () => {
-    expect(bestLine(withBest('2026-09-08'), dayOfStub, today)).toBe(
-      'Best 1:40.0, set Sun 8 Sep',
-    );
-  });
-
-  it('lower-cases today and yesterday in the dated wording', () => {
-    expect(bestLine(withBest('2026-09-15'), dayOfStub, today)).toBe(
-      'Best 1:40.0, set today',
-    );
-    expect(bestLine(withBest('2026-09-14'), dayOfStub, today)).toBe(
-      'Best 1:40.0, set yesterday',
-    );
-  });
-
-  it('gives the older, faster run over a newer, slower one', () => {
-    const progress: Progress = {
-      ...freshProgress(),
-      records: [
-        speedRun('2026-09-08', { fast: 33, slow: 0, missed: 0 }, 100000),
-        speedRun('2026-09-14', { fast: 33, slow: 0, missed: 0 }, 150000),
-      ],
-    };
-    expect(bestLine(progress, dayOfStub, today)).toBe(
-      'Best 1:40.0, set Sun 8 Sep',
-    );
-  });
-});
-
 describe('recentRows', () => {
   it('reads no records as no rows', () => {
     expect(recentRows([], dayOfStub, today)).toEqual([]);
@@ -194,20 +166,18 @@ describe('recentRows', () => {
     ]);
   });
 
-  it('shows a completed speed run with its time and miss count', () => {
-    const records = [speedRun('2026-09-15', { fast: 33, slow: 0, missed: 2 })];
-    expect(recentRows(records, dayOfStub, today)).toEqual([
-      'Today · Speed run · 1:40.0 · 2 missed',
-    ]);
-  });
-
-  it('shows a quit speed run as stopped, with no time', () => {
+  it('leaves stored speed runs out, and still shows ten drills', () => {
     const records = [
+      ...Array.from({ length: 10 }, (_, i) =>
+        drill('2026-09-01', { fast: i, slow: 0, missed: 0 }),
+      ),
+      speedRun('2026-09-15', { fast: 33, slow: 0, missed: 2 }),
       speedRun('2026-09-15', { fast: 10, slow: 0, missed: 3 }, null),
     ];
-    expect(recentRows(records, dayOfStub, today)).toEqual([
-      'Today · Speed run · stopped · 3 missed',
-    ]);
+    const rows = recentRows(records, dayOfStub, today);
+    expect(rows).toHaveLength(10);
+    expect(rows[0]).toBe('Sun 1 Sep · 6s · 9 fast · 0 slow · 0 missed');
+    expect(rows[9]).toBe('Sun 1 Sep · 6s · 0 fast · 0 slow · 0 missed');
   });
 
   it('shows the ten most recent records newest first', () => {

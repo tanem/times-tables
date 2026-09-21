@@ -7,12 +7,10 @@ import type { Level } from './level';
 import {
   factCounts,
   factLevel,
-  personalBest,
   type DrillRecord,
   type OutcomeCounts,
   type Progress,
 } from './progress';
-import { formatTime } from './speedrun';
 import type { Day } from '../time';
 
 // Reads the local calendar day a stored timestamp falls on.
@@ -61,16 +59,24 @@ function inWeek(day: Day, today: Day): boolean {
   return diff >= 0 && diff <= 6;
 }
 
-// This calendar week's practice: how many drills (a quit drill and a speed
-// run both count as a drill), how many facts were answered across them, and
-// what share of those were fast. "No practice this week" when there are
-// none.
+// The drills among the records. A version 1 document can still hold speed
+// run records from before the speed run was removed; they stay stored and
+// nothing reads them.
+function drillsOf(records: readonly DrillRecord[]): DrillRecord[] {
+  return records.filter((record) => record.mode === 'drill');
+}
+
+// This calendar week's practice: how many drills (a quit drill counts as a
+// drill), how many facts were answered across them, and what share of those
+// were fast. "No practice this week" when there are none.
 export function weekLine(
   records: readonly DrillRecord[],
   dayOf: DayOf,
   today: Day,
 ): string {
-  const week = records.filter((record) => inWeek(dayOf(record.at), today));
+  const week = drillsOf(records).filter((record) =>
+    inWeek(dayOf(record.at), today),
+  );
   if (week.length === 0) return 'No practice this week';
 
   const totalAnswered = week.reduce((sum, record) => sum + answered(record), 0);
@@ -80,23 +86,6 @@ export function weekLine(
   if (totalAnswered === 0) return line;
   const share = Math.round((fast / totalAnswered) * 100);
   return `${line}, ${share}% fast`;
-}
-
-// Today and yesterday read lower case inside a sentence, such as "set
-// today"; any other day keeps its capital, such as "set Tue 15 Sep".
-function lowerCased(wording: string): string {
-  return wording === 'Today' || wording === 'Yesterday'
-    ? wording.toLowerCase()
-    : wording;
-}
-
-// The personal best with the day it was set, or "No completed speed run
-// yet" before any.
-export function bestLine(progress: Progress, dayOf: DayOf, today: Day): string {
-  const best = personalBest(progress);
-  if (!best) return 'No completed speed run yet';
-  const wording = lowerCased(dateWording(dayOf(best.at), today));
-  return `Best ${formatTime(best.time)}, set ${wording}`;
 }
 
 // The tables a record covers, listed with "and" before the last: "6s", "6s
@@ -123,34 +112,16 @@ function drillRow(record: DrillRecord, day: Day, today: Day): string {
   return parts.join(' · ');
 }
 
-// A speed run's row: its date, "Speed run", its time or "stopped" when
-// quit, and its miss count.
-function speedRunRow(record: DrillRecord, day: Day, today: Day): string {
-  const time = record.time === null ? 'stopped' : formatTime(record.time);
-  return [
-    dateWording(day, today),
-    'Speed run',
-    time,
-    `${record.missed} missed`,
-  ].join(' · ');
-}
-
-// The ten most recent drills and speed runs, newest first, each as one
-// visible row.
+// The ten most recent drills, newest first, each as one visible row.
 export function recentRows(
   records: readonly DrillRecord[],
   dayOf: DayOf,
   today: Day,
 ): string[] {
-  return records
+  return drillsOf(records)
     .slice(-10)
     .reverse()
-    .map((record) => {
-      const day = dayOf(record.at);
-      return record.mode === 'speed'
-        ? speedRunRow(record, day, today)
-        : drillRow(record, day, today);
-    });
+    .map((record) => drillRow(record, dayOf(record.at), today));
 }
 
 // One cell of the fact grid: a multiplier of a table, shown as the fact
