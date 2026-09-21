@@ -50,8 +50,9 @@ export function answerTime(elapsed: number, backgrounded: boolean): number {
 
 // The outcome of one presentation, graded against the pace as it stood
 // before the answer: a wrong answer is missed whatever its answer time, a
-// right answer is slow when it is over the margin and past the floor, and
-// every other right answer, a right answer with no pace included, is fast.
+// right answer is slow when it is over the margin and at or past the floor,
+// and every other right answer, a right answer with no pace included, is
+// fast.
 export function gradeAnswer(
   right: boolean,
   time: number,

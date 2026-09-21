@@ -57,7 +57,7 @@ export function renderFeedback(options: FeedbackOptions): HTMLElement {
   word.className = 'word';
   word.textContent = feedbackWord(outcome, options.nth);
 
-  // After a got outcome the dragon stands between the sum and the word,
+  // After a right answer the dragon stands between the sum and the word,
   // the biggest thing on screen. After a miss the styles put it small in the
   // top corner and the sum is the biggest thing.
   const dragon = renderDragon({

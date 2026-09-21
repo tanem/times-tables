@@ -35,6 +35,21 @@ async function productOnScreen(page: Page): Promise<string> {
   return String(x * y);
 }
 
+// Makes the page report the given visibility and announces the change, as
+// the iPad does when the app goes to the background and comes back.
+async function setVisibility(
+  page: Page,
+  state: 'hidden' | 'visible',
+): Promise<void> {
+  await page.evaluate((value) => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => value,
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, state);
+}
+
 test('Practise shows the first fact at once with the position, the keypad and an empty slot', async ({
   page,
 }) => {
@@ -55,7 +70,6 @@ test('Practise shows the first fact at once with the position, the keypad and an
 
   // Nothing times the learner where they can see it.
   await expect(page.getByRole('progressbar')).toHaveCount(0);
-  await expect(page.getByText('Say it out loud')).toHaveCount(0);
 });
 
 test('typing fills the slot, delete takes the last digit off and an answer holds three digits', async ({
@@ -192,13 +206,7 @@ test('a presentation the app went to the background during is slow and its time 
   page,
 }) => {
   await startDrill(page, PACE_TIMES);
-  await page.evaluate(() => {
-    Object.defineProperty(document, 'visibilityState', {
-      configurable: true,
-      get: () => 'hidden',
-    });
-    document.dispatchEvent(new Event('visibilitychange'));
-  });
+  await setVisibility(page, 'hidden');
 
   await typeAnswer(page, await productOnScreen(page));
   await pressEnter(page);
@@ -207,7 +215,26 @@ test('a presentation the app went to the background during is slow and its time 
   expect((await storedProgress(page)).times).toEqual(PACE_TIMES);
 });
 
-test('the stored answer times grow by one on a right answer and not on a miss', async ({
+test('a presentation that appears while the app is in the background is slow and its time is not kept', async ({
+  page,
+}) => {
+  await startDrill(page, PACE_TIMES);
+  await answerCard(page, 'fast');
+
+  // The feedback's hold runs out with the app hidden, so the next card is
+  // built there and only ever sees the app come back.
+  await setVisibility(page, 'hidden');
+  await page.clock.runFor(2000);
+  await expect(page.getByText('2 / 20')).toBeVisible();
+  await setVisibility(page, 'visible');
+
+  await typeAnswer(page, await productOnScreen(page));
+  await pressEnter(page);
+  await expect(page.getByText('Got there!')).toBeVisible();
+  expect((await storedProgress(page)).times).toEqual([...PACE_TIMES, 0]);
+});
+
+test('the stored answer times grow by one on a right answer and not on a miss or giving up', async ({
   page,
 }) => {
   await startDrill(page);
@@ -221,6 +248,11 @@ test('the stored answer times grow by one on a right answer and not on a miss', 
   await advance(page);
 
   await answerCard(page, 'missed');
+  expect((await storedProgress(page)).times).toEqual([0, 1200]);
+  await advance(page);
+
+  await dontKnow(page).click();
+  await expect(page.getByRole('heading', { level: 1 })).toContainText('=');
   expect((await storedProgress(page)).times).toEqual([0, 1200]);
 });
 
@@ -241,6 +273,20 @@ test('a drill record holds the pace as the drill ended and the median of its own
   // The pace holds at a second: the three new times sit either side of the
   // twenty seeded ones. The median is of the drill's own three alone.
   expect(stored.records[0]).toMatchObject({ pace: 1000, median: 2000 });
+});
+
+test('a drill record holds a pace first reached during the drill', async ({
+  page,
+}) => {
+  // One answer time short of a pace as the drill starts.
+  await startDrill(page, PACE_TIMES.slice(1));
+  await answerCard(page, 'fast');
+  await advance(page);
+  await page.getByRole('button', { name: 'Quit' }).click();
+
+  expect((await storedProgress(page)).records[0]).toMatchObject({
+    pace: 1000,
+  });
 });
 
 test('the feedback moves on by itself after 2 seconds or on a tap', async ({

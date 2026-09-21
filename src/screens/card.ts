@@ -40,15 +40,21 @@ function topBar(position: HTMLElement): {
 }
 
 // Builds one key of the pad. Keys act on the press, not the release, so that
-// a finger that slides a little still types; a click carrying no pointer
-// press of its own (detail 0) is a keyboard activation of the focused key,
-// which acts too.
-function padKey(label: string, className: string, act: () => void) {
+// a finger that slides a little still types. Only a touch or the main mouse
+// button presses a key. A click carrying no pointer press of its own
+// (detail 0) is a keyboard activation of the focused key, which acts too.
+function padKey(
+  label: string,
+  className: string,
+  act: () => void,
+): HTMLButtonElement {
   const key = document.createElement('button');
   key.type = 'button';
   key.className = className;
   key.textContent = label;
-  key.addEventListener('pointerdown', act);
+  key.addEventListener('pointerdown', (event) => {
+    if (event.button === 0) act();
+  });
   key.addEventListener('click', (event) => {
     if (event.detail === 0) act();
   });
@@ -89,7 +95,9 @@ export function renderCard(options: CardOptions): HTMLElement {
   // time covers the typing as well as the recall.
   const shownAt = now();
   let typed = '';
-  let backgrounded = false;
+  // A card built while the app is in the background, as the feedback's hold
+  // can do, only ever sees the app come back, so it starts out backgrounded.
+  let backgrounded = document.visibilityState === 'hidden';
   let settled = false;
 
   const paint = () => {
@@ -164,7 +172,7 @@ export function renderCard(options: CardOptions): HTMLElement {
   question.append(fact, slot, dontKnow);
 
   const body = document.createElement('div');
-  body.className = 'body';
+  body.className = 'card-body';
   body.append(question, pad);
 
   screen.append(top, body);

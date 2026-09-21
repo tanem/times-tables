@@ -220,7 +220,7 @@ button {
 
 /* The fact and the keypad share the room left under the top bar: stacked in
    portrait, side by side in landscape. */
-.body {
+.card-body {
   flex: 1;
   width: 100%;
   display: flex;
@@ -308,7 +308,7 @@ button {
 }
 
 @media (orientation: landscape) {
-  .body {
+  .card-body {
     flex-direction: row;
   }
 
@@ -317,8 +317,8 @@ button {
   }
 }
 
-/* The feedback: the sum, the dragon and the word in the middle. After a got
-   outcome the dragon is the biggest thing on screen; a miss makes the sum
+/* The feedback: the sum, the dragon and the word in the middle. After a right
+   answer the dragon is the biggest thing on screen; a miss makes the sum
    the biggest and puts the dragon small in the top corner. */
 .feedback {
   position: relative;
