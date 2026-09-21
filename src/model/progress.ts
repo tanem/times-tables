@@ -1,3 +1,4 @@
+import { BONUS, fasterThanLastTime } from './bonus';
 import { isCharacter, isUnlocked, type Character } from './characters';
 import { FACTS, pool, TABLES, type Table } from './facts';
 import { grade, type Level, type Outcome } from './level';
@@ -129,9 +130,15 @@ export function keepAnswerTime(progress: Progress, time: number): Progress {
   return { ...progress, times: keepTime(progress.times, time) };
 }
 
-// The document with a record appended. The given document is left as it was.
+// The document with a record appended, and the bonus paid if the drill was
+// faster than last time (ADR 0004). The given document is left as it was.
 export function addRecord(progress: Progress, record: DrillRecord): Progress {
-  return { ...progress, records: [...progress.records, record] };
+  const bonus = fasterThanLastTime(progress.records, record) ? BONUS : 0;
+  return {
+    ...progress,
+    gems: progress.gems + bonus,
+    records: [...progress.records, record],
+  };
 }
 
 // What a stored document reads as: a version 3 document, migrated or not;

@@ -1,6 +1,7 @@
 import './style.css';
 import { registerSW } from 'virtual:pwa-register';
 import { buildInfo } from './build';
+import { fasterThanLastTime } from './model/bonus';
 import {
   answer,
   drillRecord,
@@ -181,21 +182,23 @@ function showFeedback(drill: Drill, outcome: Outcome): void {
   );
 }
 
-// The drill record is written when the drill ends or is quit.
+// The drill record is written when the drill ends or is quit. Whether the
+// drill was faster than last time is read from the records before it, and
+// adding the record pays the bonus for it (ADR 0004).
 function endDrill(drill: Drill): void {
-  progress = addRecord(
-    progress,
-    drillRecord(
-      drill,
-      timestamp(),
-      knownCount(progress),
-      paceOf(progress.times),
-    ),
+  const record = drillRecord(
+    drill,
+    timestamp(),
+    knownCount(progress),
+    paceOf(progress.times),
   );
+  const faster = fasterThanLastTime(progress.records, record);
+  progress = addRecord(progress, record);
   saveProgress(store, progress);
   show(
     renderEnd({
       drill,
+      faster,
       onHome: showStart,
       onAgain: () => beginDrill(drill.tables),
     }),

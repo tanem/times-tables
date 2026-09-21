@@ -505,6 +505,129 @@ button {
   font-size: clamp(1.25rem, 3vmin, 1.75rem);
 }
 
+/* The moment a drill faster than last time earns, between the best streak
+   and the buttons: the race, then the words. Both are hidden by visibility
+   and not by display, so the block holds its place from the first render and
+   the buttons never move under a finger. The celebrating dragon gives up
+   some room so that landscape still fits. */
+.end.faster {
+  gap: clamp(10px, 2vmin, 24px);
+}
+
+.end.faster > .dragon-stage {
+  --size: clamp(80px, 17vmin, 180px);
+}
+
+.moment {
+  width: min(100%, 560px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.moment-words {
+  margin: 0;
+  visibility: hidden;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: clamp(1.5rem, 4.5vmin, 2.5rem);
+  color: var(--fast);
+}
+
+.moment.won .moment-words {
+  visibility: visible;
+  animation: pop 0.45s ease-out;
+}
+
+@keyframes pop {
+  from {
+    transform: translateY(16px) scale(0.5);
+    opacity: 0;
+  }
+  60% {
+    transform: translateY(-6px) scale(1.15);
+    opacity: 1;
+  }
+}
+
+/* The race: the earlier self above, today below, both running to a flag on
+   the right. */
+.race {
+  --runner: clamp(36px, 7vmin, 56px);
+  position: relative;
+  width: 100%;
+  padding-right: 28px;
+  visibility: hidden;
+}
+
+.moment.go .race {
+  visibility: visible;
+}
+
+.lane {
+  position: relative;
+  height: var(--runner);
+  border-bottom: 3px dashed var(--track);
+}
+
+.lane-label {
+  position: absolute;
+  left: 0;
+  top: 0;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.runner {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+}
+
+.race .runner .dragon-stage {
+  --size: var(--runner);
+}
+
+.runner .dragon {
+  animation: none;
+}
+
+.lane.ghost .dragon {
+  filter: grayscale(1);
+  opacity: 0.45;
+}
+
+.moment.go .lane.ghost .runner {
+  animation: run-ghost 2.2s cubic-bezier(0.3, 0, 0.6, 1) forwards;
+}
+
+.moment.go .lane.today .runner {
+  animation: run-today 2.2s cubic-bezier(0.4, 0, 0.3, 1) forwards;
+}
+
+/* The earlier self stops short of the flag; today reaches it. */
+@keyframes run-ghost {
+  to {
+    left: calc(68% - var(--runner));
+  }
+}
+
+@keyframes run-today {
+  to {
+    left: calc(100% - var(--runner) - 28px);
+  }
+}
+
+.flag {
+  position: absolute;
+  right: 0;
+  bottom: 4px;
+  font-size: 1.5rem;
+}
+
 .actions {
   width: min(100%, 640px);
   display: flex;
@@ -1273,5 +1396,20 @@ button {
   .sparkle,
   .piece {
     animation-duration: 0.5s !important;
+  }
+
+  /* The runners do not slide: they show where the race leaves them. The
+     words still show. */
+  .moment.go .lane.ghost .runner,
+  .moment.go .lane.today .runner {
+    animation: none;
+  }
+
+  .moment.go .lane.ghost .runner {
+    left: calc(68% - var(--runner));
+  }
+
+  .moment.go .lane.today .runner {
+    left: calc(100% - var(--runner) - 28px);
   }
 }

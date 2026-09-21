@@ -594,4 +594,35 @@ describe('addRecord', () => {
     expect(after.records).toEqual([...valid.records, record]);
     expect(valid.records).toHaveLength(2);
   });
+
+  // The document's last record is a finished drill on the 6s, 8s and 12s
+  // with 18 right answers and a median of 19999.
+  const faster: DrillRecord = {
+    at: '2026-01-03T09:00:00.000Z',
+    tables: [6, 8, 12],
+    fast: 15,
+    slow: 3,
+    missed: 2,
+    quit: false,
+    pace: 2400,
+    known: 77,
+    median: 8000,
+  };
+
+  it('pays two gems for a drill faster than last time', () => {
+    expect(addRecord(valid, faster).gems).toBe(29);
+  });
+
+  it('pays nothing for a drill that was not faster', () => {
+    const slower: DrillRecord = { ...faster, median: 19999 };
+
+    expect(addRecord(valid, slower).gems).toBe(27);
+  });
+
+  it('leaves the given document as it was', () => {
+    addRecord(valid, faster);
+
+    expect(valid.gems).toBe(27);
+    expect(valid.records).toHaveLength(2);
+  });
 });

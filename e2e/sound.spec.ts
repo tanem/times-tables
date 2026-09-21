@@ -6,10 +6,13 @@ import {
   answerCard,
   digitsFor,
   dontKnow,
+  finishDrillAfter,
   key,
   PACE_TIMES,
   setVisibility,
   startDrill,
+  startHeading,
+  WORDS_AT,
 } from './helpers';
 
 // The notes played since the app opened, in the order they were started.
@@ -94,6 +97,34 @@ test('the end screen plays a run up', async ({ page }) => {
     expect(run[i]?.freq).toBeGreaterThan(run[i - 1]?.freq ?? Infinity);
     expect(run[i]?.at).toBeGreaterThan(run[i - 1]?.at ?? Infinity);
   }
+});
+
+test('the improvement sweep plays as the race ends and not before', async ({
+  page,
+}) => {
+  await finishDrillAfter(page, 15000);
+
+  const duringRace = await heardDuring(page, () =>
+    page.clock.runFor(WORDS_AT - 1),
+  );
+  const sweep = await heardDuring(page, () => page.clock.runFor(1));
+
+  expect(duringRace).toEqual([]);
+  expect(sweep).toHaveLength(4);
+});
+
+test('the improvement sweep does not follow the learner off the end screen', async ({
+  page,
+}) => {
+  await finishDrillAfter(page, 15000);
+
+  const notes = await heardDuring(page, async () => {
+    await page.getByRole('button', { name: 'Home' }).click();
+    await expect(startHeading(page)).toBeVisible();
+    await page.clock.runFor(WORDS_AT);
+  });
+
+  expect(notes).toEqual([]);
 });
 
 test('sound comes back when the app returns from the background', async ({
