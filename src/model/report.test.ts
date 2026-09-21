@@ -4,7 +4,6 @@ import {
   freshProgress,
   type DrillRecord,
   type OutcomeCounts,
-  type Progress,
 } from './progress';
 import type { Day } from '../time';
 import {
