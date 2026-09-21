@@ -5,12 +5,10 @@ import { expect, test } from './fixtures';
 import {
   advance,
   answerCard,
-  getEveryFact,
   openParent,
   openWithRecords,
   startDrill,
   startHeading,
-  startRun,
   storedProgress,
 } from './helpers';
 
@@ -68,7 +66,7 @@ test('a fresh document shows the empty states, an unlevelled grid and the legend
 
   await expect(page.getByText('No practice this week')).toBeVisible();
   await expect(page.getByText('No drills yet')).toBeVisible();
-  await expect(page.getByText('No completed speed run yet')).toBeVisible();
+  await expect(page.getByText(/speed run/i)).toHaveCount(0);
 
   await expect(page.getByRole('button', { name: /, level 0$/ })).toHaveCount(
     36,
@@ -164,27 +162,12 @@ async function driveQuitDrill(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Home' }).click();
 }
 
-// Runs a speed run, missing the first `misses` facts (each requeued and
-// picked up later, fast) and getting the rest fast straight away, then
-// returns to the Start screen. Each miss costs 1.5 seconds of clock time
-// for its reveal; each Got it here costs half a second.
-async function driveSpeedRun(page: Page, misses: number): Promise<void> {
-  await startRun(page);
-  for (let i = 0; i < misses; i++) {
-    await page.getByRole('button', { name: 'Missed' }).click();
-    await page.clock.runFor(1500);
-  }
-  await getEveryFact(page, 500);
-  await page.getByRole('button', { name: 'Done' }).click();
-}
-
-test('a mix of drills and a speed run show correctly on the Parent view', async ({
+test('a full drill and a quit drill show correctly on the Parent view', async ({
   page,
 }) => {
   await page.goto('./');
   await driveFullDrill(page);
   await driveQuitDrill(page);
-  await driveSpeedRun(page, 2);
 
   const stored = await storedProgress(page);
   await openParent(page);
@@ -205,7 +188,7 @@ test('a mix of drills and a speed run show correctly on the Parent view', async 
   // An overlap fact shows the same colour and level in both its rows.
   const overlapKeys = ['6x8', '6x12', '8x12'];
   const overlapEntry = entries.find(([key]) => overlapKeys.includes(key));
-  if (!overlapEntry) throw new Error('the speed run touches every fact');
+  if (!overlapEntry) throw new Error('the drills reach an overlap fact');
   const [overlap, overlapFact] = overlapEntry;
   const [a, b] = overlap.split('x').map(Number);
   expect(
@@ -215,7 +198,7 @@ test('a mix of drills and a speed run show correctly on the Parent view', async 
   // Tap for counts: shows the tapped cell's lifetime counts, clears on a
   // second tap of the same cell, and replaces on a tap of another.
   const [first, second] = entries;
-  if (!first || !second) throw new Error('the speed run touches every fact');
+  if (!first || !second) throw new Error('the drills reach two facts');
   const [firstKey, firstFact] = first;
   const [secondKey, secondFact] = second;
   const status = page.getByRole('status');
@@ -240,39 +223,29 @@ test('a mix of drills and a speed run show correctly on the Parent view', async 
   await expect(target).toHaveAttribute('aria-pressed', 'false');
   await expect(other).toHaveAttribute('aria-pressed', 'true');
 
-  // The week line: 2 drills (one quit) and 1 speed run all count; facts
-  // answered sums fast + slow + missed across them.
-  const drillAnswered = 20;
-  const quitAnswered = 2;
-  const runAnswered = 33 + 2; // every fact once, 2 of them missed first
-  const totalAnswered = drillAnswered + quitAnswered + runAnswered;
-  const totalFast = 14 + 1 + 33;
-  const share = Math.round((totalFast / totalAnswered) * 100);
+  // The week line: both drills count, the quit one too; facts answered
+  // sums fast + slow + missed across them: 20 + 2, of which 14 + 1 fast.
   await expect(
-    page.getByText(
-      `This week: 3 drills, ${totalAnswered} facts answered, ${share}% fast`,
-    ),
+    page.getByText('This week: 2 drills, 22 facts answered, 68% fast'),
   ).toBeVisible();
 
-  // The recent list: newest first, with the drill, quit and run wording.
+  // The recent list: newest first, with the drill and quit wording.
   const rows = page.getByRole('listitem');
-  await expect(rows).toHaveCount(3);
-  await expect(rows.nth(0)).toHaveText('Today · Speed run · 0:19.5 · 2 missed');
-  await expect(rows.nth(1)).toHaveText(
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toHaveText(
     'Today · 6s, 8s and 12s · 1 fast · 0 slow · 1 missed · stopped at 2 of 20',
   );
-  await expect(rows.nth(2)).toHaveText(
+  await expect(rows.nth(1)).toHaveText(
     'Today · 6s, 8s and 12s · 14 fast · 4 slow · 2 missed',
   );
-
-  // The best line: the only completed run, set today.
-  await expect(page.getByText('Best 0:19.5, set today')).toBeVisible();
 });
 
-test('older history reads with its date wording, and the best line follows the fastest run, not the latest', async ({
+test('older history reads with its date wording, and stored speed runs are left out', async ({
   page,
 }) => {
-  const older: DrillRecord = {
+  // A version 1 document from before the speed run was removed can hold
+  // speed run records, completed and quit.
+  const completedRun: DrillRecord = {
     mode: 'speed',
     at: '2025-12-23T09:00:00.000Z',
     tables: [...TABLES],
@@ -280,11 +253,11 @@ test('older history reads with its date wording, and the best line follows the f
     slow: 0,
     missed: 0,
     quit: false,
-    time: 30000, // the fastest run, so the best
+    time: 30000,
   };
   const quitRun: DrillRecord = {
     mode: 'speed',
-    at: '2025-12-29T09:00:00.000Z',
+    at: '2025-12-31T10:00:00.000Z',
     tables: [...TABLES],
     fast: 10,
     slow: 0,
@@ -292,15 +265,15 @@ test('older history reads with its date wording, and the best line follows the f
     quit: true,
     time: null,
   };
-  const newerSlower: DrillRecord = {
-    mode: 'speed',
-    at: '2025-12-30T09:00:00.000Z',
-    tables: [...TABLES],
-    fast: 33,
-    slow: 0,
-    missed: 0,
+  const older: DrillRecord = {
+    mode: 'drill',
+    at: '2025-12-23T10:00:00.000Z',
+    tables: [8],
+    fast: 12,
+    slow: 5,
+    missed: 3,
     quit: false,
-    time: 40000, // newer than `older`, but slower, so not the best
+    time: null,
   };
   const yesterday: DrillRecord = {
     mode: 'drill',
@@ -312,21 +285,31 @@ test('older history reads with its date wording, and the best line follows the f
     quit: true,
     time: null,
   };
-  await openWithRecords(page, [older, quitRun, newerSlower, yesterday]);
+  await openWithRecords(page, [completedRun, older, yesterday, quitRun]);
   await openParent(page);
 
-  await expect(page.getByText(/^Yesterday ·/)).toBeVisible();
-  await expect(
-    page.getByText('Tue 30 Dec · Speed run · 0:40.0 · 0 missed'),
-  ).toBeVisible();
-  await expect(
-    page.getByText('Mon 29 Dec · Speed run · stopped · 3 missed'),
-  ).toBeVisible();
-  await expect(page.getByText(/^Tue 23 Dec ·/)).toBeVisible();
+  const rows = page.getByRole('listitem');
+  await expect(rows).toHaveCount(2);
+  await expect(rows.nth(0)).toHaveText(
+    'Yesterday · 6s · 5 fast · 0 slow · 0 missed · stopped at 5 of 20',
+  );
+  await expect(rows.nth(1)).toHaveText(
+    'Tue 23 Dec · 8s · 12 fast · 5 slow · 3 missed',
+  );
 
-  // The best line follows the fastest completed run (23rd), not the most
-  // recent one (30th).
-  await expect(page.getByText('Best 0:30.0, set Tue 23 Dec')).toBeVisible();
+  // The week holds yesterday's drill alone: the quit run is not counted.
+  await expect(
+    page.getByText('This week: 1 drill, 5 facts answered, 100% fast'),
+  ).toBeVisible();
+  await expect(page.getByText(/speed run|best/i)).toHaveCount(0);
+
+  // The speed run records stay in the stored document, through a later
+  // write too.
+  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: '12s' }).click();
+  const stored = await storedProgress(page);
+  expect(stored.tables).toEqual([6, 8]);
+  expect(stored.records).toEqual([completedRun, older, yesterday, quitRun]);
 });
 
 test('a record six days old counts in the week and one seven days old does not', async ({

@@ -1,6 +1,5 @@
 import type { BuildInfo } from '../build';
 import {
-  bestLine,
   countsLine,
   gridRows,
   LEGEND,
@@ -99,8 +98,8 @@ function renderLegend(): HTMLElement {
   return legend;
 }
 
-// The recent list: the ten most recent drills and speed runs, newest
-// first, or the empty state.
+// The recent list: the ten most recent drills, newest first, or the empty
+// state.
 function renderRecent(
   progress: Progress,
   dayOf: DayOf,
@@ -123,8 +122,8 @@ function renderRecent(
 }
 
 // Builds the Parent view: the fact grid with its legend and tap-for-
-// counts, this week's practice, the recent list, the personal best, the
-// press-and-hold erase control, and the build version in the foot.
+// counts, this week's practice, the recent list, the press-and-hold erase
+// control, and the build version in the foot.
 // Read-only otherwise: plain typography, no dragon, and the erase ring is
 // the screen's only animation.
 export function renderParent(options: ParentOptions): HTMLElement {
@@ -162,10 +161,6 @@ export function renderParent(options: ParentOptions): HTMLElement {
   recentHeading.textContent = 'Recent';
   const recent = renderRecent(progress, dayOf, today);
 
-  const best = document.createElement('p');
-  best.className = 'best';
-  best.textContent = bestLine(progress, dayOf, today);
-
   const erase = renderErase(options.onErase);
 
   const foot = document.createElement('p');
@@ -180,7 +175,6 @@ export function renderParent(options: ParentOptions): HTMLElement {
     week,
     recentHeading,
     recent,
-    best,
     erase,
     foot,
   );

@@ -22,7 +22,8 @@ const OLD_RUN: DrillRecord = {
 };
 
 // A stored document visibly not fresh: one table, a levelled fact and a
-// completed speed run, so an erase has something real to remove.
+// speed run record from before the speed run was removed, so an erase has
+// something real to remove.
 const NOT_FRESH: Progress = {
   version: 1,
   tables: [6],
@@ -78,7 +79,6 @@ test('holding the erase control for three seconds erases progress and returns to
 
   await expect(startHeading(page)).toBeVisible();
   await expectAllTablesOn(page);
-  await expect(page.getByText('all 33 facts, no best yet')).toBeVisible();
   expect(await storedProgress(page)).toEqual({
     version: 1,
     tables: [6, 8, 12],
@@ -197,7 +197,6 @@ test('an erase survives a reload', async ({ page }) => {
 
   await expect(startHeading(page)).toBeVisible();
   await expectAllTablesOn(page);
-  await expect(page.getByText('all 33 facts, no best yet')).toBeVisible();
   expect(await storedBackup(page)).toBeNull();
 });
 
@@ -285,7 +284,6 @@ test('holding Space on the focused control for three seconds erases', async ({
 
   await expect(startHeading(page)).toBeVisible();
   await expectAllTablesOn(page);
-  await expect(page.getByText('all 33 facts, no best yet')).toBeVisible();
 });
 
 test('releasing Space before three seconds cancels the keyboard hold', async ({

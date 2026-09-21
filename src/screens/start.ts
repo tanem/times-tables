@@ -1,6 +1,5 @@
 import { DRILL_LENGTH } from '../model/drill';
-import { FACTS, TABLES, type Table } from '../model/facts';
-import { formatTime } from '../model/speedrun';
+import { TABLES, type Table } from '../model/facts';
 import { renderDragon } from './dragon';
 
 export type StartOptions = {
@@ -9,9 +8,6 @@ export type StartOptions = {
   onTablesChange: (tables: Table[]) => void;
   // Called with the selection when the learner taps Practise.
   onPractise: (tables: Table[]) => void;
-  // The personal best in milliseconds, or null before any completed run.
-  best: number | null;
-  onSpeedRun: () => void;
   onParents: () => void;
 };
 
@@ -27,9 +23,7 @@ function practiseCaption(tables: readonly Table[]): string {
 }
 
 // Builds the Start screen. The dragon sits with the app's name at the top.
-// The tiles keep the selection and the Practise button follows it. The
-// Speed run button takes no notice of the selection and has the personal
-// best beside it.
+// The tiles keep the selection and the Practise button follows it.
 export function renderStart(options: StartOptions): HTMLElement {
   const selected = new Set<Table>(options.tables);
   const selection = () => TABLES.filter((table) => selected.has(table));
@@ -85,26 +79,6 @@ export function renderStart(options: StartOptions): HTMLElement {
     tiles.append(tile);
   }
 
-  const speed = document.createElement('div');
-  speed.className = 'speed';
-
-  const speedRun = document.createElement('button');
-  speedRun.type = 'button';
-  speedRun.className = 'speed-run';
-  speedRun.textContent = 'Speed run';
-  speedRun.setAttribute('aria-describedby', 'speed-run-caption');
-  speedRun.addEventListener('click', options.onSpeedRun);
-
-  const best = document.createElement('p');
-  best.id = 'speed-run-caption';
-  best.className = 'caption';
-  best.textContent =
-    options.best === null
-      ? `all ${FACTS.length} facts, no best yet`
-      : `Best ${formatTime(options.best)}`;
-
-  speed.append(speedRun, best);
-
   // A small text link, out of the way of the learner's own buttons, for a
   // parent to reach the Parent view on a plain tap.
   const parents = document.createElement('button');
@@ -114,6 +88,6 @@ export function renderStart(options: StartOptions): HTMLElement {
   parents.addEventListener('click', options.onParents);
 
   update();
-  screen.append(masthead, question, tiles, practise, caption, speed, parents);
+  screen.append(masthead, question, tiles, practise, caption, parents);
   return screen;
 }

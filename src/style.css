@@ -127,27 +127,6 @@ button {
   cursor: default;
 }
 
-/* The Speed run button is outlined, second to Practise, with the personal
-   best beside it. */
-.speed {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px 16px;
-}
-
-.speed-run {
-  padding: clamp(8px, 1.5vmin, 14px) 32px;
-  border: 4px solid var(--tile);
-  border-radius: 999px;
-  background: white;
-  color: var(--tile);
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: clamp(1.25rem, 3.5vmin, 2rem);
-}
-
 .caption {
   margin: 0;
   color: var(--muted);
@@ -168,9 +147,7 @@ button {
 /* Every screen fills the viewport and keeps a thumb-width gutter. */
 .card,
 .feedback,
-.end,
-.countdown,
-.reveal {
+.end {
   min-height: 100dvh;
   padding: 16px;
   display: flex;
@@ -221,20 +198,12 @@ button {
   font-size: 1.75rem;
 }
 
-.position,
-.clock {
+.position {
   margin: 0;
   color: var(--muted);
   font-family: var(--font-heading);
   font-size: clamp(1.25rem, 3vmin, 2rem);
   font-variant-numeric: tabular-nums;
-}
-
-/* The run clock is the one thing on the run card that moves, and reads at a
-   glance. */
-.clock {
-  color: var(--ink);
-  font-size: clamp(1.75rem, 5vmin, 3rem);
 }
 
 .fact {
@@ -300,25 +269,6 @@ button {
 
 .answer.missed {
   background: var(--missed);
-}
-
-/* The countdown: one number in the middle of the screen. */
-.countdown {
-  justify-content: center;
-}
-
-.countdown h1 {
-  font-size: clamp(8rem, 40vmin, 20rem);
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-/* The miss reveal: the run card's top bar, and the fact with its answer the
-   biggest thing on screen. */
-.reveal .sum {
-  margin: auto 0;
-  font-size: clamp(3.5rem, 16vmin, 10rem);
-  font-variant-numeric: tabular-nums;
 }
 
 /* The feedback: the sum, the dragon and the word in the middle. After a got
@@ -449,29 +399,6 @@ button {
 .best {
   margin: 0;
   font-size: clamp(1.25rem, 3vmin, 1.75rem);
-}
-
-/* The end of a speed run: the time is the biggest thing on screen, with the
-   miss count and the best it was up against small below. */
-.end .time {
-  margin: 0;
-  font-family: var(--font-heading);
-  font-weight: 600;
-  font-size: clamp(4rem, 18vmin, 10rem);
-  line-height: 1;
-  font-variant-numeric: tabular-nums;
-}
-
-.misses {
-  margin: 0;
-  font-size: clamp(1.25rem, 3vmin, 1.75rem);
-}
-
-.previous {
-  margin: 0;
-  color: var(--muted);
-  font-size: clamp(1rem, 2.5vmin, 1.5rem);
-  font-variant-numeric: tabular-nums;
 }
 
 .actions {
@@ -650,8 +577,7 @@ button {
   font-weight: 600;
 }
 
-.parent .week,
-.parent .best {
+.parent .week {
   margin: 0;
 }
 
@@ -670,7 +596,7 @@ button {
 }
 
 /* Set apart from the read-only content above it, so a stray tap near the
-   best line cannot land on it by accident. */
+   recent list cannot land on it by accident. */
 .erase {
   display: flex;
   justify-content: center;

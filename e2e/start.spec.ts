@@ -31,6 +31,15 @@ test('the dragon sits with the app’s name at the top of the Start screen', asy
   expect(nameBox.y + nameBox.height).toBeLessThanOrEqual(questionBox.y);
 });
 
+test('the Start screen has no Speed run button and no best time', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await expect(startHeading(page)).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Speed run' })).toHaveCount(0);
+  await expect(page.getByText(/best/i)).toHaveCount(0);
+});
+
 test('toggling tiles updates the Practise caption', async ({ page }) => {
   await page.goto('./');
   const practise = page.getByRole('button', { name: 'Practise', exact: true });
@@ -169,8 +178,7 @@ for (const [orientation, width, height] of [
       page.getByRole('button', { name: '12s' }),
       page.getByRole('button', { name: 'Practise', exact: true }),
       page.getByText('20 facts from all three tables'),
-      page.getByRole('button', { name: 'Speed run' }),
-      page.getByText('all 33 facts, no best yet'),
+      page.getByRole('button', { name: 'For parents' }),
     ];
     for (const part of parts) {
       await expect(part).toBeInViewport({ ratio: 1 });

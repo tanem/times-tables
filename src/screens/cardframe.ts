@@ -20,7 +20,7 @@ export type CardFrame = {
 
 // Builds the top bar of a card: the quit cross on the left and the given
 // element in the middle.
-export function topBar(middle: HTMLElement): {
+function topBar(middle: HTMLElement): {
   top: HTMLElement;
   quit: HTMLButtonElement;
 } {
@@ -41,9 +41,9 @@ export function topBar(middle: HTMLElement): {
   return { top, quit };
 }
 
-// Builds what the drill card and the run card share: the quit cross in the
-// top bar, the fact in its ordering, the caption, and Missed and Got it in
-// the thumb zone. The answer is never shown. Only the first tap on Got it,
+// Builds the frame of the drill card: the quit cross in the top bar, the
+// fact in its ordering, the caption, and Missed and Got it in the thumb
+// zone. The answer is never shown. Only the first tap on Got it,
 // Missed or the quit cross acts.
 export function cardFrame(options: CardFrameOptions): CardFrame {
   const { presentation } = options;
