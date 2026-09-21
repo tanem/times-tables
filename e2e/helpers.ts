@@ -191,3 +191,18 @@ export async function answerCard(page: Page, outcome: Outcome): Promise<void> {
 export async function advance(page: Page): Promise<void> {
   await page.getByText('Tap to go on').click();
 }
+
+// Makes the page report the given visibility and announces the change, as
+// the iPad does when the app goes to the background and comes back.
+export async function setVisibility(
+  page: Page,
+  state: 'hidden' | 'visible',
+): Promise<void> {
+  await page.evaluate((value) => {
+    Object.defineProperty(document, 'visibilityState', {
+      configurable: true,
+      get: () => value,
+    });
+    document.dispatchEvent(new Event('visibilitychange'));
+  }, state);
+}

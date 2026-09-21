@@ -1,5 +1,6 @@
 import type { Presentation } from '../model/drill';
 import type { Outcome } from '../model/level';
+import { sound } from '../sound';
 import { schedule } from '../time';
 import { renderDragon, type DragonPose } from './dragon';
 
@@ -41,8 +42,8 @@ export type FeedbackOptions = {
 };
 
 // Builds the feedback screen: the fact with its answer, the dragon, a word,
-// and the streak from two fast answers in a row. It holds for a moment, and
-// a tap anywhere moves on at once.
+// and the streak from two fast answers in a row, with a sound for the
+// outcome. It holds for a moment, and a tap anywhere moves on at once.
 export function renderFeedback(options: FeedbackOptions): HTMLElement {
   const { presentation, outcome } = options;
 
@@ -75,6 +76,10 @@ export function renderFeedback(options: FeedbackOptions): HTMLElement {
     streak.append(flame, ` ${options.streak} in a row`);
     screen.append(streak);
   }
+
+  // A fast answer sounds a step higher for each answer in the streak.
+  if (outcome === 'fast') sound.fast(options.streak);
+  else sound[outcome]();
 
   const hint = document.createElement('p');
   hint.className = 'hint';

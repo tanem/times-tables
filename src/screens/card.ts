@@ -1,5 +1,6 @@
 import { DRILL_LENGTH, type Presentation } from '../model/drill';
 import { answerTime } from '../model/pace';
+import { sound } from '../sound';
 import { now } from '../time';
 
 // The most digits an answer can hold: no product of the tables is longer.
@@ -43,20 +44,25 @@ function topBar(position: HTMLElement): {
 // a finger that slides a little still types. Only a touch or the main mouse
 // button presses a key. A click carrying no pointer press of its own
 // (detail 0) is a keyboard activation of the focused key, which acts too.
+// Every press ticks.
 function padKey(
   label: string,
   className: string,
   act: () => void,
 ): HTMLButtonElement {
+  const press = () => {
+    sound.key();
+    act();
+  };
   const key = document.createElement('button');
   key.type = 'button';
   key.className = className;
   key.textContent = label;
   key.addEventListener('pointerdown', (event) => {
-    if (event.button === 0) act();
+    if (event.button === 0) press();
   });
   key.addEventListener('click', (event) => {
-    if (event.detail === 0) act();
+    if (event.detail === 0) press();
   });
   return key;
 }

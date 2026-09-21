@@ -5,9 +5,9 @@ import { describe, expect, it } from 'vitest';
 
 const SRC = fileURLToPath(new URL('.', import.meta.url));
 
-// The two seam modules, by their path under src/, and the tests are the only
-// places allowed to name the globals.
-const SEAM_MODULES = ['random.ts', 'time.ts'];
+// The three seam modules, by their path under src/, and the tests are the
+// only places allowed to name the globals.
+const SEAM_MODULES = ['random.ts', 'sound.ts', 'time.ts'];
 
 const FORBIDDEN = [
   /Math\.random/,
@@ -17,6 +17,7 @@ const FORBIDDEN = [
   /\bcancelAnimationFrame\b/,
   /performance\.now/,
   /\bDate\b/,
+  /\bAudioContext\b/,
 ];
 
 // The paths, relative to src/, of every module the seams cover.
@@ -37,8 +38,8 @@ function modulesOutsideTheSeams(dir: string): string[] {
   return found;
 }
 
-describe('the random and time seams', () => {
-  it('are the only modules that touch randomness, timers and the clock', () => {
+describe('the random, sound and time seams', () => {
+  it('are the only modules that touch randomness, audio, timers and the clock', () => {
     const offences: string[] = [];
     for (const module of modulesOutsideTheSeams(SRC)) {
       const source = readFileSync(join(SRC, module), 'utf8');
