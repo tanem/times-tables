@@ -39,13 +39,20 @@ import {
 import { dayOf, timestamp, today } from './time';
 import { createUpdater } from './update';
 
+// A store that holds nothing and keeps nothing.
+const NO_STORE: ProgressStore = {
+  getItem: () => null,
+  setItem: () => {},
+  removeItem: () => {},
+};
+
 // localStorage itself can be unavailable, in which case the app runs on its
 // in-memory state alone.
 function browserStore(): ProgressStore {
   try {
     return window.localStorage;
   } catch {
-    return { getItem: () => null, setItem: () => {}, removeItem: () => {} };
+    return NO_STORE;
   }
 }
 
@@ -55,18 +62,19 @@ navigator.storage?.persist?.().catch(() => {});
 
 mountSound();
 
-const store = browserStore();
-const loaded = loadProgress(store);
+const loaded = loadProgress(browserStore());
 
 // A document from a newer build is never written over (ADR 0004). The app
-// then shows the one screen that says so, which has no way on, so the fresh
-// document standing in here is never played on or saved.
+// then shows the one screen that says so, which has no way on, and runs on
+// a store that keeps nothing, so no save can reach the newer document.
+const store = loaded === 'newer' ? NO_STORE : browserStore();
 let progress = loaded === 'newer' ? freshProgress() : loaded;
 
 const app = document.querySelector('#app');
 
-// A service worker update is taken up on the Start screen alone, per
-// docs/adr/0001, so that neither half of it can end a drill.
+// A service worker update is taken up on the Start screen, per
+// docs/adr/0001, or on the screen for a newer document, per docs/adr/0004,
+// so that neither half of it can end a drill.
 const updater = createUpdater({
   // The returned updateSW only posts skip-waiting to the waiting worker; its
   // argument is ignored. The worker takes over a moment later, and the

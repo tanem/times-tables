@@ -133,9 +133,8 @@ describe('parseProgress on gems, characters and highest levels', () => {
     expect(read(document)).toEqual(asRead(document));
   });
 
-  it('reads each character at the gem total that unlocks it', () => {
+  it('reads each character that unlocks at the gem total that unlocks it', () => {
     for (const [character, gems] of [
-      ['dragon', 5],
       ['cat', 25],
       ['robot', 60],
       ['owl', 110],

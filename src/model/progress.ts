@@ -109,17 +109,17 @@ export function applyOutcome(
 ): Progress {
   const before = progress.facts[key] ?? UNSEEN;
   const level = grade(before.level, outcome);
-  const paid = level > before.best ? 1 : 0;
+  const firstTime = level > before.best;
   const after: FactProgress = {
     ...before,
     level,
-    best: paid ? level : before.best,
+    best: firstTime ? level : before.best,
     [outcome]: before[outcome] + 1,
   };
   return {
     ...progress,
     facts: { ...progress.facts, [key]: after },
-    gems: progress.gems + paid,
+    gems: progress.gems + (firstTime ? 1 : 0),
   };
 }
 
@@ -141,12 +141,12 @@ export type ProgressRead =
   | { kind: 'corrupt' }
   | { kind: 'newer' };
 
-// The version a migration starts from, the only one there is a migration for.
-const MIGRATED_VERSION = 2;
+// The one version there is a migration from.
+const MIGRATES_FROM = 2;
 
 // Reads a stored document. Reading is strict: a well-formed version 3
-// document is read as it is and a well-formed version 2 document is
-// migrated (ADR 0004). A whole-number version above 3 is a newer build's
+// document is read and a well-formed version 2 document is migrated
+// (ADR 0004). A whole-number version above 3 is a newer build's
 // document, which this build cannot judge. Anything else, a version 1
 // document included, is corrupt.
 export function parseProgress(text: string): ProgressRead {
@@ -159,12 +159,12 @@ export function parseProgress(text: string): ProgressRead {
   if (!isObject(value)) return { kind: 'corrupt' };
   const { version } = value;
   if (isCount(version) && version > VERSION) return { kind: 'newer' };
-  if (version !== VERSION && version !== MIGRATED_VERSION) {
+  if (version !== VERSION && version !== MIGRATES_FROM) {
     return { kind: 'corrupt' };
   }
   const progress = validateProgress(value, version);
   if (!progress) return { kind: 'corrupt' };
-  return { kind: 'read', progress, migrated: version === MIGRATED_VERSION };
+  return { kind: 'read', progress, migrated: version === MIGRATES_FROM };
 }
 
 // Checks a parsed value against the shape and ranges of its version, and
@@ -174,9 +174,9 @@ export function parseProgress(text: string): ProgressRead {
 // the dragon is chosen.
 function validateProgress(
   value: Record<string, unknown>,
-  version: typeof VERSION | typeof MIGRATED_VERSION,
+  version: typeof VERSION | typeof MIGRATES_FROM,
 ): Progress | null {
-  const migrating = version === MIGRATED_VERSION;
+  const migrating = version === MIGRATES_FROM;
   const tables = validateTables(value.tables);
   const facts = validateFacts(value.facts, migrating);
   const times = validateTimes(value.times);

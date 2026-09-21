@@ -260,7 +260,7 @@ const corruptDocuments: ReadonlyArray<readonly [string, string]> = [
     '{"version":3,"tables":[6],"facts":{"6x7":{"level":9,"best":9,"fast":0,"slow":0,"missed":0}},"gems":9,"character":"dragon","times":[],"records":[]}',
   ],
   [
-    'has a version that is not a whole number',
+    'has a version given as a string',
     '{"version":"3","tables":[6],"facts":{},"gems":0,"character":"dragon","times":[],"records":[]}',
   ],
   [
