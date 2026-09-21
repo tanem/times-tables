@@ -1,18 +1,17 @@
+import { URL, fileURLToPath } from 'node:url';
 import js from '@eslint/js';
-import { defineConfig, globalIgnores } from 'eslint/config';
+import { defineConfig, globalIgnores, includeIgnoreFile } from 'eslint/config';
 import eslintConfigPrettier from 'eslint-config-prettier';
 import tseslint from 'typescript-eslint';
 
+const gitignorePath = fileURLToPath(new URL('.gitignore', import.meta.url));
+
 export default defineConfig(
-  globalIgnores([
-    'dist',
-    'node_modules',
-    'test-results',
-    'playwright-report',
-    'blob-report',
-    'public',
-    '.claude',
-  ]),
+  includeIgnoreFile(gitignorePath),
+  // Agent worktrees live under .claude/worktrees, so without this entry
+  // `eslint .` in the main checkout would also lint any worktree that
+  // exists.
+  globalIgnores(['.claude']),
   js.configs.recommended,
   tseslint.configs.recommendedTypeChecked,
   {
@@ -24,6 +23,8 @@ export default defineConfig(
     },
   },
   {
+    // These two files sit outside the tsconfig.json include, so the
+    // project service cannot type them.
     files: ['eslint.config.js', 'commitlint.config.js'],
     extends: [tseslint.configs.disableTypeChecked],
   },
