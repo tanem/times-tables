@@ -1,3 +1,4 @@
+import { isCharacter, isUnlocked, type Character } from './characters';
 import { FACTS, pool, TABLES, type Table } from './facts';
 import { grade, type Level, type Outcome } from './level';
 import { keepTime, TIME_CAP, TIMES_KEPT } from './pace';
@@ -9,10 +10,13 @@ export type OutcomeCounts = {
   missed: number;
 };
 
-// What the app remembers about one fact. An absent fact means level 0 with
-// zero counts.
+// What the app remembers about one fact. An absent fact means level 0, a
+// highest level of 0 and zero counts.
 export type FactProgress = OutcomeCounts & {
   level: Level;
+  // The highest level the fact has reached, which never falls. Each level it
+  // reaches for the first time pays a gem (ADR 0004).
+  best: Level;
 };
 
 // The one entry a drill leaves behind. A quit drill holds the same values as
@@ -31,31 +35,41 @@ export type DrillRecord = OutcomeCounts & {
   median: number | null;
 };
 
-// The progress document, version 2: the whole of what the app stores.
+// The version of the document this build reads and writes.
+const VERSION = 3;
+
+// The progress document, version 3: the whole of what the app stores.
 // Everything beside the version belongs to the learner (ADR 0003).
 export type Progress = {
-  version: 2;
+  version: typeof VERSION;
   // No repeats; may be empty.
   tables: Table[];
   facts: Record<string, FactProgress>;
+  // The gems paid so far: at least the sum of every fact's highest level,
+  // and more by the bonuses. The total never falls (ADR 0004).
+  gems: number;
+  // The chosen character, one that the gems have unlocked.
+  character: Character;
   // The answer times that count towards pace (ADR 0002), oldest first.
   times: number[];
   records: DrillRecord[];
 };
 
-// The document for a first launch or a fresh start: no table on and nothing
-// learnt.
+// The document for a first launch or a fresh start: no table on, nothing
+// learnt, no gems and the dragon chosen.
 export function freshProgress(): Progress {
   return {
-    version: 2,
+    version: VERSION,
     tables: [],
     facts: {},
+    gems: 0,
+    character: 'dragon',
     times: [],
     records: [],
   };
 }
 
-const UNSEEN: FactProgress = { level: 0, fast: 0, slow: 0, missed: 0 };
+const UNSEEN: FactProgress = { level: 0, best: 0, fast: 0, slow: 0, missed: 0 };
 
 // The level of a fact; an absent fact is at level 0.
 export function factLevel(progress: Progress, key: string): Level {
@@ -83,28 +97,30 @@ export function knownShare(progress: Progress, table: Table): number {
   return known.length / facts.length;
 }
 
-// The document with one fact changed. The given document is left as it was.
-function updateFact(
-  progress: Progress,
-  key: string,
-  change: (before: FactProgress) => FactProgress,
-): Progress {
-  const after = change(progress.facts[key] ?? UNSEEN);
-  return { ...progress, facts: { ...progress.facts, [key]: after } };
-}
-
 // The document after one outcome on a fact: its level moved and the
-// outcome's lifetime count up by one.
+// outcome's lifetime count up by one. A level the fact has not reached
+// before becomes its highest level and pays one gem; only a fast outcome
+// raises a level, so nothing else pays. The given document is left as it
+// was.
 export function applyOutcome(
   progress: Progress,
   key: string,
   outcome: Outcome,
 ): Progress {
-  return updateFact(progress, key, (before) => ({
+  const before = progress.facts[key] ?? UNSEEN;
+  const level = grade(before.level, outcome);
+  const firstTime = level > before.best;
+  const after: FactProgress = {
     ...before,
-    level: grade(before.level, outcome),
+    level,
+    best: firstTime ? level : before.best,
     [outcome]: before[outcome] + 1,
-  }));
+  };
+  return {
+    ...progress,
+    facts: { ...progress.facts, [key]: after },
+    gems: progress.gems + (firstTime ? 1 : 0),
+  };
 }
 
 // The document with one more answer time kept towards pace (ADR 0002). Only
@@ -118,30 +134,60 @@ export function addRecord(progress: Progress, record: DrillRecord): Progress {
   return { ...progress, records: [...progress.records, record] };
 }
 
-// Reads a stored document. Reading is strict: anything that is not a
-// well-formed version 2 document, a version 1 document included, is corrupt
-// and reads as null.
-export function parseProgress(text: string): Progress | null {
+// What a stored document reads as: a version 3 document, migrated or not;
+// corrupt; or newer than this build knows.
+export type ProgressRead =
+  | { kind: 'read'; progress: Progress; migrated: boolean }
+  | { kind: 'corrupt' }
+  | { kind: 'newer' };
+
+// The one version there is a migration from.
+const MIGRATES_FROM = 2;
+
+// Reads a stored document. Reading is strict: a well-formed version 3
+// document is read and a well-formed version 2 document is migrated
+// (ADR 0004). A whole-number version above 3 is a newer build's
+// document, which this build cannot judge. Anything else, a version 1
+// document included, is corrupt.
+export function parseProgress(text: string): ProgressRead {
   let value: unknown;
   try {
     value = JSON.parse(text);
   } catch {
-    return null;
+    return { kind: 'corrupt' };
   }
-  return validateProgress(value);
+  if (!isObject(value)) return { kind: 'corrupt' };
+  const { version } = value;
+  if (isCount(version) && version > VERSION) return { kind: 'newer' };
+  if (version !== VERSION && version !== MIGRATES_FROM) {
+    return { kind: 'corrupt' };
+  }
+  const progress = validateProgress(value, version);
+  if (!progress) return { kind: 'corrupt' };
+  return { kind: 'read', progress, migrated: version === MIGRATES_FROM };
 }
 
-// Checks a parsed value against the version 2 shape and its ranges, and
-// rebuilds it from the known fields.
-function validateProgress(value: unknown): Progress | null {
-  if (!isObject(value)) return null;
-  if (value.version !== 2) return null;
+// Checks a parsed value against the shape and ranges of its version, and
+// rebuilds it as a version 3 document from the known fields. A version 2
+// document has no gems, character or highest levels, and is given them: each
+// fact's highest level is its level now, the gems are the sum of those and
+// the dragon is chosen.
+function validateProgress(
+  value: Record<string, unknown>,
+  version: typeof VERSION | typeof MIGRATES_FROM,
+): Progress | null {
+  const migrating = version === MIGRATES_FROM;
   const tables = validateTables(value.tables);
-  const facts = validateFacts(value.facts);
+  const facts = validateFacts(value.facts, migrating);
   const times = validateTimes(value.times);
   const records = validateRecords(value.records);
   if (!tables || !facts || !times || !records) return null;
-  return { version: 2, tables, facts, times, records };
+  const paid = Object.values(facts).reduce((sum, fact) => sum + fact.best, 0);
+  const gems = migrating ? paid : value.gems;
+  const character = migrating ? 'dragon' : value.character;
+  if (!isCount(gems) || gems < paid) return null;
+  if (!isCharacter(character) || !isUnlocked(character, gems)) return null;
+  return { version: VERSION, tables, facts, gems, character, times, records };
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -190,7 +236,12 @@ function validateTimes(value: unknown): number[] | null {
   return [...value];
 }
 
-function validateFacts(value: unknown): Record<string, FactProgress> | null {
+// A fact of a document being migrated has no highest level, and takes its
+// level now.
+function validateFacts(
+  value: unknown,
+  migrating: boolean,
+): Record<string, FactProgress> | null {
   if (!isObject(value)) return null;
   const facts: Record<string, FactProgress> = {};
   for (const [key, entry] of Object.entries(value)) {
@@ -199,7 +250,9 @@ function validateFacts(value: unknown): Record<string, FactProgress> | null {
     const counts = validateCounts(entry);
     const { level } = entry;
     if (!counts || !isLevel(level)) return null;
-    facts[key] = { ...counts, level };
+    const best = migrating ? level : entry.best;
+    if (!isLevel(best) || best < level) return null;
+    facts[key] = { ...counts, level, best };
   }
   return facts;
 }
