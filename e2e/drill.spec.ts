@@ -397,16 +397,15 @@ test('quitting from the card ends the drill with the answers given so far', asyn
   });
 });
 
-test('a drill record holds the number of facts at level 4 as the drill ended', async ({
-  page,
-}) => {
-  // Two facts at level 4 from outside the offered tables, so the drill never
-  // presents them, and every fact of the 6s one fast answer from level 4.
-  const known = { level: 4, fast: 4, slow: 0, missed: 0 } as const;
-  const nearly = { level: 3, fast: 3, slow: 0, missed: 0 } as const;
-  const facts: Progress['facts'] = { '3x5': known, '4x9': known };
+// Opens a drill on the 6s with two facts at level 4 from outside the offered
+// tables, which the drill never presents, and every fact of the 6s one fast
+// answer from level 4.
+async function startDrillNearLevel4(page: Page): Promise<void> {
+  const atLevel4 = { level: 4, fast: 4, slow: 0, missed: 0 } as const;
+  const atLevel3 = { level: 3, fast: 3, slow: 0, missed: 0 } as const;
+  const facts: Progress['facts'] = { '3x5': atLevel4, '4x9': atLevel4 };
   for (let n = 1; n <= 12; n++) {
-    facts[`${Math.min(6, n)}x${Math.max(6, n)}`] = nearly;
+    facts[`${Math.min(6, n)}x${Math.max(6, n)}`] = atLevel3;
   }
   const progress: Progress = {
     version: 2,
@@ -420,6 +419,12 @@ test('a drill record holds the number of facts at level 4 as the drill ended', a
     JSON.stringify(progress),
   ] as const);
   await startDrill(page);
+}
+
+test('a drill record holds the number of facts at level 4 as the drill ended', async ({
+  page,
+}) => {
+  await startDrillNearLevel4(page);
 
   await answerCard(page, 'fast');
   await advance(page);
@@ -428,6 +433,21 @@ test('a drill record holds the number of facts at level 4 as the drill ended', a
   const stored = await storedProgress(page);
   expect(stored.records).toHaveLength(1);
   expect(stored.records[0]).toMatchObject({ quit: true, known: 3 });
+});
+
+test('a fact corrected to missed does not count as known in the drill record', async ({
+  page,
+}) => {
+  await startDrillNearLevel4(page);
+
+  await answerCard(page, 'fast');
+  await correction(page).click();
+  await advance(page);
+  await page.getByRole('button', { name: 'Quit' }).click();
+
+  const stored = await storedProgress(page);
+  expect(stored.records).toHaveLength(1);
+  expect(stored.records[0]).toMatchObject({ missed: 1, known: 2 });
 });
 
 test('Go again starts a new drill on the same tables and Home returns to the Start screen', async ({

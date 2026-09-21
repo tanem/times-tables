@@ -46,7 +46,8 @@ const valid: Progress = {
   ],
 };
 
-// One drill record of the valid document with some fields replaced.
+// The valid document holding one drill record, with some of the record's
+// fields replaced.
 function withRecord(fields: Record<string, unknown>): unknown {
   return { ...valid, records: [{ ...valid.records[1], ...fields }] };
 }
@@ -134,6 +135,8 @@ describe('parseProgress on a corrupt document', () => {
     ['a 13s table', { ...valid, tables: [6, 13] }],
     ['a table given twice', { ...valid, tables: [6, 6] }],
     ['a record with a 13s table', withRecord({ tables: [13] })],
+    ['a record with a 1s table', withRecord({ tables: [1] })],
+    ['a record with a table given twice', withRecord({ tables: [6, 6] })],
     [
       'a negative fact count',
       {
@@ -183,6 +186,7 @@ describe('parseProgress on a corrupt document', () => {
     ['a record whose pace is at the cap', withRecord({ pace: 20000 })],
     ['a record whose pace is negative', withRecord({ pace: -1 })],
     ['a record whose pace is fractional', withRecord({ pace: 2400.5 })],
+    ['a record whose pace is a string', withRecord({ pace: '2.4' })],
     ['a record with no known count', withRecord({ known: undefined })],
     ['a record whose known count is null', withRecord({ known: null })],
     ['a record whose known count is above 77', withRecord({ known: 78 })],
@@ -190,6 +194,8 @@ describe('parseProgress on a corrupt document', () => {
     ['a record whose known count is fractional', withRecord({ known: 1.5 })],
     ['a record with no median', withRecord({ median: undefined })],
     ['a record whose median is at the cap', withRecord({ median: 20000 })],
+    ['a record whose median is negative', withRecord({ median: -1 })],
+    ['a record whose median is fractional', withRecord({ median: 1900.5 })],
     ['a record whose median is a string', withRecord({ median: '2.4' })],
     ['a version 1 document', { ...valid, version: 1 }],
     ['an unknown version', { ...valid, version: 3 }],

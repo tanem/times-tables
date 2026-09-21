@@ -129,9 +129,9 @@ export type GridRow = {
   cells: GridCell[];
 };
 
-// The fact grid: one row per offered table, twelve cells for the multipliers 1 to
-// 12. An overlap fact, such as 6 × 8, reads the same level from whichever
-// row shows it.
+// The fact grid: one row per offered table, twelve cells for the multipliers
+// 1 to 12. An overlap fact, such as 6 × 8, reads the same level from
+// whichever row shows it.
 export function gridRows(progress: Progress): GridRow[] {
   return OFFERED_TABLES.map((table) => ({
     label: `${table}s`,
