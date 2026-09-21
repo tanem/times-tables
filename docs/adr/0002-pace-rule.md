@@ -9,7 +9,7 @@ The 3-second limit went when typed answers replaced answers said aloud, so a fas
 - A wrong answer is missed whatever its answer time.
 - A right answer is slow when its answer time is over 1.5 × pace and is at least 3 seconds. Otherwise it is fast.
 - While there is no pace, every right answer is fast. Those answer times count towards pace like any other; they are how a pace starts.
-- An answer time is capped at 20 seconds. A presentation during which the app went to the background has an answer time of 20 seconds whatever the clock says. An answer at the cap gets its outcome by the same rule, so it is slow once there is a pace, and it does not count towards pace.
+- An answer time is capped at 20 seconds. A presentation during which the app went to the background has an answer time of 20 seconds whatever the clock says. An answer at the cap gets its outcome by the same rule, so it is slow whenever pace is under about 13 seconds, since 20 seconds is then over 1.5 × pace, and it does not count towards pace.
 - An answer is graded against the pace as it stood before that answer, and pace is worked out afresh after each right answer.
 - The levels, the level changes and the weights of weighted repetition are unchanged. Levels earned under the 3-second self-graded rule are carried as they are. Progress from before storage version 2 is wiped first (ADR 0003), so the levels carried are those earned since.
 
