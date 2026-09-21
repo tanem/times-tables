@@ -98,17 +98,18 @@ export async function pressEnter(page: Page): Promise<void> {
   await expect(page.getByRole('heading', { level: 1 })).toContainText('=');
 }
 
-// Opens the app on a stored document holding the given records, with the
-// three offered tables on.
+// Opens the app on a stored document holding the given records and answer
+// times, with the three offered tables on.
 export async function openWithRecords(
   page: Page,
   records: DrillRecord[],
+  times: number[] = [],
 ): Promise<void> {
   const progress: Progress = {
     version: 2,
     tables: [6, 8, 12],
     facts: {},
-    times: [],
+    times,
     records,
   };
   await page.addInitScript(([key, text]) => localStorage.setItem(key, text), [

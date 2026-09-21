@@ -207,7 +207,10 @@ test('an erase survives a reload', async ({ page }) => {
 test.describe('touch', () => {
   test.use({ hasTouch: true });
 
+  // The centre of the control in the viewport, scrolled to first: the touch
+  // is sent to a point, and the control sits at the foot of a long page.
   async function eraseCentre(page: Page): Promise<{ x: number; y: number }> {
+    await eraseButton(page).scrollIntoViewIfNeeded();
     const box = await eraseButton(page).boundingBox();
     if (!box) throw new Error('the erase control is not laid out');
     return { x: box.x + box.width / 2, y: box.y + box.height / 2 };

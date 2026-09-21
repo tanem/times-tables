@@ -1,6 +1,7 @@
 import type { BuildInfo } from '../build';
 import {
   countsLine,
+  GRID_COLUMNS,
   gridRows,
   LEGEND,
   recentRows,
@@ -10,6 +11,7 @@ import {
 import type { Progress } from '../model/progress';
 import type { Day } from '../time';
 import { renderErase } from './erase';
+import { renderTrend } from './trend';
 
 export type ParentOptions = {
   progress: Progress;
@@ -22,13 +24,37 @@ export type ParentOptions = {
   onErase: () => void;
 };
 
-// Builds the fact grid: three rows of twelve cells, each a toggle button
-// coloured and named by its level. Tapping a cell shows its lifetime counts
-// in the given status line; tapping it again clears the line and tapping
-// another replaces it.
+// The grid's header: the multipliers over their columns. Hidden from
+// assistive technology, since every cell is named by its own fact.
+function renderGridHead(): HTMLElement {
+  const head = document.createElement('div');
+  head.className = 'grid-row grid-head';
+  head.setAttribute('aria-hidden', 'true');
+
+  const corner = document.createElement('span');
+  corner.className = 'row-label';
+
+  const columns = document.createElement('div');
+  columns.className = 'cells';
+  for (const n of GRID_COLUMNS) {
+    const column = document.createElement('span');
+    column.textContent = `${n}`;
+    columns.append(column);
+  }
+
+  head.append(corner, columns);
+  return head;
+}
+
+// Builds the fact grid, a multiplication square: a row per table under a
+// header of multipliers, each cell a toggle button showing its product,
+// coloured by its level and named by its fact and level. Tapping a cell
+// shows its lifetime counts in the given status line; tapping it again
+// clears the line and tapping another replaces it.
 function renderGrid(progress: Progress, status: HTMLElement): HTMLElement {
   const grid = document.createElement('div');
   grid.className = 'grid';
+  grid.append(renderGridHead());
 
   let active: HTMLButtonElement | null = null;
 
@@ -50,7 +76,7 @@ function renderGrid(progress: Progress, status: HTMLElement): HTMLElement {
       const button = document.createElement('button');
       button.type = 'button';
       button.className = `cell level-${cell.level}`;
-      button.textContent = cell.label;
+      button.textContent = `${cell.product}`;
       button.setAttribute('aria-label', cell.ariaLabel);
       button.setAttribute('aria-pressed', 'false');
       button.addEventListener('click', () => {
@@ -81,6 +107,8 @@ function renderGrid(progress: Progress, status: HTMLElement): HTMLElement {
 function renderLegend(): HTMLElement {
   const legend = document.createElement('div');
   legend.className = 'legend';
+  legend.setAttribute('role', 'group');
+  legend.setAttribute('aria-label', 'Levels');
 
   for (const { level, label } of LEGEND) {
     const item = document.createElement('div');
@@ -121,9 +149,9 @@ function renderRecent(
   return list;
 }
 
-// Builds the Parent view: the fact grid with its legend and tap-for-
-// counts, this week's practice, the recent list, the press-and-hold erase
-// control, and the build version in the foot.
+// Builds the Parent view: the trend, the fact grid with its legend and
+// tap-for-counts, this week's practice, the recent list, the press-and-hold
+// erase control, and the build version in the foot.
 // Read-only otherwise: plain typography, no dragon, and the erase ring is
 // the screen's only animation.
 export function renderParent(options: ParentOptions): HTMLElement {
@@ -150,6 +178,10 @@ export function renderParent(options: ParentOptions): HTMLElement {
   status.className = 'counts';
   status.setAttribute('role', 'status');
 
+  const trend = renderTrend(progress, dayOf, today);
+
+  const gridHeading = document.createElement('h2');
+  gridHeading.textContent = 'Facts';
   const grid = renderGrid(progress, status);
   const legend = renderLegend();
 
@@ -169,6 +201,8 @@ export function renderParent(options: ParentOptions): HTMLElement {
 
   screen.append(
     top,
+    ...trend,
+    gridHeading,
     grid,
     legend,
     status,
