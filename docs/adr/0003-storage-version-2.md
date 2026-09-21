@@ -1,6 +1,6 @@
 # Storage version 2 wipes version 1 progress, with no migration
 
-Round two changes what the progress holds: answer times for the pace rule, three figures in each drill record for the Parent view trend, and no speed run. The progress document becomes version 2, and a version 1 document is not migrated: the app starts fresh. The app is early and has few learners, each with little progress, so a one-off reset costs less than migration code and the tests that would have to prove it never loses a level. Migrations are reconsidered when there are more learners.
+Round two changes what the progress holds: answer times for the pace rule, three figures in each drill record for the Parent view trend, and no speed run. The progress document becomes version 2, and a version 1 document is not migrated: the app starts fresh. The app is early and has few learners, each with little progress, so a one-off reset costs less than migration code and the tests that would have to prove it never loses a level. Migrations are reconsidered when there are more learners. ADR 0004 later moves the document to version 3 by the first migration; from then the app reads version 3 and migrates version 2.
 
 ## The rule
 
