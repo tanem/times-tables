@@ -12,7 +12,7 @@ const pkg = JSON.parse(
     fileURLToPath(new URL('./package.json', import.meta.url)),
     'utf8',
   ),
-);
+) as { version: string };
 
 // The build's short commit: read from git, quietly, when the build runs in
 // a checkout, falling back to "unknown" so a build never fails for lack of

@@ -56,7 +56,7 @@ export async function storedProgress(page: Page): Promise<Progress> {
     PROGRESS_KEY,
   );
   if (text === null) throw new Error('nothing stored');
-  return JSON.parse(text);
+  return JSON.parse(text) as Progress;
 }
 
 // The dragon doing the given thing, as its accessible name says.

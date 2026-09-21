@@ -302,7 +302,7 @@ describe('applyOutcome', () => {
   });
 
   it('leaves the other facts and the given document as they were', () => {
-    const before = JSON.parse(JSON.stringify(valid));
+    const before = structuredClone(valid);
     const after = applyOutcome(valid, '6x7', 'missed');
     expect(after.facts['8x12']).toEqual(valid.facts['8x12']);
     expect(valid).toEqual(before);

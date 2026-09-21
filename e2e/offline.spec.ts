@@ -2,6 +2,14 @@ import type { Page } from '@playwright/test';
 import { expect, test } from './fixtures';
 import { startHeading } from './helpers';
 
+// The manifest fields the tests below check.
+interface Manifest {
+  name: string;
+  display: string;
+  start_url: string;
+  scope: string;
+}
+
 // The URLs the worker precaches, read out of the generated sw.js.
 function precachedUrls(source: string): string[] {
   return [...source.matchAll(/url:"([^"]+)"/g)].map((match) => match[1] ?? '');
@@ -58,7 +66,7 @@ test('the built app serves a manifest that installs to the home screen', async (
 
   const href = await page.locator('link[rel=manifest]').getAttribute('href');
   if (!href) throw new Error('no manifest link');
-  const manifest = await (await request.get(href)).json();
+  const manifest = (await (await request.get(href)).json()) as Manifest;
 
   expect(manifest.name).toBe('Times tables');
   expect(manifest.display).toBe('standalone');

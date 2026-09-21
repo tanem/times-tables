@@ -67,7 +67,7 @@ test('holding the erase control for three seconds erases progress and returns to
   let dialogShown = false;
   page.on('dialog', (dialog) => {
     dialogShown = true;
-    dialog.dismiss();
+    void dialog.dismiss();
   });
 
   await openNotFreshOnParent(page);
@@ -99,7 +99,7 @@ test('releasing before three seconds cancels with no dialog or message, and a la
   let dialogShown = false;
   page.on('dialog', (dialog) => {
     dialogShown = true;
-    dialog.dismiss();
+    void dialog.dismiss();
   });
 
   await openNotFreshOnParent(page);
