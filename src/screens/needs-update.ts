@@ -1,4 +1,4 @@
-import { renderDragon } from './dragon';
+import { renderCharacter } from './character';
 
 // Builds the one screen a build shows when the stored document is from a
 // newer build (ADR 0004). There is no way on from it: no drill starts and
@@ -13,6 +13,10 @@ export function renderNeedsUpdate(): HTMLElement {
   const advice = document.createElement('p');
   advice.textContent = 'Close the app and open it again.';
 
-  screen.append(renderDragon({ pose: 'sit' }), heading, advice);
+  screen.append(
+    renderCharacter({ character: 'dragon', pose: 'sit' }),
+    heading,
+    advice,
+  );
   return screen;
 }

@@ -4,14 +4,19 @@ import { BACKUP_KEY, PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
 import {
   animates,
+  character,
+  characterRow,
   dragon,
   ALL_TILES,
   expectNoTableOn,
+  gemTotal,
+  pick,
   practiseButton,
   seedProgress,
   startHeading,
   storedProgress,
   tile,
+  tiles,
   TILES,
 } from './helpers';
 
@@ -93,6 +98,141 @@ test('the dragon sits with the app’s name at the top of the Start screen', asy
   if (!dragonBox || !nameBox || !questionBox) throw new Error('not laid out');
   expect(dragonBox.y + dragonBox.height).toBeLessThanOrEqual(questionBox.y);
   expect(nameBox.y + nameBox.height).toBeLessThanOrEqual(questionBox.y);
+});
+
+test('the gem total sits in the top right corner and a fresh document has none', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await expect(gemTotal(page)).toHaveText('0 gems');
+
+  const box = await gemTotal(page).boundingBox();
+  const viewport = page.viewportSize();
+  if (!box || !viewport) throw new Error('not laid out');
+  expect(box.y).toBeLessThan(40);
+  expect(box.x + box.width).toBeGreaterThan(viewport.width - 40);
+});
+
+test('the gem total reads the stored gems, and one gem is one gem', async ({
+  page,
+}) => {
+  await seedProgress(page, { ...freshProgress(), gems: 27 });
+  await expect(gemTotal(page)).toHaveText('27 gems');
+
+  await seedProgress(page, {
+    ...freshProgress(),
+    facts: { '6x7': { level: 1, best: 1, fast: 1, slow: 0, missed: 0 } },
+    gems: 1,
+  });
+  await expect(gemTotal(page)).toHaveText('1 gem');
+});
+
+// The six characters, the first three unlocked at 60 gems.
+const ROW_AT_60 = [
+  'Dragon',
+  'Cat',
+  'Robot',
+  'Owl, locked, 110 gems',
+  'Unicorn, locked, 170 gems',
+  'Monster, locked, 240 gems',
+];
+
+test('the row shows the six characters in unlock order under the app’s name, the locked ones with the gems that unlock them', async ({
+  page,
+}) => {
+  await seedProgress(page, { ...freshProgress(), gems: 60 });
+
+  const picks = characterRow(page).getByRole('button');
+  await expect(picks).toHaveCount(6);
+  for (const [index, name] of ROW_AT_60.entries()) {
+    await expect(picks.nth(index)).toHaveAccessibleName(name);
+  }
+  for (const name of ['Dragon', 'Cat', 'Robot']) {
+    await expect(pick(page, name)).not.toHaveAttribute('aria-disabled');
+  }
+  for (const name of ['Owl', 'Unicorn', 'Monster']) {
+    await expect(pick(page, name)).toHaveAttribute('aria-disabled', 'true');
+  }
+  await expect(pick(page, 'Dragon')).toHaveAttribute('aria-pressed', 'true');
+  await expect(
+    characterRow(page).getByRole('button', { pressed: true }),
+  ).toHaveCount(1);
+
+  // The row is under the name and above the question.
+  const rowBox = await characterRow(page).boundingBox();
+  const nameBox = await startHeading(page).boundingBox();
+  const questionBox = await page
+    .getByText('Tap the tables you want')
+    .boundingBox();
+  if (!rowBox || !nameBox || !questionBox) throw new Error('not laid out');
+  expect(rowBox.y).toBeGreaterThanOrEqual(nameBox.y + nameBox.height);
+  expect(rowBox.y + rowBox.height).toBeLessThanOrEqual(questionBox.y);
+});
+
+test('a fresh document has the dragon alone unlocked, and 240 gems has every character', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await expect(
+    characterRow(page).getByRole('button', { name: /locked/ }),
+  ).toHaveCount(5);
+  await expect(pick(page, 'Cat')).toHaveAccessibleName('Cat, locked, 25 gems');
+
+  await seedProgress(page, { ...freshProgress(), gems: 240 });
+  await expect(
+    characterRow(page).getByRole('button', { name: /locked/ }),
+  ).toHaveCount(0);
+});
+
+test('tapping an unlocked character chooses it, saves it and puts it on the masthead', async ({
+  page,
+}) => {
+  await seedProgress(page, { ...freshProgress(), gems: 60 });
+  await expect(dragon(page, 'waves')).toBeVisible();
+
+  await pick(page, 'Robot').click();
+  await expect(pick(page, 'Robot')).toHaveAttribute('aria-pressed', 'true');
+  await expect(pick(page, 'Dragon')).toHaveAttribute('aria-pressed', 'false');
+  await expect(character(page, 'robot', 'waves')).toBeVisible();
+  await expect(dragon(page, 'waves')).toHaveCount(0);
+  expect((await storedProgress(page)).character).toBe('robot');
+
+  // The robot sits once a table is on, and the choice survives a reload.
+  await tile(page, '7s').click();
+  await expect(character(page, 'robot')).toBeVisible();
+  await page.reload();
+  await expect(character(page, 'robot')).toBeVisible();
+  await expect(pick(page, 'Robot')).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('tapping a locked character changes nothing', async ({ page }) => {
+  await seedProgress(page, { ...freshProgress(), gems: 60 });
+
+  // A locked character is marked disabled for a screen reader, which
+  // Playwright would wait on; a finger taps it all the same.
+  await pick(page, 'Owl').click({ force: true });
+  await expect(pick(page, 'Owl')).toHaveAttribute('aria-pressed', 'false');
+  await expect(pick(page, 'Dragon')).toHaveAttribute('aria-pressed', 'true');
+  await expect(dragon(page, 'waves')).toBeVisible();
+  expect(await storedProgress(page)).toEqual({ ...freshProgress(), gems: 60 });
+});
+
+test('a locked character is a grey silhouette, an unlocked one is in colour, and the row sits still', async ({
+  page,
+}) => {
+  await seedProgress(page, { ...freshProgress(), gems: 25 });
+  const filterOf = (el: Element) =>
+    getComputedStyle(el.querySelector('svg') as Element).filter;
+  expect(await pick(page, 'Cat').evaluate(filterOf)).toBe('none');
+  expect(await pick(page, 'Robot').evaluate(filterOf)).toBe('brightness(0)');
+
+  // The masthead figure bobs; the row's figures do not.
+  expect(await dragon(page, 'waves').evaluate(animates)).toBe(true);
+  for (const name of ['Dragon', 'Cat', 'Robot']) {
+    expect(await pick(page, name).locator('svg').evaluate(animates)).toBe(
+      false,
+    );
+  }
 });
 
 test('the Start screen has no Speed run button and no best time', async ({
@@ -193,7 +333,9 @@ test('a selection made before the tables widened is kept', async ({ page }) => {
   for (const name of ['6s', '8s', '12s']) {
     await expect(tile(page, name)).toHaveAttribute('aria-pressed', 'true');
   }
-  await expect(page.getByRole('button', { pressed: true })).toHaveCount(3);
+  await expect(tiles(page).getByRole('button', { pressed: true })).toHaveCount(
+    3,
+  );
   await expect(practiseButton(page)).toHaveAccessibleDescription(
     '20 facts from the 6s, 8s and 12s',
   );
@@ -336,6 +478,8 @@ for (const [orientation, width, height, columns] of [
     const parts = [
       page.getByRole('img', { name: /^The dragon/ }),
       startHeading(page),
+      gemTotal(page),
+      ...ROW_AT_60.map((name) => pick(page, name.split(',')[0] ?? '')),
       ...ALL_TILES.map((name) => tile(page, name)),
       practiseButton(page),
       page.getByText('Pick a table to practise'),

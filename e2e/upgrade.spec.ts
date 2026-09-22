@@ -3,6 +3,7 @@ import { expect, test } from './fixtures';
 import {
   advance,
   answerCard,
+  character,
   expectNoTableOn,
   factOnScreen,
   openParent,
@@ -218,6 +219,8 @@ test('a document from a newer build is left untouched and the app asks to be clo
   ).toBeVisible();
   await expect(startHeading(page)).toHaveCount(0);
   await expect(page.getByRole('button')).toHaveCount(0);
+  // The dragon sits with it, whatever character the newer document names.
+  await expect(character(page, 'dragon')).toBeVisible();
 
   expect(
     await page.evaluate((key) => localStorage.getItem(key), PROGRESS_KEY),

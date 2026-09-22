@@ -124,6 +124,17 @@ export function applyOutcome(
   };
 }
 
+// The document with the given character chosen, when the gems have unlocked
+// it; a locked character leaves the choice as it was. The given document is
+// left as it was.
+export function chooseCharacter(
+  progress: Progress,
+  character: Character,
+): Progress {
+  if (!isUnlocked(character, progress.gems)) return progress;
+  return { ...progress, character };
+}
+
 // The document with one more answer time kept towards pace (ADR 0002). Only
 // the times of right answers are ever passed.
 export function keepAnswerTime(progress: Progress, time: number): Progress {

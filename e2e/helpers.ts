@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
+import type { Character } from '../src/model/characters';
 import { pool, TABLES, type Table } from '../src/model/facts';
 import type { Outcome } from '../src/model/level';
 import { PACE_NEEDED } from '../src/model/pace';
@@ -39,10 +40,17 @@ export function practiseButton(page: Page): Locator {
   return page.getByRole('button', { name: 'Practise', exact: true });
 }
 
+// The Start screen's tiles, as the group the question heads.
+export function tiles(page: Page): Locator {
+  return page.getByRole('group', { name: /tables/ });
+}
+
 // The Start screen as a first launch or a fresh start shows it: no tile
 // pressed, the heading asking for a tap and Practise disabled.
 export async function expectNoTableOn(page: Page): Promise<void> {
-  await expect(page.getByRole('button', { pressed: true })).toHaveCount(0);
+  await expect(tiles(page).getByRole('button', { pressed: true })).toHaveCount(
+    0,
+  );
   await expect(page.getByText('Tap the tables you want')).toBeVisible();
   await expect(practiseButton(page)).toBeDisabled();
   await expect(practiseButton(page)).toHaveAccessibleDescription(
@@ -81,9 +89,36 @@ export async function storedProgress(page: Page): Promise<Progress> {
   return JSON.parse(text) as Progress;
 }
 
-// The dragon doing the given thing, as its accessible name says.
+// The character named doing the given thing, as its accessible name says:
+// "The cat jumps", or "The cat" sitting.
+export function character(page: Page, name: Character, doing = ''): Locator {
+  return page.getByRole('img', {
+    name: doing ? `The ${name} ${doing}` : `The ${name}`,
+    exact: true,
+  });
+}
+
+// The dragon doing the given thing.
 export function dragon(page: Page, doing: string): Locator {
-  return page.getByRole('img', { name: `The dragon ${doing}`, exact: true });
+  return character(page, 'dragon', doing);
+}
+
+// The gem total on the Start screen, which reads as "27 gems".
+export function gemTotal(page: Page): Locator {
+  return page.locator('.gems');
+}
+
+// The row of characters on the Start screen.
+export function characterRow(page: Page): Locator {
+  return page.getByRole('group', { name: 'Your character' });
+}
+
+// One character in the row, by its name alone: "Cat" whether or not it is
+// locked.
+export function pick(page: Page, name: string): Locator {
+  return characterRow(page).getByRole('button', {
+    name: new RegExp(`^${name}`),
+  });
 }
 
 export function sparkles(page: Page): Locator {
@@ -202,10 +237,12 @@ const KNOWN_GEMS = 132;
 // pool at level 4 and one earlier finished drill on those tables with the
 // given median answer time; then taps Practise and lands on the first card.
 // Every fact has paid all four of its gems, so no answer of this drill can
-// pay one and the bonus is all that can.
+// pay one and the bonus is all that can. The gems have unlocked the owl, so
+// any character up to it can be the chosen one.
 export async function startDrillAfter(
   page: Page,
   median: number,
+  character: Character = 'dragon',
 ): Promise<void> {
   const facts: Progress['facts'] = {};
   for (const fact of pool(SEEDED_TABLES)) {
@@ -216,6 +253,7 @@ export async function startDrillAfter(
     tables: [...SEEDED_TABLES],
     facts,
     gems: KNOWN_GEMS,
+    character,
     records: [lastTimeRecord(median)],
   });
   await practiseButton(page).click();
@@ -273,8 +311,9 @@ export async function advance(page: Page): Promise<void> {
 export async function finishDrillAfter(
   page: Page,
   median: number,
+  character: Character = 'dragon',
 ): Promise<void> {
-  await startDrillAfter(page, median);
+  await startDrillAfter(page, median, character);
   for (let index = 0; index < 20; index++) {
     await answerCard(page, 'fast');
     await advance(page);
