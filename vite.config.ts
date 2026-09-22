@@ -55,7 +55,7 @@ export default defineConfig({
       manifest: {
         name: 'Times tables',
         short_name: 'Times tables',
-        description: 'Practise the 6, 8 and 12 times tables.',
+        description: 'Practise the times tables from the 2s to the 12s.',
         display: 'standalone',
         start_url: './',
         scope: './',

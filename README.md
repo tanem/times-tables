@@ -1,8 +1,23 @@
 # times-tables
 
-A small web app for practising the times tables from the 2s to the 12s. The learner types each answer on an on-screen keypad and the app judges it against the learner's own pace, not a fixed limit. Built for an iPad, hosted on GitHub Pages.
+Times tables practice for an iPad, from the 2s to the 12s.
 
-## Installing on an iPad
+[![Check and deploy](https://github.com/tanem/times-tables/actions/workflows/ci.yml/badge.svg)](https://github.com/tanem/times-tables/actions/workflows/ci.yml) · [Open the app](https://tanem.github.io/times-tables/)
+
+<p align="center"><img src="docs/screenshots/start.png" width="360" alt="The Start screen: the chosen character, the row of characters, the tiles for the tables and the Practise button"></p>
+
+## What it does
+
+- Drills the tables from the 2s to the 12s, any mix of them, 20 questions at a sitting.
+- The learner types each answer on an on-screen keypad.
+- Each answer is judged against the learner's own pace, not a fixed time limit.
+- Each fact has a level, and facts at a low level come round more often.
+- Gems reward progress and unlock characters that react to each answer.
+- Works offline on an iPad once installed, with no accounts and no server.
+
+Built for a child learning the tables at home.
+
+## Install on an iPad
 
 Open https://tanem.github.io/times-tables/ in Safari, tap the Share button, choose Add to Home Screen, and tap Add. Safari is the only browser that can do this; another browser on iOS cannot install the app.
 
@@ -12,21 +27,34 @@ Updates arrive on their own: when the app is opened with a network it fetches th
 
 The progress lives only inside the installed app on that iPad. Deleting the icon erases it, moving to a new iPad does not carry it over, and there is no export.
 
+## How it judges an answer
+
+A right answer is fast or slow depending on how long it took against the learner's pace: the usual time this learner takes over a right answer, typing included. Pace is worked out from the learner's own recent right answers, so it moves as they improve, and a new learner has no pace until they have answered enough. A wrong answer, or tapping "I don't know", is missed, with no second try.
+
+Each fact has a level. A fast answer moves it up, a slow one moves it down, and a missed one takes it back to the start. The next fact is chosen so that facts at a low level come round more often, and no fact is ever retired.
+
+A fact pays a gem the first time it reaches each level, and a drill that was faster than the last one on the same tables pays a small bonus. Gems are never spent. The cat unlocks at 25 gems, the robot at 60, the owl at 110, the unicorn at 170 and the monster at 240; the dragon is there from the start.
+
+The terms are defined in [CONTEXT.md](CONTEXT.md), the pace rule in [ADR 0002](docs/adr/0002-pace-rule.md) and the gem rule in [ADR 0004](docs/adr/0004-gem-rule.md).
+
+## Screens
+
+The layout turns with the iPad; these are portrait.
+
+|                                                                                                        |                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| ![The card: one fact with the keypad under it](docs/screenshots/card.png)                              | ![The feedback: the answer, the character, the word Fast and the gem the answer paid](docs/screenshots/feedback.png) |
+| ![The end screen: the tally, the best streak and the race against last time](docs/screenshots/end.png) | ![The Parent view: the trend, the chart of pace and the grid of facts by level](docs/screenshots/parent.png)         |
+
+## For parents
+
+"For parents" at the bottom of the Start screen opens the Parent view. It shows the learner's pace, facts known and share of fast answers against four weeks ago, a chart of pace drill by drill, a grid of every fact coloured by its level, and the recent drills. Tap a fact in the grid for its counts.
+
+The Parent view is also where progress is erased. Erasing clears everything: every level, the gems, the characters unlocked and the drill records. There is no undo.
+
 ## Development
 
-Node 24, as pinned in `.nvmrc`. Install the dependencies with `npm ci`, then install the browsers the end-to-end tests run in with `npx playwright install chromium webkit`. Installing also sets up a `commit-msg` hook that checks each commit message against Conventional Commits.
-
-`npm run check` runs every check, in order: the Prettier format check, ESLint, `tsc --noEmit`, the Vitest tests, the production build, and the Playwright tests against the built app served by `vite preview`. `npm run dev` starts the Vite dev server. CI runs the same checks on every pull request and on every push to `main`. A failed Playwright run uploads its HTML report and traces as a workflow artifact.
-
-`npm run icons` regenerates the icons in `public/` from `public/icon.svg`, following `pwa-assets.config.ts`. The generated files are committed, so the script is only run when the source drawing changes.
-
-The end-to-end tests cover the manifest, the precache list and an offline reload, but they run in a desktop browser. A deploy that touches the manifest or the service worker also needs the manual check on an iPad: add the app to the home screen from Safari, then launch it from the icon with the network off and confirm it opens.
-
-Renovate opens dependency update pull requests, including majors, and merges them with a merge commit once the `check` job passes, so that job, which ends with the Playwright suite, is the only gate. Its first pull request pins every dependency to an exact version, and it also pins the workflow's actions to commit digests. It takes no release until it is 3 days old, except a fix for a vulnerability alert, which it takes at once. Its pull requests carry the `internal` label, and the dependency dashboard issue lists what is pending. TypeScript is capped below version 7 until typescript-eslint supports it.
-
-## Deployment
-
-Pushes to `main` that pass the checks deploy to GitHub Pages at https://tanem.github.io/times-tables/.
+Node 24, `npm ci`, then `npm run check` runs every check. See [docs/development.md](docs/development.md) for the scripts, the deploy, the dependency updates and the screenshots.
 
 ## License
 
