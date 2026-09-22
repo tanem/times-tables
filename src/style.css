@@ -141,7 +141,9 @@ button {
   --size: clamp(44px, 8vmin, 72px);
 }
 
-.pick .character {
+/* The figures sit still: .sit alone is as specific as this rule and comes
+   later, so the pose is named here. */
+.pick .character.sit {
   animation: none;
 }
 
@@ -685,7 +687,7 @@ button {
   --size: var(--runner);
 }
 
-.runner .character {
+.runner .character.sit {
   animation: none;
 }
 

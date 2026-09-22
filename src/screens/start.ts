@@ -142,14 +142,14 @@ export function renderStart(options: StartOptions): HTMLElement {
   row.setAttribute('role', 'group');
   row.setAttribute('aria-label', 'Your character');
   const picks = new Map<Character, HTMLButtonElement>();
-  for (const each of CHARACTERS) {
-    const pick = renderPick(each, options.gems, () => {
-      if (each === character) return;
-      character = each;
+  for (const candidate of CHARACTERS) {
+    const pick = renderPick(candidate, options.gems, () => {
+      if (candidate === character) return;
+      character = candidate;
       drawCharacter();
       options.onCharacterChange(character);
     });
-    picks.set(each, pick);
+    picks.set(candidate, pick);
     row.append(pick);
   }
 
@@ -195,8 +195,8 @@ export function renderStart(options: StartOptions): HTMLElement {
   // Draws the chosen character on the masthead, waving while the screen
   // nudges, and marks it as chosen in the row.
   const drawCharacter = () => {
-    for (const [each, pick] of picks) {
-      pick.setAttribute('aria-pressed', String(each === character));
+    for (const [candidate, pick] of picks) {
+      pick.setAttribute('aria-pressed', String(candidate === character));
     }
     const next = renderCharacter({
       character,

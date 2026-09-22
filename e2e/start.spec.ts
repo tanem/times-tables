@@ -217,7 +217,7 @@ test('tapping a locked character changes nothing', async ({ page }) => {
   expect(await storedProgress(page)).toEqual({ ...freshProgress(), gems: 60 });
 });
 
-test('a locked character is a grey silhouette and an unlocked one is in colour', async ({
+test('a locked character is a grey silhouette, an unlocked one is in colour, and the row sits still', async ({
   page,
 }) => {
   await seedProgress(page, { ...freshProgress(), gems: 25 });
@@ -225,6 +225,14 @@ test('a locked character is a grey silhouette and an unlocked one is in colour',
     getComputedStyle(el.querySelector('svg') as Element).filter;
   expect(await pick(page, 'Cat').evaluate(filterOf)).toBe('none');
   expect(await pick(page, 'Robot').evaluate(filterOf)).toBe('brightness(0)');
+
+  // The masthead figure bobs; the row's figures do not.
+  expect(await dragon(page, 'waves').evaluate(animates)).toBe(true);
+  for (const name of ['Dragon', 'Cat', 'Robot']) {
+    expect(await pick(page, name).locator('svg').evaluate(animates)).toBe(
+      false,
+    );
+  }
 });
 
 test('the Start screen has no Speed run button and no best time', async ({
