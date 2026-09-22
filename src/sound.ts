@@ -84,6 +84,9 @@ export type Sound = {
   slow: () => void;
   // A miss: soft, low and falling.
   missed: () => void;
+  // A gem paid: a chime, two short notes above a fast answer's early in a
+  // streak.
+  gem: () => void;
   // The end of a drill: a run up, longer for a higher band.
   end: (band: Band) => void;
   // A drill faster than last time: the improvement sweep, a slide up into a
@@ -165,6 +168,12 @@ export function createSound(newContext: () => AudioContext): Sound {
     // E4 sliding down to C4.
     missed: () =>
       play([{ freq: pitch(-8), slideTo: pitch(-12), gain: 0.4, ring: 0.3 }]),
+    // B6 then E7, the first cut short.
+    gem: () =>
+      play([
+        { freq: pitch(23), gain: 0.7, ring: 0.08 },
+        { freq: pitch(28), at: 0.07, gain: 0.7 },
+      ]),
     end: (band) =>
       play(
         END_RUNS[band].map((semitones, i) => ({

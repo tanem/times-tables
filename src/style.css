@@ -535,6 +535,31 @@ button {
   font-size: clamp(1.25rem, 3.5vmin, 2rem);
 }
 
+/* The gem an answer paid, under the word. The line keeps its height while it
+   is empty, so the streak and the hint do not move when the gem shows, and
+   a fast feedback that paid nothing is laid out the same. */
+.feedback .gem-paid {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  line-height: 1.2;
+  min-height: 1.2em;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: clamp(1.5rem, 5vmin, 3rem);
+  color: #a86f00;
+}
+
+.feedback .gem-paid .gem {
+  width: 1.1em;
+  height: 1.1em;
+}
+
+.feedback .gem-paid.shown {
+  animation: pop 0.45s ease-out;
+}
+
 .feedback .hint {
   margin: 0;
   color: var(--muted);

@@ -7,10 +7,13 @@ import {
   digitsFor,
   dontKnow,
   finishDrillAfter,
+  GEM_AT,
+  gemPaid,
   key,
   PACE_TIMES,
   setVisibility,
   startDrill,
+  startDrillAfter,
   startHeading,
   DIALOG_AFTER_WORDS_AT,
   unlockDialog,
@@ -84,6 +87,48 @@ test('a slow answer and a miss each sound with the feedback, the miss lower', as
   expect(missed.length).toBeGreaterThan(0);
   expect(missed[0]?.freq).toBeLessThan(slow[0]?.freq ?? 0);
   expect(gaveUp).toEqual(missed);
+});
+
+test('the gem chime plays as the gem shows, after the fast answer’s sound and not before', async ({
+  page,
+}) => {
+  await startDrill(page);
+
+  const fast = await outcomeNotes(page, 'fast');
+  const beforeTheGem = await heardDuring(page, () =>
+    page.clock.runFor(GEM_AT - 1),
+  );
+  const chime = await heardDuring(page, () => page.clock.runFor(1));
+
+  expect(fast).toHaveLength(2);
+  expect(beforeTheGem).toEqual([]);
+  expect(chime).toHaveLength(2);
+  await expect(gemPaid(page)).toHaveText('+1 gem');
+});
+
+test('a fast answer that pays no gem plays no chime', async ({ page }) => {
+  await startDrillAfter(page, 15000);
+
+  const fast = await outcomeNotes(page, 'fast');
+  const afterwards = await heardDuring(page, () => page.clock.runFor(GEM_AT));
+
+  expect(fast).toHaveLength(2);
+  expect(afterwards).toEqual([]);
+});
+
+test('the gem chime does not follow the learner off the feedback', async ({
+  page,
+}) => {
+  await startDrill(page);
+  await answerCard(page, 'fast');
+
+  const notes = await heardDuring(page, async () => {
+    await advance(page);
+    await expect(page.getByText('2 / 20')).toBeVisible();
+    await page.clock.runFor(GEM_AT);
+  });
+
+  expect(notes).toEqual([]);
 });
 
 test('the end screen plays a run up', async ({ page }) => {
