@@ -15,6 +15,7 @@ import {
   key,
   momentWords,
   PACE_TIMES,
+  pick,
   practiseButton,
   pressEnter,
   race,
@@ -31,6 +32,9 @@ import {
   storedProgress,
   tile,
   typeAnswer,
+  UNLOCK_AFTER_WORDS_AT,
+  UNLOCK_AT,
+  unlockDialog,
   WORDS_AT,
 } from './helpers';
 
@@ -652,6 +656,107 @@ test('reduced motion leaves the runners where the race ends them and still says 
   await expect(momentWords(page)).toContainText('Faster than last time!');
 });
 
+// Runs a whole drill of fast answers on the seeded tables from a document
+// whose facts are all new and whose gem total is as given, and lands on the
+// end screen. Every answer takes its fact to a level it has not reached, so
+// the drill pays 20 gems.
+async function finishDrillFrom(page: Page, gems: number): Promise<void> {
+  await seedProgress(page, {
+    ...freshProgress(),
+    tables: [...SEEDED_TABLES],
+    gems,
+  });
+  await practiseButton(page).click();
+  for (let index = 0; index < 20; index++) {
+    await answerCard(page, 'fast');
+    await advance(page);
+  }
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Drill done!' }),
+  ).toBeVisible();
+  expect((await storedProgress(page)).gems).toBe(gems + 20);
+}
+
+test('a drill whose answers unlock a character announces it in a dialog once the celebration has played', async ({
+  page,
+}) => {
+  // 10 gems and 20 paid cross the cat's 25.
+  await finishDrillFrom(page, 10);
+  await expect(unlockDialog(page)).toHaveCount(0);
+
+  await page.clock.runFor(UNLOCK_AT - 1);
+  await expect(unlockDialog(page)).toHaveCount(0);
+
+  await page.clock.runFor(1);
+  const dialog = unlockDialog(page);
+  await expect(dialog).toBeVisible();
+  await expect(
+    dialog.getByRole('img', { name: 'The cat jumps high' }),
+  ).toBeVisible();
+  await expect(dialog.getByText('The cat', { exact: true })).toBeVisible();
+  await expect(
+    dialog.getByText('Tap it on the Home screen to play as it'),
+  ).toBeVisible();
+  await expect(dialog.getByRole('button', { name: 'OK' })).toBeFocused();
+});
+
+test('a drill whose bonus unlocks a character announces it after the words', async ({
+  page,
+}) => {
+  // 168 gems and the bonus of 2 cross the unicorn's 170.
+  await finishDrillAfter(page, 15000, 'dragon', 168);
+
+  await page.clock.runFor(UNLOCK_AFTER_WORDS_AT - 1);
+  await expect(momentWords(page)).toContainText('Faster than last time!');
+  await expect(unlockDialog(page)).toHaveCount(0);
+
+  await page.clock.runFor(1);
+  await expect(unlockDialog(page)).toBeVisible();
+  await expect(
+    unlockDialog(page).getByRole('img', { name: 'The unicorn jumps high' }),
+  ).toBeVisible();
+});
+
+test('the dialog closes on OK and does not switch character, which the Start screen shows unlocked', async ({
+  page,
+}) => {
+  await finishDrillFrom(page, 10);
+  await page.clock.runFor(UNLOCK_AT);
+  const home = page.getByRole('button', { name: 'Home' });
+  const before = await home.boundingBox();
+
+  await unlockDialog(page).getByRole('button', { name: 'OK' }).click();
+
+  await expect(unlockDialog(page)).toHaveCount(0);
+  expect((await storedProgress(page)).character).toBe('dragon');
+  // The dialog sat over the screen, so Home never moved under a finger.
+  expect(await home.boundingBox()).toEqual(before);
+  await home.click();
+  await expect(pick(page, 'Cat')).toHaveAccessibleName('Cat');
+  await expect(pick(page, 'Dragon')).toHaveAttribute('aria-pressed', 'true');
+});
+
+test('a drill that crosses no unlock total announces nothing', async ({
+  page,
+}) => {
+  // 132 and the bonus of 2 fall short of the unicorn's 170.
+  await finishDrillAfter(page, 15000);
+
+  await page.clock.runFor(UNLOCK_AFTER_WORDS_AT);
+  await expect(unlockDialog(page)).toHaveCount(0);
+});
+
+test('a character unlocked before the drill is not announced', async ({
+  page,
+}) => {
+  // The cat unlocked at 25 gems earlier, with no dialog to show for it,
+  // and 46 is short of the robot's 60.
+  await finishDrillFrom(page, 26);
+
+  await page.clock.runFor(UNLOCK_AFTER_WORDS_AT);
+  await expect(unlockDialog(page)).toHaveCount(0);
+});
+
 test('a drill with 7 fast answers ends with a warm wave', async ({ page }) => {
   await finishDrill(page, 7);
 
@@ -939,5 +1044,26 @@ for (const [orientation, width, height] of [
     }
     // The moment held its place, so Home never moved under a finger.
     expect(await home.boundingBox()).toEqual(before);
+  });
+
+  test(`the dialog for a new character fits an iPad in ${orientation}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await finishDrillAfter(page, 15000, 'dragon', 168);
+
+    await page.clock.runFor(UNLOCK_AFTER_WORDS_AT);
+
+    const dialog = unlockDialog(page);
+    const parts = [
+      dialog.getByRole('heading', { level: 2 }),
+      dialog.getByRole('img', { name: 'The unicorn jumps high' }),
+      dialog.getByText('The unicorn', { exact: true }),
+      dialog.getByText('Tap it on the Home screen to play as it'),
+      dialog.getByRole('button', { name: 'OK' }),
+    ];
+    for (const part of parts) {
+      await expect(part).toBeInViewport({ ratio: 1 });
+    }
   });
 }

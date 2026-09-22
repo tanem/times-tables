@@ -12,6 +12,8 @@ import {
   setVisibility,
   startDrill,
   startHeading,
+  UNLOCK_AFTER_WORDS_AT,
+  unlockDialog,
   WORDS_AT,
 } from './helpers';
 
@@ -113,6 +115,23 @@ test('the improvement sweep plays as the race ends and not before', async ({
   expect(sweep).toHaveLength(4);
 });
 
+test('the unlock fanfare plays with the dialog and not before', async ({
+  page,
+}) => {
+  // 168 gems and the bonus of 2 cross the unicorn's 170.
+  await finishDrillAfter(page, 15000, 'dragon', 168);
+  await page.clock.runFor(WORDS_AT);
+
+  const afterTheSweep = await heardDuring(page, () =>
+    page.clock.runFor(UNLOCK_AFTER_WORDS_AT - WORDS_AT - 1),
+  );
+  const fanfare = await heardDuring(page, () => page.clock.runFor(1));
+
+  expect(afterTheSweep).toEqual([]);
+  expect(fanfare).toHaveLength(5);
+  await expect(unlockDialog(page)).toBeVisible();
+});
+
 // The two ways off the end screen, and what each lands on.
 const WAYS_OFF = [
   ['Home', (page: Page) => startHeading(page)],
@@ -120,15 +139,15 @@ const WAYS_OFF = [
 ] as const;
 
 for (const [action, landing] of WAYS_OFF) {
-  test(`the improvement sweep does not follow the learner off the end screen by ${action}`, async ({
+  test(`the improvement sweep and the fanfare do not follow the learner off the end screen by ${action}`, async ({
     page,
   }) => {
-    await finishDrillAfter(page, 15000);
+    await finishDrillAfter(page, 15000, 'dragon', 168);
 
     const notes = await heardDuring(page, async () => {
       await page.getByRole('button', { name: action }).click();
       await expect(landing(page)).toBeVisible();
-      await page.clock.runFor(WORDS_AT);
+      await page.clock.runFor(UNLOCK_AFTER_WORDS_AT);
     });
 
     expect(notes).toEqual([]);

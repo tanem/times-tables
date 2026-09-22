@@ -231,18 +231,20 @@ function lastTimeRecord(median: number): DrillRecord {
 
 // The gems the seeded tables' 33 facts have paid once every one of them has
 // reached level 4.
-const KNOWN_GEMS = 132;
+export const KNOWN_GEMS = 132;
 
 // Opens the app on a document with the seeded tables on, every fact of their
 // pool at level 4 and one earlier finished drill on those tables with the
 // given median answer time; then taps Practise and lands on the first card.
 // Every fact has paid all four of its gems, so no answer of this drill can
 // pay one and the bonus is all that can. The gems have unlocked the owl, so
-// any character up to it can be the chosen one.
+// any character up to it can be the chosen one. A higher total stands in
+// for bonuses paid earlier.
 export async function startDrillAfter(
   page: Page,
   median: number,
   character: Character = 'dragon',
+  gems: number = KNOWN_GEMS,
 ): Promise<void> {
   const facts: Progress['facts'] = {};
   for (const fact of pool(SEEDED_TABLES)) {
@@ -252,17 +254,28 @@ export async function startDrillAfter(
     ...freshProgress(),
     tables: [...SEEDED_TABLES],
     facts,
-    gems: KNOWN_GEMS,
+    gems,
     character,
     records: [lastTimeRecord(median)],
   });
   await practiseButton(page).click();
 }
 
+// The dialog that announces a new character on the end screen.
+export function unlockDialog(page: Page): Locator {
+  return page.getByRole('dialog', { name: 'New character!' });
+}
+
 // The moment's two beats, in milliseconds after the end screen shows: the
 // race starts, then runs for 2200 before the words follow it.
 export const RACE_AT = 900;
 export const WORDS_AT = 3100;
+
+// When the dialog for a new character shows, in milliseconds after the end
+// screen shows: on the race's beat when there is no race, and 1300 after
+// the words when there is.
+export const UNLOCK_AT = 900;
+export const UNLOCK_AFTER_WORDS_AT = 4400;
 
 // The race track between the learner's earlier self and today.
 export function race(page: Page): Locator {
@@ -312,8 +325,9 @@ export async function finishDrillAfter(
   page: Page,
   median: number,
   character: Character = 'dragon',
+  gems: number = KNOWN_GEMS,
 ): Promise<void> {
-  await startDrillAfter(page, median, character);
+  await startDrillAfter(page, median, character, gems);
   for (let index = 0; index < 20; index++) {
     await answerCard(page, 'fast');
     await advance(page);

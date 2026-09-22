@@ -31,6 +31,17 @@ const RACE_RUN = 2200;
 // What the words say once the race has run.
 const WORDS = 'Faster than last time!';
 
+// When the dialog for a new character shows, in milliseconds: on the race's
+// beat when there is no race, and this long after the words when there is,
+// so that the improvement sweep has rung out.
+const UNLOCK_AT = RACE_AT;
+const UNLOCK_AFTER_WORDS = 1300;
+
+// What the dialog says: its heading, and where the learner chooses the
+// character, which is the Start screen that Home leads to.
+const NEW_CHARACTER = 'New character!';
+const WHERE_TO_CHOOSE = 'Tap it on the Home screen to play as it';
+
 // The race between the learner's earlier self and today, and the words that
 // follow it. The track is decorative, so a screen reader is left with the
 // words alone; the two small figures in it are hidden with it, so that they
@@ -84,12 +95,61 @@ function renderMoment(character: Character): {
   };
 }
 
+// The dialog that announces a new character: the character jumping high in
+// a burst of sparkles, its name and where to choose it, on a card over a backdrop
+// that covers the screen. It does not switch character, and OK is its only
+// way out. The backdrop is fixed over the screen, so nothing under it moves.
+function renderUnlock(character: Character): {
+  backdrop: HTMLElement;
+  ok: HTMLButtonElement;
+} {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'backdrop';
+
+  const dialog = document.createElement('div');
+  dialog.className = 'unlock';
+  dialog.setAttribute('role', 'dialog');
+  dialog.setAttribute('aria-modal', 'true');
+
+  const heading = document.createElement('h2');
+  heading.id = 'unlock-heading';
+  heading.textContent = NEW_CHARACTER;
+  dialog.setAttribute('aria-labelledby', heading.id);
+
+  const name = document.createElement('p');
+  name.className = 'unlock-name';
+  name.textContent = `The ${character}`;
+
+  const where = document.createElement('p');
+  where.className = 'unlock-where';
+  where.textContent = WHERE_TO_CHOOSE;
+
+  const ok = document.createElement('button');
+  ok.type = 'button';
+  ok.className = 'unlock-ok';
+  ok.textContent = 'OK';
+  ok.addEventListener('click', () => backdrop.remove());
+
+  dialog.append(
+    heading,
+    renderCharacter({ character, pose: 'big-jump', sparkles: 'burst' }),
+    name,
+    where,
+    ok,
+  );
+  backdrop.append(dialog);
+  return { backdrop, ok };
+}
+
 export type EndOptions = {
   drill: Drill;
   character: Character;
   // Whether the drill was faster than last time, which the moment shows and
   // the bonus has already been paid for (ADR 0004).
   faster: boolean;
+  // The character the drill's gems unlocked, if any, which the dialog
+  // announces (ADR 0004).
+  unlock: Character | null;
   onHome: () => void;
   onAgain: () => void;
 };
@@ -99,7 +159,8 @@ export type EndOptions = {
 // celebrates by the drill's band, and a run up plays that is longer for a
 // higher band. A drill faster than last time runs the race 0.9 seconds into
 // the celebration, and the words, the proud character and the improvement
-// sweep follow it.
+// sweep follow it. A new character is announced in a dialog with the
+// fanfare, last of all.
 export function renderEnd(options: EndOptions): HTMLElement {
   const { drill, character } = options;
 
@@ -175,6 +236,20 @@ export function renderEnd(options: EndOptions): HTMLElement {
         );
         sound.faster();
       }, RACE_AT + RACE_RUN),
+    );
+  }
+
+  if (options.unlock) {
+    const { backdrop, ok } = renderUnlock(options.unlock);
+    const at = options.faster
+      ? RACE_AT + RACE_RUN + UNLOCK_AFTER_WORDS
+      : UNLOCK_AT;
+    pending.push(
+      schedule(() => {
+        screen.append(backdrop);
+        ok.focus();
+        sound.unlock();
+      }, at),
     );
   }
 

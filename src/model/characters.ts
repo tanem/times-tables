@@ -30,3 +30,15 @@ export function isCharacter(value: unknown): value is Character {
 export function isUnlocked(character: Character, gems: number): boolean {
   return gems >= UNLOCK_AT[character];
 }
+
+// The character the gem total unlocked as it rose from before to after, or
+// null when it crossed no unlock total. A drill cannot cross two (ADR 0004);
+// should the total ever do so, the highest is the one named.
+export function newUnlock(before: number, after: number): Character | null {
+  return (
+    CHARACTERS.findLast(
+      (character) =>
+        !isUnlocked(character, before) && isUnlocked(character, after),
+    ) ?? null
+  );
+}

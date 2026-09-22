@@ -234,6 +234,26 @@ describe('createSound', () => {
     expect(sweep[3]?.at).toBeCloseTo(opening + 0.7, 3);
   });
 
+  it('plays a fanfare for a new character that climbs to a note above the run up', () => {
+    const { sound, heard } = tracked();
+    sound.wake();
+
+    const top = notesOf(heard, () => sound.end('top'));
+    const fanfare = notesOf(heard, () => sound.unlock());
+
+    // G5, C6, E6, G6 and C7, a tenth of a second apart.
+    expect(fanfare.map((note) => Math.round(note.freq))).toEqual([
+      784, 1047, 1319, 1568, 2093,
+    ]);
+    const opening = fanfare[0]?.at ?? 0;
+    fanfare.forEach((note, i) =>
+      expect(note.at).toBeCloseTo(opening + i * 0.1, 3),
+    );
+    const highest = (notes: HeardNote[]) =>
+      Math.max(...notes.map((note) => note.freq));
+    expect(highest(fanfare)).toBeGreaterThan(highest(top));
+  });
+
   it('ends a drill on a run up that is longer for a higher band', () => {
     const { sound, heard } = tracked();
     sound.wake();
