@@ -751,29 +751,30 @@ button {
   color: white;
 }
 
-/* The dialog for a new character: a backdrop fixed over the whole end screen,
-   so that nothing under it moves, and a card that rises in the middle with
-   the character, its name, where to choose it and OK. */
-.backdrop {
-  position: fixed;
-  inset: 0;
-  z-index: 5;
-  display: grid;
-  place-items: center;
-  padding: 16px;
-  background: rgb(43 45 66 / 45%);
+/* The dialog for a new character: the browser's modal dialog, a card that
+   rises in the middle of its backdrop with the character, its name, where
+   to choose it and OK. The browser keeps it over the screen and holds the
+   screen still under it. */
+.unlock {
+  max-width: calc(100% - 32px);
+  padding: clamp(20px, 4vmin, 40px);
+  border: 0;
+  border-radius: 32px;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: center;
 }
 
-.unlock {
+.unlock[open] {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: clamp(12px, 2.5vmin, 24px);
-  max-width: 100%;
-  padding: clamp(20px, 4vmin, 40px);
-  border-radius: 32px;
-  background: var(--paper);
   animation: rise 0.25s ease-out;
+}
+
+.unlock::backdrop {
+  background: rgb(43 45 66 / 45%);
 }
 
 @keyframes rise {
@@ -1563,7 +1564,7 @@ button {
   }
 
   /* The dialog for a new character shows where it ends up. */
-  .unlock {
+  .unlock[open] {
     animation: none;
   }
 

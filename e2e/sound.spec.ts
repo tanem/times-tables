@@ -12,7 +12,7 @@ import {
   setVisibility,
   startDrill,
   startHeading,
-  UNLOCK_AFTER_WORDS_AT,
+  DIALOG_AFTER_WORDS_AT,
   unlockDialog,
   WORDS_AT,
 } from './helpers';
@@ -119,11 +119,11 @@ test('the unlock fanfare plays with the dialog and not before', async ({
   page,
 }) => {
   // 168 gems and the bonus of 2 cross the unicorn's 170.
-  await finishDrillAfter(page, 15000, 'dragon', 168);
+  await finishDrillAfter(page, 15000, { gems: 168 });
   await page.clock.runFor(WORDS_AT);
 
   const afterTheSweep = await heardDuring(page, () =>
-    page.clock.runFor(UNLOCK_AFTER_WORDS_AT - WORDS_AT - 1),
+    page.clock.runFor(DIALOG_AFTER_WORDS_AT - WORDS_AT - 1),
   );
   const fanfare = await heardDuring(page, () => page.clock.runFor(1));
 
@@ -139,18 +139,37 @@ const WAYS_OFF = [
 ] as const;
 
 for (const [action, landing] of WAYS_OFF) {
-  test(`the improvement sweep and the fanfare do not follow the learner off the end screen by ${action}`, async ({
+  test(`the improvement sweep does not follow the learner off the end screen by ${action}`, async ({
     page,
   }) => {
-    await finishDrillAfter(page, 15000, 'dragon', 168);
+    await finishDrillAfter(page, 15000);
 
     const notes = await heardDuring(page, async () => {
       await page.getByRole('button', { name: action }).click();
       await expect(landing(page)).toBeVisible();
-      await page.clock.runFor(UNLOCK_AFTER_WORDS_AT);
+      await page.clock.runFor(WORDS_AT);
     });
 
     expect(notes).toEqual([]);
+  });
+
+  test(`leaving by ${action} before the dialog brings it forward with the fanfare, and nothing follows the learner off`, async ({
+    page,
+  }) => {
+    await finishDrillAfter(page, 15000, { gems: 168 });
+
+    const fanfare = await heardDuring(page, async () => {
+      await page.getByRole('button', { name: action }).click();
+      await expect(unlockDialog(page)).toBeVisible();
+    });
+    const afterwards = await heardDuring(page, async () => {
+      await unlockDialog(page).getByRole('button', { name: 'OK' }).click();
+      await expect(landing(page)).toBeVisible();
+      await page.clock.runFor(DIALOG_AFTER_WORDS_AT);
+    });
+
+    expect(fanfare).toHaveLength(5);
+    expect(afterwards).toEqual([]);
   });
 }
 

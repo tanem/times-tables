@@ -31,16 +31,15 @@ const RACE_RUN = 2200;
 // What the words say once the race has run.
 const WORDS = 'Faster than last time!';
 
-// When the dialog for a new character shows, in milliseconds: on the race's
-// beat when there is no race, and this long after the words when there is,
-// so that the improvement sweep has rung out.
-const UNLOCK_AT = RACE_AT;
-const UNLOCK_AFTER_WORDS = 1300;
+// How long after the words the dialog for a new character shows, in
+// milliseconds, so that the improvement sweep has rung out. With no race it
+// shows on the race's beat instead.
+const DIALOG_AFTER_WORDS = 1300;
 
 // What the dialog says: its heading, and where the learner chooses the
 // character, which is the Start screen that Home leads to.
 const NEW_CHARACTER = 'New character!';
-const WHERE_TO_CHOOSE = 'Tap it on the Home screen to play as it';
+const WHERE_TO_CHOOSE = 'Tap Home, then tap it to play as it';
 
 // The race between the learner's earlier self and today, and the words that
 // follow it. The track is decorative, so a screen reader is left with the
@@ -96,20 +95,16 @@ function renderMoment(character: Character): {
 }
 
 // The dialog that announces a new character: the character jumping high in
-// a burst of sparkles, its name and where to choose it, on a card over a backdrop
-// that covers the screen. It does not switch character, and OK is its only
-// way out. The backdrop is fixed over the screen, so nothing under it moves.
+// a burst of sparkles, its name and where to choose it. It does not switch
+// character; OK closes it, as Escape does on a keyboard. It is the
+// browser's own modal dialog, so it sits in the top layer over the screen
+// and nothing under it moves or can be reached while it is open.
 function renderUnlock(character: Character): {
-  backdrop: HTMLElement;
+  dialog: HTMLDialogElement;
   ok: HTMLButtonElement;
 } {
-  const backdrop = document.createElement('div');
-  backdrop.className = 'backdrop';
-
-  const dialog = document.createElement('div');
+  const dialog = document.createElement('dialog');
   dialog.className = 'unlock';
-  dialog.setAttribute('role', 'dialog');
-  dialog.setAttribute('aria-modal', 'true');
 
   const heading = document.createElement('h2');
   heading.id = 'unlock-heading';
@@ -128,7 +123,7 @@ function renderUnlock(character: Character): {
   ok.type = 'button';
   ok.className = 'unlock-ok';
   ok.textContent = 'OK';
-  ok.addEventListener('click', () => backdrop.remove());
+  ok.addEventListener('click', () => dialog.close());
 
   dialog.append(
     heading,
@@ -137,8 +132,7 @@ function renderUnlock(character: Character): {
     where,
     ok,
   );
-  backdrop.append(dialog);
-  return { backdrop, ok };
+  return { dialog, ok };
 }
 
 export type EndOptions = {
@@ -160,7 +154,9 @@ export type EndOptions = {
 // higher band. A drill faster than last time runs the race 0.9 seconds into
 // the celebration, and the words, the proud character and the improvement
 // sweep follow it. A new character is announced in a dialog with the
-// fanfare, last of all.
+// fanfare, last of all; leaving by Home or Go again before then brings the
+// dialog forward, and the leave follows OK, so that no unlock goes
+// unannounced.
 export function renderEnd(options: EndOptions): HTMLElement {
   const { drill, character } = options;
 
@@ -200,11 +196,14 @@ export function renderEnd(options: EndOptions): HTMLElement {
   actions.className = 'actions';
 
   // Leaving the screen takes the moment's timers with it, so that nothing of
-  // it runs or sounds over the screen that follows.
+  // it runs or sounds over the screen that follows. A dialog still to come
+  // shows instead, and the leave follows its OK.
   const pending: (() => void)[] = [];
+  let announce: ((onClose: () => void) => void) | null = null;
   const leave = (go: () => void) => () => {
     for (const cancel of pending) cancel();
-    go();
+    if (announce) announce(go);
+    else go();
   };
 
   const home = document.createElement('button');
@@ -240,17 +239,25 @@ export function renderEnd(options: EndOptions): HTMLElement {
   }
 
   if (options.unlock) {
-    const { backdrop, ok } = renderUnlock(options.unlock);
+    const { dialog, ok } = renderUnlock(options.unlock);
+    // Once closed by OK or Escape the dialog is taken away, and what follows
+    // is the leave that brought it forward, or focus back on Home, which is
+    // where the dialog said to go.
+    announce = (onClose) => {
+      announce = null;
+      dialog.addEventListener('close', () => {
+        dialog.remove();
+        onClose();
+      });
+      screen.append(dialog);
+      dialog.showModal();
+      ok.focus();
+      sound.unlock();
+    };
     const at = options.faster
-      ? RACE_AT + RACE_RUN + UNLOCK_AFTER_WORDS
-      : UNLOCK_AT;
-    pending.push(
-      schedule(() => {
-        screen.append(backdrop);
-        ok.focus();
-        sound.unlock();
-      }, at),
-    );
+      ? RACE_AT + RACE_RUN + DIALOG_AFTER_WORDS
+      : RACE_AT;
+    pending.push(schedule(() => announce?.(() => home.focus()), at));
   }
 
   if (celebration.confetti) screen.append(renderConfetti());
