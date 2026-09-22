@@ -52,7 +52,9 @@ export type FeedbackOptions = {
 
 // The line for the gem an answer paid, under the word. It is empty, and so
 // says nothing to a screen reader, until the gem shows; it keeps a line's
-// height meanwhile, so nothing under it moves.
+// height meanwhile, so nothing under it moves. Every fast feedback has the
+// line, filled or not, so the character and the word sit in the same place
+// whether or not the answer paid.
 function renderGemPaid(): { line: HTMLElement; show: () => void } {
   const line = document.createElement('p');
   line.className = 'gem-paid';
@@ -99,13 +101,15 @@ export function renderFeedback(options: FeedbackOptions): HTMLElement {
   // Leaving the screen takes a gem still to show with it, so that its chime
   // does not sound over the card that follows.
   let cancelGem = () => {};
-  if (options.gem) {
+  if (outcome === 'fast') {
     const { line, show } = renderGemPaid();
     screen.append(line);
-    cancelGem = schedule(() => {
-      show();
-      sound.gem();
-    }, GEM_AT);
+    if (options.gem) {
+      cancelGem = schedule(() => {
+        show();
+        sound.gem();
+      }, GEM_AT);
+    }
   }
 
   if (outcome === 'fast' && options.streak >= 2) {

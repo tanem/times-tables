@@ -536,7 +536,8 @@ button {
 }
 
 /* The gem an answer paid, under the word. The line keeps its height while it
-   is empty, so the streak and the hint do not move when the gem shows. */
+   is empty, so the streak and the hint do not move when the gem shows, and
+   a fast feedback that paid nothing is laid out the same. */
 .feedback .gem-paid {
   margin: 0;
   display: flex;

@@ -84,7 +84,8 @@ export type Sound = {
   slow: () => void;
   // A miss: soft, low and falling.
   missed: () => void;
-  // A gem paid: a chime, two short notes above a fast answer's.
+  // A gem paid: a chime, two short notes above a fast answer's early in a
+  // streak.
   gem: () => void;
   // The end of a drill: a run up, longer for a higher band.
   end: (band: Band) => void;

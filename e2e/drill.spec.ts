@@ -593,14 +593,17 @@ test('a fast answer that takes a fact to a new level shows the gem it paid, a mo
   expect((await storedProgress(page)).gems).toBe(1);
 });
 
-test('a fast answer on a fact at its highest level shows no gem', async ({
+test('a fast answer on a fact at its highest level shows no gem, on the same layout', async ({
   page,
 }) => {
   await startDrillAfter(page, 15000);
   await answerCard(page, 'fast');
 
+  // The line is there and empty, so the character and the word sit where
+  // they do when a gem is paid.
   await page.clock.runFor(GEM_AT);
-  await expect(gemPaid(page)).toHaveCount(0);
+  await expect(gemPaid(page)).toBeAttached();
+  await expect(gemPaid(page)).toBeEmpty();
   await expect(page.getByText('Fast!')).toBeVisible();
 });
 

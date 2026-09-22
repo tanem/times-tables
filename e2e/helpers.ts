@@ -271,8 +271,9 @@ export async function startDrillAfter(
 // the feedback shows, with the chime.
 export const GEM_AT = 300;
 
-// The gem paid on the feedback, which reads as "+1 gem" once it shows. It is
-// on screen and empty until then.
+// The gem line of a fast feedback, which reads as "+1 gem" once a gem paid
+// shows. It is on screen and empty until then, and stays empty when the
+// answer paid nothing.
 export function gemPaid(page: Page): Locator {
   return page.locator('.feedback').getByRole('status');
 }
