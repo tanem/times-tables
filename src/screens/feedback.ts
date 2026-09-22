@@ -1,8 +1,9 @@
+import type { Character } from '../model/characters';
 import type { Presentation } from '../model/drill';
 import type { Outcome } from '../model/level';
 import { sound } from '../sound';
 import { schedule } from '../time';
-import { renderDragon, type DragonPose } from './dragon';
+import { renderCharacter, type Pose } from './character';
 
 // The words for each outcome, shown in turn.
 const WORDS: Readonly<Record<Outcome, readonly string[]>> = {
@@ -11,8 +12,8 @@ const WORDS: Readonly<Record<Outcome, readonly string[]>> = {
   missed: ['Next time', 'Tricky one', 'Keep going'],
 };
 
-// What the dragon does for each outcome.
-const POSES: Readonly<Record<Outcome, DragonPose>> = {
+// What the character does for each outcome.
+const POSES: Readonly<Record<Outcome, Pose>> = {
   fast: 'jump',
   slow: 'nod',
   missed: 'shrug',
@@ -34,6 +35,7 @@ function feedbackWord(outcome: Outcome, nth: number): string {
 export type FeedbackOptions = {
   presentation: Presentation;
   outcome: Outcome;
+  character: Character;
   // How many of this outcome the drill has had, this one included.
   nth: number;
   // Consecutive fast outcomes, this one included.
@@ -41,7 +43,7 @@ export type FeedbackOptions = {
   onAdvance: () => void;
 };
 
-// Builds the feedback screen: the fact with its answer, the dragon, a word,
+// Builds the feedback screen: the fact with its answer, the character, a word,
 // and the streak from two fast answers in a row, with a sound for the
 // outcome. It holds for a moment, and a tap anywhere moves on at once.
 export function renderFeedback(options: FeedbackOptions): HTMLElement {
@@ -58,14 +60,15 @@ export function renderFeedback(options: FeedbackOptions): HTMLElement {
   word.className = 'word';
   word.textContent = feedbackWord(outcome, options.nth);
 
-  // After a right answer the dragon stands between the sum and the word,
-  // the biggest thing on screen. After a miss the styles put it small in the
-  // top corner and the sum is the biggest thing.
-  const dragon = renderDragon({
+  // After a right answer the character stands between the sum and the
+  // word, the biggest thing on screen. After a miss the styles put it small
+  // in the top corner and the sum is the biggest thing.
+  const figure = renderCharacter({
+    character: options.character,
     pose: POSES[outcome],
     sparkles: outcome === 'fast' ? 'burst' : undefined,
   });
-  screen.append(sum, dragon, word);
+  screen.append(sum, figure, word);
 
   if (outcome === 'fast' && options.streak >= 2) {
     const streak = document.createElement('p');

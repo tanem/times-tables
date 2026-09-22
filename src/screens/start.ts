@@ -1,13 +1,25 @@
+import {
+  CHARACTERS,
+  isUnlocked,
+  UNLOCK_AT,
+  type Character,
+} from '../model/characters';
 import { DRILL_LENGTH } from '../model/drill';
 import { TABLES, tablesList, type Table } from '../model/facts';
-import { renderDragon } from './dragon';
+import { renderCharacter } from './character';
+import { renderGem } from './gem';
 
 export type StartOptions = {
   tables: readonly Table[];
   // The share of a table's facts at level 4, from 0 to 1, for its meter.
   knownShare: (table: Table) => number;
+  gems: number;
+  character: Character;
   // Called with the new selection, in table order, after every change.
   onTablesChange: (tables: Table[]) => void;
+  // Called with the character the learner tapped, one the gems have
+  // unlocked.
+  onCharacterChange: (character: Character) => void;
   // Called with the selection when the learner taps Practise.
   onPractise: (tables: Table[]) => void;
   onParents: () => void;
@@ -52,21 +64,96 @@ function renderMeter(share: number): HTMLElement {
   return meter;
 }
 
-// Builds the Start screen. The dragon sits with the app's name at the top.
-// The tiles keep the selection and the Practise button follows it. While
-// nothing is on the screen nudges: the heading asks for a tap, the tiles
-// pulse and the dragon waves.
+// The gem total, in the top right corner. The gem is a picture and the
+// words say what it is.
+function renderGems(gems: number): HTMLElement {
+  const total = document.createElement('p');
+  total.className = 'gems';
+  const count = document.createElement('b');
+  count.textContent = String(gems);
+  const word = document.createElement('span');
+  word.className = 'gems-word';
+  word.textContent = gems === 1 ? 'gem' : 'gems';
+  total.append(renderGem(), count, ' ', word);
+  return total;
+}
+
+function capitalised(word: string): string {
+  return word.charAt(0).toUpperCase() + word.slice(1);
+}
+
+// One character in the row: a small figure sitting still, pressed when it is
+// the chosen one. A locked one is a grey silhouette with a lock and the
+// gems that unlock it, and a tap on it does nothing. The button's name says
+// which character it is, so the figure inside is hidden from a screen
+// reader and does not answer to the masthead's name.
+function renderPick(
+  character: Character,
+  gems: number,
+  onPick: () => void,
+): HTMLButtonElement {
+  const unlocked = isUnlocked(character, gems);
+  const name = capitalised(character);
+  const pick = document.createElement('button');
+  pick.type = 'button';
+  pick.className = 'pick';
+  const figure = renderCharacter({ character, pose: 'sit' });
+  figure.setAttribute('aria-hidden', 'true');
+  pick.append(figure);
+  if (unlocked) {
+    pick.setAttribute('aria-label', name);
+    pick.addEventListener('click', onPick);
+  } else {
+    const needs = UNLOCK_AT[character];
+    pick.classList.add('locked');
+    pick.setAttribute('aria-label', `${name}, locked, ${needs} gems`);
+    pick.setAttribute('aria-disabled', 'true');
+    const lock = document.createElement('span');
+    lock.className = 'lock';
+    lock.setAttribute('aria-hidden', 'true');
+    lock.textContent = `🔒 ${needs}`;
+    pick.append(lock);
+  }
+  return pick;
+}
+
+// Builds the Start screen. The character sits with the app's name at the
+// top, the row of characters under the name and the gem total in the
+// corner. The tiles keep the selection and the Practise button follows it.
+// While nothing is on the screen nudges: the heading asks for a tap, the
+// tiles pulse and the character waves.
 export function renderStart(options: StartOptions): HTMLElement {
   const selected = new Set<Table>(options.tables);
   const selection = () => TABLES.filter((table) => selected.has(table));
+  let character = options.character;
 
   const screen = document.createElement('main');
   screen.className = 'start';
 
   const masthead = document.createElement('header');
   masthead.className = 'masthead';
-  const title = document.createElement('h1');
-  title.textContent = 'Times tables';
+  const title = document.createElement('div');
+  title.className = 'title';
+  const name = document.createElement('h1');
+  name.textContent = 'Times tables';
+
+  const row = document.createElement('div');
+  row.className = 'characters';
+  row.setAttribute('role', 'group');
+  row.setAttribute('aria-label', 'Your character');
+  const picks = new Map<Character, HTMLButtonElement>();
+  for (const each of CHARACTERS) {
+    const pick = renderPick(each, options.gems, () => {
+      if (each === character) return;
+      character = each;
+      drawCharacter();
+      options.onCharacterChange(character);
+    });
+    picks.set(each, pick);
+    row.append(pick);
+  }
+
+  title.append(name, row);
   masthead.append(title);
 
   const question = document.createElement('h2');
@@ -93,17 +180,32 @@ export function renderStart(options: StartOptions): HTMLElement {
   const all = renderTile('All');
   all.classList.add('all');
 
-  // Reduced motion drops the wave, so the dragon sits and is named as
+  // Reduced motion drops the wave, so the character sits and is named as
   // sitting.
   const nudgePose = window.matchMedia('(prefers-reduced-motion: reduce)')
     .matches
     ? 'sit'
     : 'beckon';
 
-  // The dragon on screen, and whether the screen is nudging. Both are null
-  // until the first update, which always draws them.
-  let dragon: HTMLElement | null = null;
+  // The character on the masthead, and whether the screen is nudging. Both
+  // are null until the first update, which always draws them.
+  let figure: HTMLElement | null = null;
   let nudging: boolean | null = null;
+
+  // Draws the chosen character on the masthead, waving while the screen
+  // nudges, and marks it as chosen in the row.
+  const drawCharacter = () => {
+    for (const [each, pick] of picks) {
+      pick.setAttribute('aria-pressed', String(each === character));
+    }
+    const next = renderCharacter({
+      character,
+      pose: nudging ? nudgePose : 'sit',
+    });
+    if (figure) figure.replaceWith(next);
+    else masthead.prepend(next);
+    figure = next;
+  };
 
   const update = () => {
     const tables = selection();
@@ -121,10 +223,7 @@ export function renderStart(options: StartOptions): HTMLElement {
       ? 'Tap the tables you want'
       : 'Which tables?';
     screen.classList.toggle('nudge', nothingOn);
-    const next = renderDragon({ pose: nothingOn ? nudgePose : 'sit' });
-    if (dragon) dragon.replaceWith(next);
-    else masthead.prepend(next);
-    dragon = next;
+    drawCharacter();
   };
 
   const changed = () => {
@@ -162,6 +261,14 @@ export function renderStart(options: StartOptions): HTMLElement {
   parents.addEventListener('click', options.onParents);
 
   update();
-  screen.append(masthead, question, tiles, practise, caption, parents);
+  screen.append(
+    renderGems(options.gems),
+    masthead,
+    question,
+    tiles,
+    practise,
+    caption,
+    parents,
+  );
   return screen;
 }

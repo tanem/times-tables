@@ -6,6 +6,7 @@ import {
   advance,
   animates,
   answerCard,
+  character,
   confetti,
   dontKnow,
   dragon,
@@ -565,6 +566,32 @@ test('a drill faster than last time runs a race, then says so and stands the dra
   await expect(momentWords(page)).toContainText('Faster than last time!');
   await expect(dragon(page, 'stands proud')).toBeVisible();
   await expect(dragon(page, 'jumps high')).toHaveCount(0);
+});
+
+test('the chosen character reacts on the feedback, the end screen and the race in the dragon’s place', async ({
+  page,
+}) => {
+  await finishDrillAfter(page, 15000, 'cat');
+
+  await expect(character(page, 'cat', 'jumps high')).toBeVisible();
+  await expect(dragon(page, 'jumps high')).toHaveCount(0);
+  await expect(race(page).locator('.character')).toHaveCount(2);
+  for (const lane of ['earlier', 'today'] as const) {
+    await expect(runner(page, lane).locator('.character')).toHaveAttribute(
+      'aria-label',
+      'The cat',
+    );
+  }
+
+  await page.clock.runFor(WORDS_AT);
+  await expect(character(page, 'cat', 'stands proud')).toBeVisible();
+
+  await page.getByRole('button', { name: 'Go again' }).click();
+  await answerCard(page, 'fast');
+  await expect(character(page, 'cat', 'jumps')).toBeVisible();
+  await advance(page);
+  await answerCard(page, 'missed');
+  await expect(character(page, 'cat', 'shrugs')).toBeVisible();
 });
 
 test('a drill faster than last time pays a bonus of two gems', async ({

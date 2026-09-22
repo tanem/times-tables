@@ -15,6 +15,7 @@ import type { Outcome } from './model/level';
 import { gradeAnswer, paceOf } from './model/pace';
 import {
   applyOutcome,
+  chooseCharacter,
   factLevel,
   freshProgress,
   keepAnswerTime,
@@ -107,8 +108,14 @@ function showStart(): void {
     renderStart({
       tables: progress.tables,
       knownShare: (table) => knownShare(progress, table),
+      gems: progress.gems,
+      character: progress.character,
       onTablesChange: (tables) => {
         progress = { ...progress, tables };
+        saveProgress(store, progress);
+      },
+      onCharacterChange: (character) => {
+        progress = chooseCharacter(progress, character);
         saveProgress(store, progress);
       },
       onPractise: beginDrill,
@@ -171,6 +178,7 @@ function showFeedback(drill: Drill, outcome: Outcome): void {
     renderFeedback({
       presentation: drill.current,
       outcome,
+      character: progress.character,
       nth: drill[outcome],
       streak: drill.streak,
       onAdvance: () => {
@@ -197,6 +205,7 @@ function endDrill(drill: Drill): void {
   show(
     renderEnd({
       drill,
+      character: progress.character,
       faster: recorded.faster,
       onHome: showStart,
       onAgain: () => beginDrill(drill.tables),

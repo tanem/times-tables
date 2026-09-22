@@ -7,8 +7,11 @@ import {
 import { BACKUP_KEY, PROGRESS_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
 import {
+  dragon,
   expectNoTableOn,
+  gemTotal,
   openParent,
+  pick,
   progressHeading,
   startHeading,
   storedProgress,
@@ -89,6 +92,12 @@ test('holding the erase control for three seconds erases progress and returns to
   expect(await storedProgress(page)).toEqual(freshProgress());
   expect(await storedBackup(page)).toBeNull();
   expect(dialogShown).toBe(false);
+
+  // The gems and the chosen cat went with everything else.
+  await expect(gemTotal(page)).toHaveText('0 gems');
+  await expect(dragon(page, 'waves')).toBeVisible();
+  await expect(pick(page, 'Dragon')).toHaveAttribute('aria-pressed', 'true');
+  await expect(pick(page, 'Cat')).toHaveAccessibleName('Cat, locked, 25 gems');
   await expect(page.getByRole('status')).toHaveCount(0);
   await expect(page.getByRole('alert')).toHaveCount(0);
 });

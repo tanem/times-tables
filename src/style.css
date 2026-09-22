@@ -51,6 +51,7 @@ button {
 /* The Start screen stacks its parts down the middle and scales them with the
    viewport, so that portrait and landscape both fit without scrolling. */
 .start {
+  position: relative;
   min-height: 100dvh;
   padding: 24px 16px;
   display: flex;
@@ -61,8 +62,36 @@ button {
   text-align: center;
 }
 
-/* The dragon sits over the app's name, and beside it in landscape, where
-   height is short. */
+/* The gem total, in the top right corner. */
+.gems {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 14px 6px 8px;
+  border-radius: 999px;
+  background: #fff3cf;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: clamp(1.25rem, 3.2vmin, 1.75rem);
+  font-variant-numeric: tabular-nums;
+}
+
+.gems .gem {
+  width: 1.3em;
+  height: 1.3em;
+}
+
+.gems-word {
+  font-size: 0.7em;
+  font-weight: 500;
+}
+
+/* The character sits over the app's name and the row of characters, and
+   beside them in landscape, where height is short. */
 .masthead {
   display: flex;
   flex-direction: column;
@@ -76,12 +105,71 @@ button {
   }
 }
 
-.start .dragon-stage {
+.masthead > .character-stage {
   --size: clamp(80px, 15vmin, 140px);
+}
+
+.title {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(4px, 1vmin, 12px);
 }
 
 .start h1 {
   font-size: clamp(2.25rem, 7vmin, 4rem);
+}
+
+/* The row of characters under the app's name: each a small figure sitting
+   still, the chosen one ringed. A locked one is a grey silhouette with a
+   lock and the gems that unlock it. */
+.characters {
+  display: flex;
+  gap: clamp(6px, 1.5vmin, 14px);
+}
+
+.pick {
+  position: relative;
+  padding: 4px;
+  border: 3px solid transparent;
+  border-radius: 18px;
+  background: none;
+  color: var(--ink);
+}
+
+.pick .character-stage {
+  --size: clamp(44px, 8vmin, 72px);
+}
+
+.pick .character {
+  animation: none;
+}
+
+.pick[aria-pressed='true'] {
+  border-color: var(--tile);
+  background: #e7ecff;
+}
+
+.pick.locked {
+  cursor: default;
+}
+
+.pick.locked .character {
+  filter: brightness(0);
+  opacity: 0.22;
+}
+
+.lock {
+  position: absolute;
+  left: 50%;
+  bottom: 2px;
+  transform: translateX(-50%);
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: #fff3cf;
+  font-size: clamp(0.7rem, 1.6vmin, 0.875rem);
+  font-weight: 700;
+  white-space: nowrap;
 }
 
 .start h2 {
@@ -386,9 +474,9 @@ button {
   }
 }
 
-/* The feedback: the sum, the dragon and the word in the middle. After a right
-   answer the dragon is the biggest thing on screen; a miss makes the sum
-   the biggest and puts the dragon small in the top corner. */
+/* The feedback: the sum, the character and the word in the middle. After a right
+   answer the character is the biggest thing on screen; a miss makes the sum
+   the biggest and puts the character small in the top corner. */
 .feedback {
   position: relative;
   justify-content: center;
@@ -397,11 +485,11 @@ button {
   user-select: none;
 }
 
-.feedback .dragon-stage {
+.feedback .character-stage {
   --size: clamp(120px, 34vmin, 320px);
 }
 
-.feedback.missed .dragon-stage {
+.feedback.missed .character-stage {
   --size: clamp(48px, 10vmin, 88px);
   position: absolute;
   top: 16px;
@@ -460,8 +548,8 @@ button {
   gap: clamp(16px, 3vmin, 32px);
 }
 
-.end .dragon-stage,
-.needs-update .dragon-stage {
+.end .character-stage,
+.needs-update .character-stage {
   --size: clamp(96px, 24vmin, 220px);
 }
 
@@ -509,13 +597,13 @@ button {
    and the buttons: the race, then the words. The track is hidden by
    visibility and not by display, and the words keep a line's height while
    they are empty, so the block holds its place from the first render and the
-   buttons never move under a finger. The celebrating dragon gives up some
+   buttons never move under a finger. The celebrating character gives up some
    room so that landscape still fits. */
 .end.faster {
   gap: clamp(10px, 2vmin, 24px);
 }
 
-.end.faster > .dragon-stage {
+.end.faster > .character-stage {
   --size: clamp(80px, 17vmin, 180px);
 }
 
@@ -593,15 +681,15 @@ button {
   bottom: 0;
 }
 
-.race .runner .dragon-stage {
+.race .runner .character-stage {
   --size: var(--runner);
 }
 
-.runner .dragon {
+.runner .character {
   animation: none;
 }
 
-.lane.earlier .dragon {
+.lane.earlier .character {
   filter: grayscale(1);
   opacity: 0.45;
 }
@@ -1005,9 +1093,9 @@ button {
   font-size: 0.75rem;
 }
 
-/* The dragon: a square box the screen sizes through --size, holding the SVG
+/* The character: a square box the screen sizes through --size, holding the SVG
    and any sparkles. */
-.dragon-stage {
+.character-stage {
   --size: 120px;
   position: relative;
   flex: none;
@@ -1015,7 +1103,7 @@ button {
   height: var(--size);
 }
 
-.dragon {
+.character {
   display: block;
   width: 100%;
   height: 100%;
@@ -1024,86 +1112,86 @@ button {
 
 /* The parts that move turn about their own box: the head about the neck,
    an arm about its shoulder, a wing about where it joins the body. */
-.dragon .head,
-.dragon .arm-left,
-.dragon .arm-right,
-.dragon .wing {
+.character .head,
+.character .arm-left,
+.character .arm-right,
+.character .wing {
   transform-box: fill-box;
 }
 
-.dragon .head {
+.character .head {
   transform-origin: 50% 90%;
 }
 
-.dragon .arm-left,
-.dragon .arm-right {
+.character .arm-left,
+.character .arm-right {
   transform-origin: 60% 10%;
 }
 
-.dragon .wing {
+.character .wing {
   transform-origin: 100% 85%;
 }
 
-.dragon.sit {
+.character.sit {
   animation: bob 2.4s ease-in-out infinite;
 }
 
-.dragon.jump {
+.character.jump {
   animation: jump 0.7s ease;
 }
 
-.dragon.big-jump {
+.character.big-jump {
   animation: big-jump 0.8s ease;
 }
 
-.dragon.hop {
+.character.hop {
   animation: hop 0.7s ease;
 }
 
-.dragon.jump .wing,
-.dragon.big-jump .wing,
-.dragon.hop .wing {
+.character.jump .wing,
+.character.big-jump .wing,
+.character.hop .wing {
   animation: flap 0.35s ease-in-out 2;
 }
 
-.dragon.nod .head {
+.character.nod .head {
   animation: nod 0.9s ease;
 }
 
-.dragon.shrug {
+.character.shrug {
   animation: sway 0.9s ease;
 }
 
-.dragon.shrug .head {
+.character.shrug .head {
   animation: tilt 0.9s ease;
 }
 
-.dragon.shrug .arm-left,
-.dragon.shrug .arm-right {
+.character.shrug .arm-left,
+.character.shrug .arm-right {
   animation: lift 0.9s ease;
 }
 
-.dragon.wave {
+.character.wave {
   animation: sway 1.6s ease;
 }
 
-.dragon.wave .arm-right {
+.character.wave .arm-right {
   animation: wave 1.6s ease;
 }
 
 /* The wave, every four seconds with a rest between, for as long as the
-   dragon is on screen. */
-.dragon.beckon {
+   character is on screen. */
+.character.beckon {
   animation: beckon-sway 4s ease infinite;
 }
 
-.dragon.beckon .arm-right {
+.character.beckon .arm-right {
   animation: beckon-wave 4s ease infinite;
 }
 
-/* The proud pose is held, not played: the dragon stays where the animation
+/* The proud pose is held, not played: the character stays where the animation
    ends for as long as it is on screen. */
-.dragon.proud {
+.character.proud {
   animation: proud 0.6s ease forwards;
 }
 
@@ -1240,7 +1328,7 @@ button {
 }
 
 /* The wave and its sway played in the first 1.6 of 4 seconds, with the
-   dragon at rest for what is left. */
+   character at rest for what is left. */
 @keyframes beckon-wave {
   0%,
   40%,
@@ -1272,7 +1360,7 @@ button {
   }
 }
 
-/* The dragon puffs up and leans back. */
+/* The character puffs up and leans back. */
 @keyframes proud {
   from {
     transform: scale(1) rotate(0);
@@ -1282,8 +1370,8 @@ button {
   }
 }
 
-/* Sparkles fly out from the middle of the dragon, each a four-pointed star.
-   --dx and --dy are fractions of the dragon's size. */
+/* Sparkles fly out from the middle of the character, each a four-pointed star.
+   --dx and --dy are fractions of the character's size. */
 .sparkles {
   position: absolute;
   inset: 0;
@@ -1384,18 +1472,18 @@ button {
 /* Reduced motion stops the endless bob, the Start screen's pulse and the
    repeating wave, and shortens every reaction; no reaction is taken away. */
 @media (prefers-reduced-motion: reduce) {
-  .dragon.sit,
+  .character.sit,
   .nudge .tile {
     animation: none;
   }
 
-  .dragon:not(.sit),
-  .dragon:not(.sit) * {
+  .character:not(.sit),
+  .character:not(.sit) * {
     animation-duration: 0.3s;
   }
 
-  .dragon.beckon,
-  .dragon.beckon .arm-right {
+  .character.beckon,
+  .character.beckon .arm-right {
     animation: none;
   }
 

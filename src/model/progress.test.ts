@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   applyOutcome,
+  chooseCharacter,
   factCounts,
   factLevel,
   freshProgress,
@@ -630,5 +631,25 @@ describe('recordDrill', () => {
     recordDrill(valid, faster);
 
     expect(valid.gems).toBe(27);
+  });
+});
+
+describe('chooseCharacter', () => {
+  it('sets a character the gems have unlocked', () => {
+    expect(chooseCharacter(valid, 'dragon').character).toBe('dragon');
+    expect(chooseCharacter({ ...valid, gems: 60 }, 'robot').character).toBe(
+      'robot',
+    );
+  });
+
+  it('leaves the choice as it was for a character the gems have not unlocked', () => {
+    expect(chooseCharacter(valid, 'robot').character).toBe('cat');
+    expect(chooseCharacter(freshProgress(), 'cat').character).toBe('dragon');
+  });
+
+  it('leaves the rest of the given document as it was', () => {
+    const after = chooseCharacter(valid, 'dragon');
+    expect({ ...after, character: 'cat' }).toEqual(valid);
+    expect(valid.character).toBe('cat');
   });
 });

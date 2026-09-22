@@ -1,16 +1,18 @@
+import type { Character } from '../model/characters';
 import { bandOf, type Band, type Drill } from '../model/drill';
 import { sound } from '../sound';
 import { schedule } from '../time';
 import {
+  renderCharacter,
   renderConfetti,
-  renderDragon,
-  type DragonPose,
+  type Pose,
   type SparkleKind,
-} from './dragon';
+} from './character';
 
-// How each band celebrates: what the dragon does, and what goes with it.
+// How each band celebrates: what the character does, and what goes with
+// it.
 type Celebration = {
-  pose: DragonPose;
+  pose: Pose;
   sparkles?: SparkleKind;
   confetti: boolean;
 };
@@ -31,12 +33,15 @@ const WORDS = 'Faster than last time!';
 
 // The race between the learner's earlier self and today, and the words that
 // follow it. The track is decorative, so a screen reader is left with the
-// words alone; the two small dragons in it are hidden with it, so that they
-// do not answer to the name the celebrating dragon goes by. The track holds
+// words alone; the two small figures in it are hidden with it, so that they
+// do not answer to the name the celebrating character goes by. The track holds
 // its place from the first render and the styles keep the words a line high
 // while they are empty, so that Home and Go again never move under a finger.
 // The words are a live region, and the bolt before them is not read out.
-function renderMoment(): { moment: HTMLElement; sayWords: () => void } {
+function renderMoment(character: Character): {
+  moment: HTMLElement;
+  sayWords: () => void;
+} {
   const moment = document.createElement('div');
   moment.className = 'moment';
 
@@ -54,7 +59,7 @@ function renderMoment(): { moment: HTMLElement; sayWords: () => void } {
     label.textContent = text;
     const runner = document.createElement('div');
     runner.className = 'runner';
-    runner.append(renderDragon({ pose: 'sit' }));
+    runner.append(renderCharacter({ character, pose: 'sit' }));
     row.append(label, runner);
     race.append(row);
   }
@@ -81,6 +86,7 @@ function renderMoment(): { moment: HTMLElement; sayWords: () => void } {
 
 export type EndOptions = {
   drill: Drill;
+  character: Character;
   // Whether the drill was faster than last time, which the moment shows and
   // the bonus has already been paid for (ADR 0004).
   faster: boolean;
@@ -88,14 +94,14 @@ export type EndOptions = {
   onAgain: () => void;
 };
 
-// Builds the end screen: the dragon, a heading, the tally of fast, slow and
-// missed, the best streak, then Home and Go again. The dragon celebrates by
-// the drill's band, and a run up plays that is longer for a higher band. A
-// drill faster than last time runs the race 0.9 seconds into the
-// celebration, and the words, the proud dragon and the improvement sweep
-// follow it.
+// Builds the end screen: the character, a heading, the tally of fast, slow
+// and missed, the best streak, then Home and Go again. The character
+// celebrates by the drill's band, and a run up plays that is longer for a
+// higher band. A drill faster than last time runs the race 0.9 seconds into
+// the celebration, and the words, the proud character and the improvement
+// sweep follow it.
 export function renderEnd(options: EndOptions): HTMLElement {
-  const { drill } = options;
+  const { drill, character } = options;
 
   const screen = document.createElement('main');
   screen.className = 'end';
@@ -103,7 +109,7 @@ export function renderEnd(options: EndOptions): HTMLElement {
   const band = bandOf(drill);
   const celebration = CELEBRATIONS[band];
   sound.end(band);
-  const dragon = renderDragon(celebration);
+  const figure = renderCharacter({ character, ...celebration });
 
   const heading = document.createElement('h1');
   heading.textContent = drill.quit
@@ -153,18 +159,20 @@ export function renderEnd(options: EndOptions): HTMLElement {
   again.addEventListener('click', leave(options.onAgain));
 
   actions.append(home, again);
-  screen.append(dragon, heading, tally, best, actions);
+  screen.append(figure, heading, tally, best, actions);
 
   if (options.faster) {
     screen.classList.add('faster');
-    const { moment, sayWords } = renderMoment();
+    const { moment, sayWords } = renderMoment(character);
     actions.before(moment);
     pending.push(
       schedule(() => moment.classList.add('go'), RACE_AT),
       schedule(() => {
         moment.classList.add('won');
         sayWords();
-        dragon.replaceWith(renderDragon({ pose: 'proud', sparkles: 'breath' }));
+        figure.replaceWith(
+          renderCharacter({ character, pose: 'proud', sparkles: 'breath' }),
+        );
         sound.faster();
       }, RACE_AT + RACE_RUN),
     );
