@@ -751,6 +751,75 @@ button {
   color: white;
 }
 
+/* The dialog for a new character: the browser's modal dialog, a card that
+   rises in the middle of its backdrop with the character, its name, where
+   to choose it and OK. The browser keeps it over the screen and holds the
+   screen still under it. */
+.unlock {
+  max-width: calc(100% - 32px);
+  padding: clamp(20px, 4vmin, 40px);
+  border: 0;
+  border-radius: 32px;
+  background: var(--paper);
+  color: var(--ink);
+  text-align: center;
+}
+
+.unlock[open] {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(12px, 2.5vmin, 24px);
+  animation: rise 0.25s ease-out;
+}
+
+.unlock::backdrop {
+  background: rgb(43 45 66 / 45%);
+}
+
+@keyframes rise {
+  from {
+    transform: translateY(24px) scale(0.96);
+    opacity: 0;
+  }
+}
+
+.unlock h2 {
+  font-size: clamp(1.5rem, 4vmin, 2.5rem);
+}
+
+/* Larger than the celebrating character behind it, with room for the jump
+   under the heading. */
+.unlock .character-stage {
+  --size: clamp(120px, 30vmin, 240px);
+  margin-top: clamp(16px, 6vmin, 48px);
+}
+
+.unlock-name {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: clamp(1.75rem, 5vmin, 3rem);
+}
+
+.unlock-where {
+  margin: 0;
+  color: var(--muted);
+  font-size: clamp(1rem, 2.6vmin, 1.375rem);
+}
+
+.unlock-ok {
+  width: min(100%, 360px);
+  min-height: 64px;
+  border: 0;
+  border-radius: 20px;
+  background: var(--go);
+  color: white;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: clamp(1.25rem, 3.5vmin, 1.75rem);
+}
+
 /* The screen for a document from a newer build: the dragon, a heading and
    what to do. */
 .needs-update h1 {
@@ -1492,6 +1561,11 @@ button {
   .sparkle,
   .piece {
     animation-duration: 0.5s !important;
+  }
+
+  /* The dialog for a new character shows where it ends up. */
+  .unlock[open] {
+    animation: none;
   }
 
   /* The runners do not slide: they show where the race leaves them. The

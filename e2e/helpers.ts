@@ -233,6 +233,14 @@ function lastTimeRecord(median: number): DrillRecord {
 // reached level 4.
 const KNOWN_GEMS = 132;
 
+// How the document a drill after last time starts from differs from the
+// usual: the chosen character, and a gem total above what the facts paid,
+// standing in for bonuses paid earlier.
+export type AfterOptions = {
+  character?: Character;
+  gems?: number;
+};
+
 // Opens the app on a document with the seeded tables on, every fact of their
 // pool at level 4 and one earlier finished drill on those tables with the
 // given median answer time; then taps Practise and lands on the first card.
@@ -242,7 +250,7 @@ const KNOWN_GEMS = 132;
 export async function startDrillAfter(
   page: Page,
   median: number,
-  character: Character = 'dragon',
+  { character = 'dragon', gems = KNOWN_GEMS }: AfterOptions = {},
 ): Promise<void> {
   const facts: Progress['facts'] = {};
   for (const fact of pool(SEEDED_TABLES)) {
@@ -252,17 +260,28 @@ export async function startDrillAfter(
     ...freshProgress(),
     tables: [...SEEDED_TABLES],
     facts,
-    gems: KNOWN_GEMS,
+    gems,
     character,
     records: [lastTimeRecord(median)],
   });
   await practiseButton(page).click();
 }
 
+// The dialog that announces a new character on the end screen.
+export function unlockDialog(page: Page): Locator {
+  return page.getByRole('dialog', { name: 'New character!' });
+}
+
 // The moment's two beats, in milliseconds after the end screen shows: the
 // race starts, then runs for 2200 before the words follow it.
 export const RACE_AT = 900;
 export const WORDS_AT = 3100;
+
+// When the dialog for a new character shows, in milliseconds after the end
+// screen shows: on the race's beat when there is no race, and 1300 after
+// the words when there is.
+export const DIALOG_AT = 900;
+export const DIALOG_AFTER_WORDS_AT = 4400;
 
 // The race track between the learner's earlier self and today.
 export function race(page: Page): Locator {
@@ -305,15 +324,9 @@ export async function advance(page: Page): Promise<void> {
   await page.getByText('Tap to go on').click();
 }
 
-// Runs a whole drill of right answers given on the instant, after one
-// earlier finished drill on the same tables with the given median answer
-// time, and lands on the end screen.
-export async function finishDrillAfter(
-  page: Page,
-  median: number,
-  character: Character = 'dragon',
-): Promise<void> {
-  await startDrillAfter(page, median, character);
+// Answers every card of the drill on the instant and lands on the end
+// screen.
+export async function answerAllFast(page: Page): Promise<void> {
   for (let index = 0; index < 20; index++) {
     await answerCard(page, 'fast');
     await advance(page);
@@ -321,6 +334,33 @@ export async function finishDrillAfter(
   await expect(
     page.getByRole('heading', { level: 1, name: 'Drill done!' }),
   ).toBeVisible();
+}
+
+// Runs a whole drill of right answers given on the instant, after one
+// earlier finished drill on the same tables with the given median answer
+// time, and lands on the end screen.
+export async function finishDrillAfter(
+  page: Page,
+  median: number,
+  options: AfterOptions = {},
+): Promise<void> {
+  await startDrillAfter(page, median, options);
+  await answerAllFast(page);
+}
+
+// Runs a whole drill of right answers given on the instant from a document
+// with the seeded tables on, every fact new and the given gem total, and
+// lands on the end screen. Every answer takes its fact to a level it has not
+// reached, so the drill pays 20 gems.
+export async function finishDrillFrom(page: Page, gems: number): Promise<void> {
+  await seedProgress(page, {
+    ...freshProgress(),
+    tables: [...SEEDED_TABLES],
+    gems,
+  });
+  await practiseButton(page).click();
+  await answerAllFast(page);
+  expect((await storedProgress(page)).gems).toBe(gems + 20);
 }
 
 // Makes the page report the given visibility and announces the change, as

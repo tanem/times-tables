@@ -58,6 +58,13 @@ const END_RUNS: Readonly<Record<Band, readonly number[]>> = {
 // The gap between the notes of the run up, in seconds.
 const RUN_GAP = 0.11;
 
+// The fanfare for a new character, in semitones from C5: G5 up to C7, the
+// top of it above the run up's.
+const FANFARE = [7, 12, 16, 19, 24];
+
+// The gap between the notes of the fanfare, in seconds.
+const FANFARE_GAP = 0.1;
+
 // How far the streak's climb has gone by each answer of a streak, in
 // semitones up a major scale. The climb stops at the last.
 const CLIMB = [0, 2, 4, 5, 7, 9, 11, 12, 14, 16];
@@ -82,6 +89,9 @@ export type Sound = {
   // A drill faster than last time: the improvement sweep, a slide up into a
   // chord.
   faster: () => void;
+  // A new character: the fanfare, a climb with a longer ring than the run
+  // up's.
+  unlock: () => void;
 };
 
 // Builds the app's sound over the given way of making an audio context.
@@ -171,6 +181,14 @@ export function createSound(newContext: () => AudioContext): Sound {
         { freq: pitch(28), at: 0.6 },
         { freq: pitch(31), at: 0.7, ring: 0.6 },
       ]),
+    unlock: () =>
+      play(
+        FANFARE.map((semitones, i) => ({
+          freq: pitch(semitones),
+          at: i * FANFARE_GAP,
+          ring: 0.6,
+        })),
+      ),
   };
 }
 

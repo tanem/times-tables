@@ -12,6 +12,8 @@ import {
   setVisibility,
   startDrill,
   startHeading,
+  DIALOG_AFTER_WORDS_AT,
+  unlockDialog,
   WORDS_AT,
 } from './helpers';
 
@@ -113,6 +115,23 @@ test('the improvement sweep plays as the race ends and not before', async ({
   expect(sweep).toHaveLength(4);
 });
 
+test('the unlock fanfare plays with the dialog and not before', async ({
+  page,
+}) => {
+  // 168 gems and the bonus of 2 cross the unicorn's 170.
+  await finishDrillAfter(page, 15000, { gems: 168 });
+  await page.clock.runFor(WORDS_AT);
+
+  const afterTheSweep = await heardDuring(page, () =>
+    page.clock.runFor(DIALOG_AFTER_WORDS_AT - WORDS_AT - 1),
+  );
+  const fanfare = await heardDuring(page, () => page.clock.runFor(1));
+
+  expect(afterTheSweep).toEqual([]);
+  expect(fanfare).toHaveLength(5);
+  await expect(unlockDialog(page)).toBeVisible();
+});
+
 // The two ways off the end screen, and what each lands on.
 const WAYS_OFF = [
   ['Home', (page: Page) => startHeading(page)],
@@ -132,6 +151,25 @@ for (const [action, landing] of WAYS_OFF) {
     });
 
     expect(notes).toEqual([]);
+  });
+
+  test(`leaving by ${action} before the dialog brings it forward with the fanfare, and nothing follows the learner off`, async ({
+    page,
+  }) => {
+    await finishDrillAfter(page, 15000, { gems: 168 });
+
+    const fanfare = await heardDuring(page, async () => {
+      await page.getByRole('button', { name: action }).click();
+      await expect(unlockDialog(page)).toBeVisible();
+    });
+    const afterwards = await heardDuring(page, async () => {
+      await unlockDialog(page).getByRole('button', { name: 'OK' }).click();
+      await expect(landing(page)).toBeVisible();
+      await page.clock.runFor(DIALOG_AFTER_WORDS_AT);
+    });
+
+    expect(fanfare).toHaveLength(5);
+    expect(afterwards).toEqual([]);
   });
 }
 
