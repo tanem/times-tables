@@ -18,4 +18,7 @@
 - **Progress**: everything the app remembers about the learner: the tables they chose, each fact's level, highest level reached and outcome counts, the recent answer times that pace is worked out from, the drill records, the gem total and the chosen character.
 - **Drill record**: the one entry a drill leaves in the progress: when it ran, which tables, how many fast, slow and missed outcomes, whether it was quit early, the learner's pace and the number of facts at level 4 as the drill ended, and the median answer time of its right answers under the cap.
 - **Start screen**: the app's opening screen, where the learner chooses tables and starts a drill. Not the iPad home screen, where the app's icon lives.
+- **Card**: the screen that shows one presentation with the keypad. Pressing Enter on it ends the answer time; the quit cross on it ends the drill early.
+- **Feedback**: the screen shown after each presentation with the outcome, what the character does for it, and the gem the answer paid, if any. It moves on to the next card by itself.
+- **End screen**: the screen shown when a drill's last presentation is answered or the drill is quit: the band's celebration, the best streak, the race when the drill was faster than last time, and the dialog when a character unlocks. Home and Go again leave it.
 - **Parent view**: the screen reached from the Start screen where a parent reads the progress and can erase it. Headed "Progress" in the app.
