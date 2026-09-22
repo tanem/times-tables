@@ -168,19 +168,25 @@ function showCard(drill: Drill, entering: boolean): void {
 }
 
 // The answer is graded against the pace as it stood before it. The outcome
-// moves the fact's level and counts at once, a right answer's time joins the
-// times pace is worked out from, and the whole document is written back
-// before the feedback shows. The next fact is drawn when the feedback moves
-// on, with the levels as they now are.
+// moves the fact's level and counts at once and pays a gem if it took the
+// fact to a new level (ADR 0004), a right answer's time joins the times pace
+// is worked out from, and the whole document is written back before the
+// feedback shows. The next fact is drawn when the feedback moves on, with
+// the levels as they now are.
 function recordAnswer(before: Drill, right: boolean, time: number): void {
   const outcome = gradeAnswer(right, time, paceOf(progress.times));
+  const gemsBefore = progress.gems;
   progress = applyOutcome(progress, before.current.fact.key, outcome);
   if (right) progress = keepAnswerTime(progress, time);
   saveProgress(store, progress);
-  showFeedback(answer(before, outcome, time), outcome);
+  showFeedback(
+    answer(before, outcome, time),
+    outcome,
+    progress.gems > gemsBefore,
+  );
 }
 
-function showFeedback(drill: Drill, outcome: Outcome): void {
+function showFeedback(drill: Drill, outcome: Outcome, gem: boolean): void {
   show(
     renderFeedback({
       presentation: drill.current,
@@ -188,6 +194,7 @@ function showFeedback(drill: Drill, outcome: Outcome): void {
       character: progress.character,
       nth: drill[outcome],
       streak: drill.streak,
+      gem,
       onAdvance: () => {
         if (isComplete(drill)) endDrill(drill);
         else showCard(present(drill, levelOf, random), false);

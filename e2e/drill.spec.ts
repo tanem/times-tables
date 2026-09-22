@@ -13,6 +13,8 @@ import {
   factOnScreen,
   finishDrillAfter,
   finishDrillFrom,
+  GEM_AT,
+  gemPaid,
   key,
   momentWords,
   PACE_TIMES,
@@ -571,6 +573,47 @@ test('a drill faster than last time runs a race, then says so and stands the dra
   await expect(momentWords(page)).toContainText('Faster than last time!');
   await expect(dragon(page, 'stands proud')).toBeVisible();
   await expect(dragon(page, 'jumps high')).toHaveCount(0);
+});
+
+test('a fast answer that takes a fact to a new level shows the gem it paid, a moment into the feedback', async ({
+  page,
+}) => {
+  await startDrill(page);
+  await answerCard(page, 'fast');
+
+  // The line holds its place from the start and says nothing yet.
+  await expect(gemPaid(page)).toBeAttached();
+  await expect(gemPaid(page)).toBeEmpty();
+  await page.clock.runFor(GEM_AT - 1);
+  await expect(gemPaid(page)).toBeEmpty();
+
+  await page.clock.runFor(1);
+  await expect(gemPaid(page)).toHaveText('+1 gem');
+  await expect(page.getByText('Fast!')).toBeVisible();
+  expect((await storedProgress(page)).gems).toBe(1);
+});
+
+test('a fast answer on a fact at its highest level shows no gem', async ({
+  page,
+}) => {
+  await startDrillAfter(page, 15000);
+  await answerCard(page, 'fast');
+
+  await page.clock.runFor(GEM_AT);
+  await expect(gemPaid(page)).toHaveCount(0);
+  await expect(page.getByText('Fast!')).toBeVisible();
+});
+
+test('a slow answer and a miss show no gem', async ({ page }) => {
+  await startDrill(page, PACE_TIMES);
+  await answerCard(page, 'slow');
+  await page.clock.runFor(GEM_AT);
+  await expect(gemPaid(page)).toHaveCount(0);
+
+  await advance(page);
+  await answerCard(page, 'missed');
+  await page.clock.runFor(GEM_AT);
+  await expect(gemPaid(page)).toHaveCount(0);
 });
 
 test('the chosen character reacts on the feedback, the end screen and the race in the dragon’s place', async ({

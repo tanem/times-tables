@@ -4,6 +4,7 @@ import type { Outcome } from '../model/level';
 import { sound } from '../sound';
 import { schedule } from '../time';
 import { renderCharacter, type Pose } from './character';
+import { renderGem } from './gem';
 
 // The words for each outcome, shown in turn.
 const WORDS: Readonly<Record<Outcome, readonly string[]>> = {
@@ -26,6 +27,10 @@ const HOLD: Readonly<Record<Outcome, number>> = {
   missed: 2500,
 };
 
+// How long after the feedback shows the gem it paid shows, in milliseconds:
+// once the fast answer's sound has rung, so that the chime follows it.
+const GEM_AT = 300;
+
 // The word for the nth outcome of its kind in a drill, counting from 1.
 function feedbackWord(outcome: Outcome, nth: number): string {
   const words = WORDS[outcome];
@@ -40,12 +45,33 @@ export type FeedbackOptions = {
   nth: number;
   // Consecutive fast outcomes, this one included.
   streak: number;
+  // Whether the answer paid a gem (ADR 0004), which only a fast one can.
+  gem: boolean;
   onAdvance: () => void;
 };
 
+// The line for the gem an answer paid, under the word. It is empty, and so
+// says nothing to a screen reader, until the gem shows; it keeps a line's
+// height meanwhile, so nothing under it moves.
+function renderGemPaid(): { line: HTMLElement; show: () => void } {
+  const line = document.createElement('p');
+  line.className = 'gem-paid';
+  line.setAttribute('role', 'status');
+  return {
+    line,
+    show: () => {
+      line.append(renderGem(), '+1 gem');
+      line.classList.add('shown');
+    },
+  };
+}
+
 // Builds the feedback screen: the fact with its answer, the character, a word,
 // and the streak from two fast answers in a row, with a sound for the
-// outcome. It holds for a moment, and a tap anywhere moves on at once.
+// outcome. An answer that paid a gem shows it under the word 0.3 seconds
+// in, with the chime, once the fast answer's sound has rung. It holds for a
+// moment, and a tap anywhere moves on at once, taking a gem still to show
+// with it.
 export function renderFeedback(options: FeedbackOptions): HTMLElement {
   const { presentation, outcome } = options;
 
@@ -69,6 +95,18 @@ export function renderFeedback(options: FeedbackOptions): HTMLElement {
     sparkles: outcome === 'fast' ? 'burst' : undefined,
   });
   screen.append(sum, figure, word);
+
+  // Leaving the screen takes a gem still to show with it, so that its chime
+  // does not sound over the card that follows.
+  let cancelGem = () => {};
+  if (options.gem) {
+    const { line, show } = renderGemPaid();
+    screen.append(line);
+    cancelGem = schedule(() => {
+      show();
+      sound.gem();
+    }, GEM_AT);
+  }
 
   if (outcome === 'fast' && options.streak >= 2) {
     const streak = document.createElement('p');
@@ -95,6 +133,7 @@ export function renderFeedback(options: FeedbackOptions): HTMLElement {
     if (left) return;
     left = true;
     cancel();
+    cancelGem();
     options.onAdvance();
   };
   const cancel = schedule(advance, HOLD[outcome]);

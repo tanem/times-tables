@@ -234,6 +234,21 @@ describe('createSound', () => {
     expect(sweep[3]?.at).toBeCloseTo(opening + 0.7, 3);
   });
 
+  it('chimes for a gem: two short notes above a fast answer that starts a streak', () => {
+    const { sound, heard } = tracked();
+    sound.wake();
+
+    const fast = notesOf(heard, () => sound.fast(1));
+    const chime = notesOf(heard, () => sound.gem());
+
+    // B6 then E7, seven hundredths of a second apart.
+    expect(chime.map((note) => Math.round(note.freq))).toEqual([1976, 2637]);
+    const opening = chime[0]?.at ?? 0;
+    expect(chime[1]?.at).toBeCloseTo(opening + 0.07, 3);
+    const highestFast = Math.max(...fast.map((note) => note.freq));
+    for (const note of chime) expect(note.freq).toBeGreaterThan(highestFast);
+  });
+
   it('plays a fanfare for a new character that climbs to a note above the run up', () => {
     const { sound, heard } = tracked();
     sound.wake();

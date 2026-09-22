@@ -267,6 +267,16 @@ export async function startDrillAfter(
   await practiseButton(page).click();
 }
 
+// When the gem an answer paid shows on the feedback, in milliseconds after
+// the feedback shows, with the chime.
+export const GEM_AT = 300;
+
+// The gem paid on the feedback, which reads as "+1 gem" once it shows. It is
+// on screen and empty until then.
+export function gemPaid(page: Page): Locator {
+  return page.locator('.feedback').getByRole('status');
+}
+
 // The dialog that announces a new character on the end screen.
 export function unlockDialog(page: Page): Locator {
   return page.getByRole('dialog', { name: 'New character!' });
