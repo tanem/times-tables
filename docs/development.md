@@ -24,4 +24,4 @@ Renovate opens dependency update pull requests, including majors, and merges the
 
 ## Working with agents
 
-The instructions agents follow in this repo are in [`docs/agents/`](agents/). The work is planned as a map issue with tickets as its sub-issues; the current map is [#36](https://github.com/tanem/times-tables/issues/36).
+The instructions agents follow in this repo are in [`docs/agents/`](agents/). The work is planned on a map issue, the open issue labelled `wayfinder:map`, with the tickets as its sub-issues; at the time of writing that is [#36](https://github.com/tanem/times-tables/issues/36).

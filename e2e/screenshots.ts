@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
 import { pool, type Table } from '../src/model/facts';
+import { BONUS } from '../src/model/bonus';
 import type { Level } from '../src/model/level';
 import {
   freshProgress,
@@ -34,7 +35,10 @@ const TABLES_ON: Table[] = [3, 4, 6, 8];
 
 // About six weeks of drills up to the fixtures' fixed date, 1 January 2026:
 // pace falling from over five seconds to under three, facts known rising,
-// and one drill quit early.
+// and one drill quit early. Each takes its fast, slow and missed counts as
+// a triple. Its median answer time sits a little under its pace, as a drill
+// of mostly known facts does; the first drill, before there was a pace, is
+// given one a little over the first pace.
 function record(
   at: string,
   tables: Table[],
@@ -52,9 +56,11 @@ function record(
     quit,
     pace,
     known,
-    median: pace === null ? 5400 : pace - 100,
+    median: pace === null ? FIRST_MEDIAN : pace - 100,
   };
 }
+
+const FIRST_MEDIAN = 5400;
 
 const RECORDS: DrillRecord[] = [
   record('2025-11-20', [3, 4], [9, 6, 5], null, 0),
@@ -114,14 +120,15 @@ function facts(): Record<string, FactProgress> {
   return result;
 }
 
-function learner(): Progress {
+// The invented learner's progress document.
+function inventedProgress(): Progress {
   const known = facts();
   const paid = Object.values(known).reduce((sum, fact) => sum + fact.best, 0);
   return {
     ...freshProgress(),
     tables: TABLES_ON,
     facts: known,
-    gems: paid + 2 * BONUSES_PAID,
+    gems: paid + BONUS * BONUSES_PAID,
     character: 'owl',
     times: TIMES,
     records: RECORDS,
@@ -136,7 +143,7 @@ async function shoot(page: Page, name: string): Promise<void> {
 }
 
 test('the five screens', async ({ page }) => {
-  await seedProgress(page, learner());
+  await seedProgress(page, inventedProgress());
   await shoot(page, 'start');
 
   await openParent(page);

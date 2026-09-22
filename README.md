@@ -8,7 +8,7 @@ Times tables practice for an iPad, from the 2s to the 12s.
 
 ## What it does
 
-- Drills the tables from the 2s to the 12s, any mix of them, 20 facts at a sitting.
+- Drills the tables from the 2s to the 12s, any mix of them, 20 questions at a sitting.
 - The learner types each answer on an on-screen keypad.
 - Each answer is judged against the learner's own pace, not a fixed time limit.
 - Each fact has a level, and facts at a low level come round more often.
