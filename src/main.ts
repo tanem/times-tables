@@ -14,13 +14,13 @@ import type { Table } from './model/facts';
 import type { Outcome } from './model/level';
 import { gradeAnswer, paceOf } from './model/pace';
 import {
-  addRecord,
   applyOutcome,
   factLevel,
   freshProgress,
   keepAnswerTime,
   knownCount,
   knownShare,
+  recordDrill,
 } from './model/progress';
 import { random } from './random';
 import { renderCard } from './screens/card';
@@ -181,21 +181,23 @@ function showFeedback(drill: Drill, outcome: Outcome): void {
   );
 }
 
-// The drill record is written when the drill ends or is quit.
+// The drill record is written when the drill ends or is quit. Recording it
+// pays the bonus for a drill faster than last time and hands back the
+// verdict it paid on, which the end screen shows (ADR 0004).
 function endDrill(drill: Drill): void {
-  progress = addRecord(
-    progress,
-    drillRecord(
-      drill,
-      timestamp(),
-      knownCount(progress),
-      paceOf(progress.times),
-    ),
+  const record = drillRecord(
+    drill,
+    timestamp(),
+    knownCount(progress),
+    paceOf(progress.times),
   );
+  const recorded = recordDrill(progress, record);
+  progress = recorded.progress;
   saveProgress(store, progress);
   show(
     renderEnd({
       drill,
+      faster: recorded.faster,
       onHome: showStart,
       onAgain: () => beginDrill(drill.tables),
     }),

@@ -216,6 +216,24 @@ describe('createSound', () => {
     for (const note of missed) expect(note.freq).toBeLessThan(lowestRight);
   });
 
+  it('sweeps up from a low note to a chord for a drill faster than last time', () => {
+    const { sound, heard } = tracked();
+    sound.wake();
+
+    const sweep = notesOf(heard, () => sound.faster());
+
+    // C5, then C7, E7 and G7 after it.
+    expect(sweep).toHaveLength(4);
+    expect(sweep[0]?.freq).toBeCloseTo(523.25, 1);
+    expect(sweep[1]?.freq).toBeCloseTo(2093, 1);
+    expect(sweep[2]?.freq).toBeCloseTo(2637.02, 1);
+    expect(sweep[3]?.freq).toBeCloseTo(3135.96, 1);
+    const opening = sweep[0]?.at ?? 0;
+    expect(sweep[1]?.at).toBeCloseTo(opening + 0.5, 3);
+    expect(sweep[2]?.at).toBeCloseTo(opening + 0.6, 3);
+    expect(sweep[3]?.at).toBeCloseTo(opening + 0.7, 3);
+  });
+
   it('ends a drill on a run up that is longer for a higher band', () => {
     const { sound, heard } = tracked();
     sound.wake();

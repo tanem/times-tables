@@ -4,15 +4,21 @@ import { freshProgress, type Progress } from '../src/model/progress';
 import { expect, test } from './fixtures';
 import {
   advance,
+  animates,
   answerCard,
   confetti,
   dontKnow,
   dragon,
   factOnScreen,
+  finishDrillAfter,
   key,
+  momentWords,
   PACE_TIMES,
   practiseButton,
   pressEnter,
+  race,
+  RACE_AT,
+  runner,
   SEEDED_TABLES,
   seedProgress,
   setVisibility,
@@ -20,9 +26,11 @@ import {
   SLOW_TIME,
   sparkles,
   startDrill,
+  startDrillAfter,
   storedProgress,
   tile,
   typeAnswer,
+  WORDS_AT,
 } from './helpers';
 
 // How tall the learner sees the part, in pixels.
@@ -30,6 +38,11 @@ async function heightOf(part: Locator): Promise<number> {
   const box = await part.boundingBox();
   if (!box) throw new Error('the part is not laid out');
   return box.height;
+}
+
+// How far along its lane a runner of the race stands, in pixels.
+function alongLane(lane: Locator): Promise<number> {
+  return lane.evaluate((el) => parseFloat(getComputedStyle(el).left));
 }
 
 // The product of the fact on the card, as the learner would type it.
@@ -531,6 +544,87 @@ for (const fast of [14, 8]) {
   });
 }
 
+test('a drill faster than last time runs a race, then says so and stands the dragon proud', async ({
+  page,
+}) => {
+  // The earlier drill's median is 15 seconds; every answer of this one is
+  // given on the instant. Twenty fast answers celebrate with a big jump.
+  await finishDrillAfter(page, 15000);
+
+  // The track holds its place from the start and the words say nothing yet.
+  await expect(race(page)).toBeHidden();
+  await expect(momentWords(page)).toBeEmpty();
+  await expect(dragon(page, 'jumps high')).toBeVisible();
+
+  await page.clock.runFor(RACE_AT);
+  await expect(race(page)).toBeVisible();
+  await expect(momentWords(page)).toBeEmpty();
+  await expect(dragon(page, 'stands proud')).toHaveCount(0);
+
+  await page.clock.runFor(WORDS_AT - RACE_AT);
+  await expect(momentWords(page)).toContainText('Faster than last time!');
+  await expect(dragon(page, 'stands proud')).toBeVisible();
+  await expect(dragon(page, 'jumps high')).toHaveCount(0);
+});
+
+test('a drill faster than last time pays a bonus of two gems', async ({
+  page,
+}) => {
+  await finishDrillAfter(page, 15000);
+
+  // Every fact was already at level 4, so the 132 they had paid is all the
+  // drill's own answers were worth.
+  expect((await storedProgress(page)).gems).toBe(134);
+});
+
+test('a drill that was not faster than last time says nothing and pays nothing', async ({
+  page,
+}) => {
+  // The earlier drill's median matches this one's, and a tie does not pay.
+  await finishDrillAfter(page, 0);
+
+  await page.clock.runFor(WORDS_AT);
+  await expect(race(page)).toHaveCount(0);
+  await expect(momentWords(page)).toHaveCount(0);
+  expect((await storedProgress(page)).gems).toBe(132);
+});
+
+test('a quit drill says nothing and pays nothing however fast it was', async ({
+  page,
+}) => {
+  await startDrillAfter(page, 15000);
+  for (let index = 0; index < 12; index++) {
+    await answerCard(page, 'fast');
+    await advance(page);
+  }
+  await page.getByRole('button', { name: 'Quit' }).click();
+
+  await page.clock.runFor(WORDS_AT);
+  await expect(race(page)).toHaveCount(0);
+  await expect(momentWords(page)).toHaveCount(0);
+  expect((await storedProgress(page)).gems).toBe(132);
+});
+
+test('reduced motion leaves the runners where the race ends them and still says so', async ({
+  page,
+}) => {
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await finishDrillAfter(page, 15000);
+  await page.clock.runFor(RACE_AT);
+
+  const earlier = runner(page, 'earlier');
+  const today = runner(page, 'today');
+  for (const lane of [earlier, today]) {
+    expect(await lane.evaluate(animates)).toBe(false);
+  }
+  // Neither runner is still on the start line, and today is the further on.
+  expect(await alongLane(earlier)).toBeGreaterThan(0);
+  expect(await alongLane(today)).toBeGreaterThan(await alongLane(earlier));
+
+  await page.clock.runFor(WORDS_AT - RACE_AT);
+  await expect(momentWords(page)).toContainText('Faster than last time!');
+});
+
 test('a drill with 7 fast answers ends with a warm wave', async ({ page }) => {
   await finishDrill(page, 7);
 
@@ -791,5 +885,32 @@ for (const [orientation, width, height] of [
     for (const part of parts) {
       await expect(part).toBeInViewport({ ratio: 1 });
     }
+  });
+
+  test(`the end of a drill faster than last time fits an iPad in ${orientation}`, async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width, height });
+    await finishDrillAfter(page, 15000);
+    const home = page.getByRole('button', { name: 'Home' });
+    const before = await home.boundingBox();
+
+    await page.clock.runFor(WORDS_AT);
+
+    const parts = [
+      dragon(page, 'stands proud'),
+      page.getByRole('heading', { level: 1 }),
+      page.getByText('20 Fast'),
+      page.getByText('Best streak: 20'),
+      race(page),
+      momentWords(page),
+      home,
+      page.getByRole('button', { name: 'Go again' }),
+    ];
+    for (const part of parts) {
+      await expect(part).toBeInViewport({ ratio: 1 });
+    }
+    // The moment held its place, so Home never moved under a finger.
+    expect(await home.boundingBox()).toEqual(before);
   });
 }

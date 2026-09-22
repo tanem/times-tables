@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from '@playwright/test';
-import { TABLES, type Table } from '../src/model/facts';
+import { pool, TABLES, type Table } from '../src/model/facts';
 import type { Outcome } from '../src/model/level';
 import { PACE_NEEDED } from '../src/model/pace';
 import {
@@ -178,6 +178,74 @@ export async function startDrill(
   await practiseButton(page).click();
 }
 
+// A finished drill on the seeded tables with every answer right and the
+// given median answer time: the record a drill before this one left.
+function lastTimeRecord(median: number): DrillRecord {
+  return {
+    at: '2025-12-31T09:00:00.000Z',
+    tables: [...SEEDED_TABLES],
+    fast: 20,
+    slow: 0,
+    missed: 0,
+    quit: false,
+    pace: null,
+    known: 0,
+    median,
+  };
+}
+
+// The gems the seeded tables' 33 facts have paid once every one of them has
+// reached level 4.
+const KNOWN_GEMS = 132;
+
+// Opens the app on a document with the seeded tables on, every fact of their
+// pool at level 4 and one earlier finished drill on those tables with the
+// given median answer time; then taps Practise and lands on the first card.
+// Every fact has paid all four of its gems, so no answer of this drill can
+// pay one and the bonus is all that can.
+export async function startDrillAfter(
+  page: Page,
+  median: number,
+): Promise<void> {
+  const facts: Progress['facts'] = {};
+  for (const fact of pool(SEEDED_TABLES)) {
+    facts[fact.key] = { level: 4, best: 4, fast: 4, slow: 0, missed: 0 };
+  }
+  await seedProgress(page, {
+    ...freshProgress(),
+    tables: [...SEEDED_TABLES],
+    facts,
+    gems: KNOWN_GEMS,
+    records: [lastTimeRecord(median)],
+  });
+  await practiseButton(page).click();
+}
+
+// The moment's two beats, in milliseconds after the end screen shows: the
+// race starts, then runs for 2200 before the words follow it.
+export const RACE_AT = 900;
+export const WORDS_AT = 3100;
+
+// The race track between the learner's earlier self and today.
+export function race(page: Page): Locator {
+  return page.locator('.race');
+}
+
+// One of the race's two runners, in the lane named.
+export function runner(page: Page, lane: 'earlier' | 'today'): Locator {
+  return page.locator(`.lane.${lane} .runner`);
+}
+
+// What the moment says once the race has run, which a screen reader
+// announces. It is on screen and empty until then.
+export function momentWords(page: Page): Locator {
+  return page.locator('.moment').getByRole('status');
+}
+
+// Whether the given element is being animated, for a page evaluate.
+export const animates = (el: Element) =>
+  getComputedStyle(el).animationName !== 'none';
+
 // The digits that answer the fact on screen the given way: the product for a
 // right answer, one past it for a wrong one.
 export async function digitsFor(page: Page, outcome: Outcome): Promise<string> {
@@ -197,6 +265,23 @@ export async function answerCard(page: Page, outcome: Outcome): Promise<void> {
 // Taps the feedback to move on.
 export async function advance(page: Page): Promise<void> {
   await page.getByText('Tap to go on').click();
+}
+
+// Runs a whole drill of right answers given on the instant, after one
+// earlier finished drill on the same tables with the given median answer
+// time, and lands on the end screen.
+export async function finishDrillAfter(
+  page: Page,
+  median: number,
+): Promise<void> {
+  await startDrillAfter(page, median);
+  for (let index = 0; index < 20; index++) {
+    await answerCard(page, 'fast');
+    await advance(page);
+  }
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Drill done!' }),
+  ).toBeVisible();
 }
 
 // Makes the page report the given visibility and announces the change, as

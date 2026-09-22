@@ -79,6 +79,9 @@ export type Sound = {
   missed: () => void;
   // The end of a drill: a run up, longer for a higher band.
   end: (band: Band) => void;
+  // A drill faster than last time: the improvement sweep, a slide up into a
+  // chord.
+  faster: () => void;
 };
 
 // Builds the app's sound over the given way of making an audio context.
@@ -160,6 +163,14 @@ export function createSound(newContext: () => AudioContext): Sound {
           ring: 0.5,
         })),
       ),
+    // C5 sliding up two octaves, then the C major chord above it.
+    faster: () =>
+      play([
+        { freq: pitch(0), slideTo: pitch(24), ring: 0.5, gain: 0.5 },
+        { freq: pitch(24), at: 0.5 },
+        { freq: pitch(28), at: 0.6 },
+        { freq: pitch(31), at: 0.7, ring: 0.6 },
+      ]),
   };
 }
 
