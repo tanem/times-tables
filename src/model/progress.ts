@@ -263,8 +263,9 @@ export type Recorded = {
 };
 
 // The document with a record appended, the bonus paid if the drill was
-// faster than last time and band pay paid by the drill's band, with what
-// was paid. A quit drill is in the low band and pays neither. The badges
+// faster than last time, band pay paid by the drill's band and one more
+// drill on the chosen character's bond, with what was paid. A quit drill is
+// in the low band, pays neither and adds nothing to the bond. The badges
 // and unlocks are read between the document as the drill began and the one
 // after all of it was paid, so a badge or character a migration or an
 // earlier drill brought is never announced. The badges were paid at the
@@ -277,7 +278,12 @@ export function recordDrill(
   const faster = fasterThanLastTime(progress.records, record);
   const bandPay = BAND_PAY[bandOf(record)];
   const badgedAtStart = badges(started);
-  const withRecord = { ...progress, records: [...progress.records, record] };
+  const { character, bond } = progress;
+  const withRecord = {
+    ...progress,
+    records: [...progress.records, record],
+    bond: record.quit ? bond : { ...bond, [character]: bond[character] + 1 },
+  };
   const paid = earn(withRecord, (faster ? BONUS : 0) + bandPay);
   return {
     progress: paid,

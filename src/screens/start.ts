@@ -1,3 +1,4 @@
+import { bondLevel, bondReading, type BondLevel } from '../model/bond';
 import { itemOf, type HatId } from '../model/catalogue';
 import {
   CHARACTERS,
@@ -8,7 +9,7 @@ import {
 import { DRILL_LENGTH } from '../model/drill';
 import { TABLES, tablesList, type Table } from '../model/facts';
 import { renderBadge } from './badge';
-import { renderCharacter } from './character';
+import { renderCharacter, type Pose } from './character';
 import { renderBalance } from './gem';
 import { renderHat } from './hat';
 
@@ -26,6 +27,9 @@ export type StartOptions = {
   // The owned hats, in catalogue order, and the worn one, or none.
   hats: readonly HatId[];
   hat: HatId | null;
+  // The finished drills done with each character, which its meter and its
+  // pose on the masthead are read from.
+  bond: Readonly<Record<Character, number>>;
   // Called with the new selection, in table order, after every change.
   onTablesChange: (tables: Table[]) => void;
   // Called with the character the learner tapped, one the earned total has
@@ -66,15 +70,42 @@ function renderTile(name: string): HTMLButtonElement {
   return tile;
 }
 
-// How well a table is known: a bar filled to the share, with no numbers. It
-// is left out of the tile's name.
+// A bar filled to the share, from 0 to 1.
 function renderMeter(share: number): HTMLElement {
   const meter = document.createElement('span');
   meter.className = 'meter';
-  meter.setAttribute('aria-hidden', 'true');
   const fill = document.createElement('span');
   fill.style.width = `${share * 100}%`;
   meter.append(fill);
+  return meter;
+}
+
+// The pose the chosen character rests in on the masthead: sitting until its
+// first bond pose opens, then the highest one open.
+const BOND_POSES: Readonly<Record<BondLevel, Pose>> = {
+  0: 'sit',
+  1: 'wiggle',
+  2: 'twirl',
+  3: 'flip',
+};
+
+// How close the character's next bond pose is: a bar filled across the
+// drills from the last threshold passed to the next, full once every pose
+// is open. Its name says whose bond it is and its reading the drills done.
+function renderBondMeter(character: Character, count: number): HTMLElement {
+  const { from, to, now, share, full } = bondReading(count);
+  const meter = renderMeter(share);
+  meter.classList.add('bond-meter');
+  meter.setAttribute('role', 'meter');
+  meter.setAttribute('aria-label', `Bond with the ${character}`);
+  meter.setAttribute('aria-valuemin', String(from));
+  meter.setAttribute('aria-valuemax', String(to));
+  meter.setAttribute('aria-valuenow', String(now));
+  const drills = `${count} ${count === 1 ? 'drill' : 'drills'}`;
+  meter.setAttribute(
+    'aria-valuetext',
+    full ? `${drills}, every pose open` : `${drills}, next pose at ${to}`,
+  );
   return meter;
 }
 
@@ -145,10 +176,10 @@ function renderHatPick(hat: HatId | null, onPick: () => void): HTMLElement {
   return pick;
 }
 
-// Builds the Start screen. The character sits with the app's name at the
-// top, the row of characters under the name, the row of owned hats under
-// that once a hat is owned, the Shop in one corner and the balance in the
-// other. The tiles keep the selection and the Practise button follows it.
+// Builds the Start screen. The character is at the top with the app's name,
+// in its highest open bond pose or sitting, over the meter of its bond; the
+// row of characters is under the name, the row of owned hats under that once
+// a hat is owned, the Shop in one corner and the balance in the other. The tiles keep the selection and the Practise button follows it.
 // While nothing is on the screen nudges: the heading asks for a tap, the
 // tiles pulse and the character waves.
 export function renderStart(options: StartOptions): HTMLElement {
@@ -205,7 +236,10 @@ export function renderStart(options: StartOptions): HTMLElement {
     }
     title.append(hats);
   }
-  masthead.append(title);
+  // The chosen character over the meter of its bond.
+  const companion = document.createElement('div');
+  companion.className = 'companion';
+  masthead.append(companion, title);
 
   const question = document.createElement('h2');
   question.id = 'which-tables';
@@ -231,16 +265,12 @@ export function renderStart(options: StartOptions): HTMLElement {
   const all = renderTile('All');
   all.classList.add('all');
 
-  // Reduced motion drops the wave, so the character sits and is named as
-  // sitting.
-  const nudgePose = window.matchMedia('(prefers-reduced-motion: reduce)')
-    .matches
-    ? 'sit'
-    : 'beckon';
+  // Reduced motion drops the wave and the bond poses, so the character sits
+  // and is named as sitting.
+  const still = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-  // The character on the masthead, and whether the screen is nudging. Both
-  // are null until the first update, which always draws them.
-  let figure: HTMLElement | null = null;
+  // Whether the screen is nudging: null until the first update, which always
+  // draws the character.
   let nudging: boolean | null = null;
 
   // Dresses every unlocked character in the row in the worn hat, and marks
@@ -256,20 +286,23 @@ export function renderStart(options: StartOptions): HTMLElement {
     }
   };
 
-  // Draws the chosen character on the masthead in the worn hat, waving
-  // while the screen nudges, and marks it as chosen in the row.
+  // Draws the chosen character on the masthead in the worn hat over the
+  // meter of its bond, waving while the screen nudges and in its bond pose
+  // otherwise, and marks it as chosen in the row.
   const drawCharacter = () => {
     for (const [candidate, pick] of picks) {
       pick.setAttribute('aria-pressed', String(candidate === character));
     }
-    const next = renderCharacter({
-      character,
-      pose: nudging ? nudgePose : 'sit',
-      hat,
-    });
-    if (figure) figure.replaceWith(next);
-    else masthead.prepend(next);
-    figure = next;
+    const count = options.bond[character];
+    const pose: Pose = still
+      ? 'sit'
+      : nudging
+        ? 'beckon'
+        : BOND_POSES[bondLevel(count)];
+    companion.replaceChildren(
+      renderCharacter({ character, pose, hat }),
+      renderBondMeter(character, count),
+    );
   };
 
   const update = () => {
@@ -298,7 +331,11 @@ export function renderStart(options: StartOptions): HTMLElement {
 
   for (const table of TABLES) {
     const tile = renderTile(`${table}s`);
-    tile.append(renderMeter(options.knownShare(table)));
+    // How well the table is known, with no numbers: the bar is left out of
+    // the tile's name.
+    const known = renderMeter(options.knownShare(table));
+    known.setAttribute('aria-hidden', 'true');
+    tile.append(known);
     // A badge sits in the tile's top right corner, and the tile's name
     // says so.
     if (options.badges.includes(table)) {
