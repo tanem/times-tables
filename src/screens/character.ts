@@ -4,9 +4,9 @@ import { schedule } from '../time';
 import { hatArt, wearing } from './hat';
 
 // What the character is doing. Each pose is a CSS animation that plays once,
-// except sit, which bobs for as long as it is on screen, beckon, which waves
-// every few seconds with a rest between, and proud, which the character
-// moves into and holds.
+// except sit, which bobs for as long as it is on screen; beckon and the three
+// bond poses, wiggle, twirl and flip, which play every few seconds with a
+// rest between; and proud, which the character moves into and holds.
 export type Pose =
   | 'sit'
   | 'jump'
@@ -16,7 +16,10 @@ export type Pose =
   | 'hop'
   | 'wave'
   | 'beckon'
-  | 'proud';
+  | 'proud'
+  | 'wiggle'
+  | 'twirl'
+  | 'flip';
 
 // What each pose is called, after the character's name, for a learner who
 // cannot see it.
@@ -30,6 +33,9 @@ const DOING: Readonly<Record<Pose, string>> = {
   wave: ' waves',
   beckon: ' waves',
   proud: ' stands proud',
+  wiggle: ' wiggles',
+  twirl: ' twirls',
+  flip: ' flips',
 };
 
 const SVG_NS = 'http://www.w3.org/2000/svg';

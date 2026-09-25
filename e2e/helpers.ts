@@ -108,6 +108,12 @@ export function balance(page: Page): Locator {
   return page.locator('.gems');
 }
 
+// The meter under the chosen character on the Start screen, which reads
+// its bond.
+export function bondMeter(page: Page): Locator {
+  return page.getByRole('meter', { name: /^Bond with/ });
+}
+
 // The row of characters on the Start screen.
 export function characterRow(page: Page): Locator {
   return page.getByRole('group', { name: 'Your character' });

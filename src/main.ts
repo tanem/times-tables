@@ -119,6 +119,7 @@ function showStart(): void {
       character: progress.character,
       hats: ownedHats(progress),
       hat: progress.hat,
+      bond: progress.bond,
       onTablesChange: (tables) => {
         progress = { ...progress, tables };
         saveProgress(store, progress);

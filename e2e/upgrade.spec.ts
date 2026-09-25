@@ -6,6 +6,7 @@ import {
   advance,
   answerCard,
   balance,
+  bondMeter,
   character,
   DIALOG_AT,
   expectNoTableOn,
@@ -211,6 +212,10 @@ test('a version 3 document is migrated with its gems as both earned and the bala
   await expect(pick(page, 'Unicorn')).toHaveAccessibleName(
     'Unicorn, locked, 170 gems',
   );
+
+  // The drill the document holds was done before bond was counted, so the
+  // owl's bond starts at 0.
+  await expect(bondMeter(page)).toHaveAttribute('aria-valuenow', '0');
 
   await openParent(page);
   await expect(page.getByText('Gems: 150 earned, 150 to spend')).toBeVisible();

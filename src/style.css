@@ -13,6 +13,8 @@
   --missed: #de5a52;
   --track: #dce2f0;
   --sparkle: #ffc93c;
+  /* The fill of the meter under the character on the Start screen. */
+  --bond: #e64980;
   /* The words beside a gem paid, on the feedback and the end screen. */
   --gem-paid: #a86f00;
   /* The fact grid's five levels, red through amber to green, told apart at
@@ -122,8 +124,18 @@ button {
   }
 }
 
-.masthead > .character-stage {
-  --size: clamp(80px, 15vmin, 140px);
+/* The character over the meter of its bond, sized together through
+   --figure. */
+.companion {
+  --figure: clamp(80px, 15vmin, 140px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: clamp(4px, 1vmin, 10px);
+}
+
+.companion > .character-stage {
+  --size: var(--figure);
 }
 
 .title {
@@ -315,6 +327,16 @@ button {
 
 .tile[aria-pressed='true'] .meter span {
   background: white;
+}
+
+/* The meter of the character's bond, under it on the Start screen, as wide
+   as the character's body and in its own colour. */
+.bond-meter {
+  width: calc(var(--figure) * 0.8);
+}
+
+.bond-meter span {
+  background: var(--bond);
 }
 
 /* While nothing is on, the tiles pulse gently. */
@@ -1527,6 +1549,38 @@ button {
   animation: proud 0.6s ease forwards;
 }
 
+/* The bond poses, which the character rests in on the Start screen once
+   they open: each plays in the first part of every four seconds, with the
+   character still for what is left, as the beckon does. The wiggle sways
+   the body from side to side with the arms going up in turn. */
+.character.wiggle {
+  animation: wiggle 4s ease infinite;
+}
+
+.character.wiggle .arm-left {
+  animation: wiggle-arm 4s ease infinite;
+}
+
+.character.wiggle .arm-right {
+  animation: wiggle-arm 4s ease 0.3s infinite;
+}
+
+/* The twirl turns the character round once, as seen from the front, with a
+   small hop. */
+.character.twirl {
+  animation: twirl 4s ease-in-out infinite;
+}
+
+/* The flip jumps high and turns a full somersault in the air, the wings
+   flapping. */
+.character.flip {
+  animation: flip 4s ease infinite;
+}
+
+.character.flip .wing {
+  animation: flip-flap 4s ease infinite;
+}
+
 @keyframes bob {
   0%,
   100% {
@@ -1702,6 +1756,87 @@ button {
   }
 }
 
+@keyframes wiggle {
+  0%,
+  40%,
+  100% {
+    transform: rotate(0) translateX(0);
+  }
+  8%,
+  24% {
+    transform: rotate(-7deg) translateX(-4%);
+  }
+  16%,
+  32% {
+    transform: rotate(7deg) translateX(4%);
+  }
+}
+
+@keyframes wiggle-arm {
+  0%,
+  32%,
+  100% {
+    transform: rotate(0);
+  }
+  8%,
+  24% {
+    transform: rotate(120deg);
+  }
+}
+
+/* Squashing the width to nothing and out again mirrored reads as the
+   character turning its back, then turning to face the learner again. */
+@keyframes twirl {
+  0%,
+  36%,
+  100% {
+    transform: translateY(0) scaleX(1);
+  }
+  9% {
+    transform: translateY(-8%) scaleX(0);
+  }
+  18% {
+    transform: translateY(-10%) scaleX(-1);
+  }
+  27% {
+    transform: translateY(-8%) scaleX(0);
+  }
+}
+
+/* A crouch, then up and round. */
+@keyframes flip {
+  0%,
+  36%,
+  100% {
+    transform: translateY(0) scaleY(1) rotate(0);
+  }
+  5% {
+    transform: translateY(4%) scaleY(0.9) rotate(0);
+  }
+  18% {
+    transform: translateY(-26%) scaleY(1) rotate(-180deg);
+  }
+  30% {
+    transform: translateY(0) scaleY(1) rotate(-360deg);
+  }
+}
+
+@keyframes flip-flap {
+  0%,
+  30%,
+  100% {
+    transform: rotate(0);
+  }
+  10%,
+  20% {
+    transform: rotate(28deg);
+  }
+  15%,
+  25% {
+    transform: rotate(0);
+  }
+}
+
 /* Sparkles fly out from the middle of the character, each a four-pointed star.
    --dx and --dy are fractions of the character's size. */
 .sparkles {
@@ -1802,7 +1937,8 @@ button {
 }
 
 /* Reduced motion stops the endless bob, the Start screen's pulse and the
-   repeating wave, and shortens every reaction; no reaction is taken away. */
+   repeating wave, and shortens every reaction; no reaction is taken away.
+   The Start screen draws the character sitting in place of a bond pose. */
 @media (prefers-reduced-motion: reduce) {
   .character.sit,
   .nudge .tile {

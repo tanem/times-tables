@@ -868,6 +868,16 @@ describe('recordDrill', () => {
     expect(recorded.progress).toMatchObject({ earned: 127, balance: 2 });
   });
 
+  it("adds one to the chosen character's bond for a finished drill, and to no other", () => {
+    const { progress } = recordDrill(valid, slower, valid);
+    expect(progress.bond).toEqual({ ...valid.bond, cat: 4 });
+  });
+
+  it('adds nothing to the bond for a quit drill', () => {
+    const { progress } = recordDrill(valid, { ...slower, quit: true }, valid);
+    expect(progress.bond).toEqual(valid.bond);
+  });
+
   it('says a drill was faster when, and only when, it paid the bonus', () => {
     expect(recordDrill(valid, faster, valid).faster).toBe(true);
     expect(recordDrill(valid, slower, valid).faster).toBe(false);
@@ -882,6 +892,7 @@ describe('recordDrill', () => {
     recordDrill(valid, faster, valid);
 
     expect(valid).toMatchObject({ earned: 127, balance: 2 });
+    expect(valid.bond).toEqual({ ...NO_BOND, dragon: 12, cat: 3 });
   });
 });
 
