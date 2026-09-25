@@ -283,7 +283,13 @@ export function gemPaid(page: Page): Locator {
 // The line on the end screen for what the drill's band paid, which reads as
 // "+3 gems for this drill". There is none when the band paid nothing.
 export function bandPay(page: Page): Locator {
-  return page.locator('.end .pay');
+  return page.locator('.end .pay', { hasText: 'for this drill' });
+}
+
+// The lines on the end screen for the badges the drill earned, one per
+// table, each reading as "+10 gems for the 7s badge".
+export function badgePay(page: Page): Locator {
+  return page.locator('.end .pay', { hasText: 'badge' });
 }
 
 // The dialog that announces a new character on the end screen.

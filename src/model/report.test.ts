@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { factKey } from './facts';
 import {
   applyOutcome,
   freshProgress,
@@ -230,6 +231,28 @@ describe('gridRows', () => {
     expect(inEights?.level).toBe(1);
     expect(inSixes?.counts).toEqual(inEights?.counts);
     expect(inSixes?.counts).toEqual({ fast: 1, slow: 0, missed: 0 });
+  });
+
+  it('marks a row with a badge and names it so, even with its levels dropped', () => {
+    let progress = freshProgress();
+    for (let n = 1; n <= 12; n++) {
+      for (let times = 0; times < 4; times++) {
+        progress = applyOutcome(progress, factKey(7, n), 'fast');
+      }
+    }
+    progress = applyOutcome(progress, '7x8', 'missed');
+    const rows = gridRows(progress);
+    const sevens = rows[5];
+    expect(sevens).toMatchObject({
+      label: '7s',
+      badge: true,
+      ariaLabel: '7s, badge',
+    });
+    expect(rows[4]).toMatchObject({
+      label: '6s',
+      badge: false,
+      ariaLabel: '6s',
+    });
   });
 });
 

@@ -1,5 +1,7 @@
 import type { Character } from '../model/characters';
 import { bandOf, type Band, type Drill } from '../model/drill';
+import type { Table } from '../model/facts';
+import { BADGE_PAY } from '../model/progress';
 import { sound } from '../sound';
 import { schedule } from '../time';
 import {
@@ -136,15 +138,12 @@ function renderUnlock(character: Character): {
   return { dialog, ok };
 }
 
-// The line for the band pay the drill's record paid, under the best streak
-// (ADR 0005).
-function renderBandPay(bandPay: number): HTMLElement {
+// A line for gems the drill's record paid, under the best streak: its band
+// pay or one table's badge (ADR 0005).
+function renderPay(gems: number, reason: string): HTMLElement {
   const line = document.createElement('p');
   line.className = 'pay';
-  line.append(
-    renderGem(),
-    `+${bandPay} ${bandPay === 1 ? 'gem' : 'gems'} for this drill`,
-  );
+  line.append(renderGem(), `+${gems} ${gems === 1 ? 'gem' : 'gems'} ${reason}`);
   return line;
 }
 
@@ -157,6 +156,9 @@ export type EndOptions = {
   // The band pay the drill's record paid, which a line shows when it is not
   // 0 (ADR 0005).
   bandPay: number;
+  // The tables whose badges the drill earned, in table order, which a line
+  // each shows (ADR 0005).
+  badges: readonly Table[];
   // The characters the drill's gems unlocked, in unlock order, which a
   // dialog each announces (ADR 0005).
   unlocks: readonly Character[];
@@ -165,8 +167,8 @@ export type EndOptions = {
 };
 
 // Builds the end screen: the character, a heading, the tally of fast, slow
-// and missed, the best streak, the band pay when the band paid any, then
-// Home and Go again. The character celebrates by the drill's band, and a run
+// and missed, the best streak, the band pay when the band paid any, a line
+// per badge earned, then Home and Go again. The character celebrates by the drill's band, and a run
 // up plays that is longer for a higher band. A drill faster than last time
 // runs the race 0.9 seconds into the celebration, and the words, the proud
 // character and the improvement sweep follow it. Each new character is announced in a dialog with the
@@ -236,7 +238,12 @@ export function renderEnd(options: EndOptions): HTMLElement {
 
   actions.append(home, again);
   screen.append(figure, heading, tally, best, actions);
-  if (options.bandPay > 0) actions.before(renderBandPay(options.bandPay));
+  if (options.bandPay > 0) {
+    actions.before(renderPay(options.bandPay, 'for this drill'));
+  }
+  for (const table of options.badges) {
+    actions.before(renderPay(BADGE_PAY, `for the ${table}s badge`));
+  }
 
   if (options.faster) {
     screen.classList.add('faster');

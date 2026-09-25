@@ -202,6 +202,7 @@ button {
 }
 
 .tile {
+  position: relative;
   width: var(--tile-size);
   aspect-ratio: 1;
   display: flex;
@@ -227,6 +228,15 @@ button {
 
 .tile.all {
   border-style: dashed;
+}
+
+/* A badge: a medal in the tile's top right corner. */
+.tile .badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: clamp(1.25rem, 4vmin, 2rem);
+  line-height: 1;
 }
 
 /* How well a table is known: a bar along the bottom of its tile. */
@@ -1040,10 +1050,15 @@ button {
 
 .row-label {
   flex: none;
-  width: 2.5em;
+  width: 3.5em;
   color: var(--muted);
   font-family: var(--font-heading);
   font-weight: 600;
+}
+
+.row-label .badge {
+  margin-left: 0.15em;
+  font-size: 0.85em;
 }
 
 .cells {
@@ -1158,7 +1173,9 @@ button {
    recent list cannot land on it by accident. */
 .erase {
   display: flex;
-  justify-content: center;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
   padding-top: 20px;
   border-top: 1px solid var(--track);
 }
@@ -1183,6 +1200,13 @@ button {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+}
+
+.erase-note {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.875rem;
+  text-align: center;
 }
 
 .erase-ring {

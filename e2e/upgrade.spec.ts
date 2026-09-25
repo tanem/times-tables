@@ -1,3 +1,4 @@
+import { pool } from '../src/model/facts';
 import { freshProgress } from '../src/model/progress';
 import { PROGRESS_KEY, BACKUP_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
@@ -238,6 +239,50 @@ test('a version 3 document is migrated with its gems as both earned and the bala
   expect(await storedProgress(page)).toMatchObject({
     earned: 150,
     balance: 150,
+  });
+});
+
+// A version 3 document whose 3s are complete: every fact at level 4, and
+// the gems they paid.
+function version3Complete(): string {
+  const facts: Record<string, object> = {};
+  for (const fact of pool([3])) {
+    facts[fact.key] = { level: 4, best: 4, fast: 4, slow: 0, missed: 0 };
+  }
+  return JSON.stringify({
+    version: 3,
+    tables: [3],
+    facts,
+    gems: 48,
+    character: 'dragon',
+    times: [],
+    records: [],
+  });
+}
+
+test('a version 3 document whose levels complete a table shows its badge, and no drill pays for it', async ({
+  page,
+}) => {
+  await page.goto('./');
+  await page.evaluate(([key, text]) => localStorage.setItem(key, text), [
+    PROGRESS_KEY,
+    version3Complete(),
+  ] as const);
+  await page.goto('./');
+
+  await expect(tile(page, '3s, badge')).toBeVisible();
+  await expect(balance(page)).toHaveText('48 gems');
+
+  // Every fact of the 3s has paid all its gems, and the quit drill pays no
+  // band pay, so a badge paid would be all that moved the gems.
+  await practiseButton(page).click();
+  await answerCard(page, 'fast');
+  await advance(page);
+  await page.getByRole('button', { name: 'Quit' }).click();
+  await expect(page.locator('.end .pay')).toHaveCount(0);
+  expect(await storedProgress(page)).toMatchObject({
+    earned: 48,
+    balance: 48,
   });
 });
 

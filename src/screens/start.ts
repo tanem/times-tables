@@ -13,6 +13,8 @@ export type StartOptions = {
   tables: readonly Table[];
   // The share of a table's facts at level 4, from 0 to 1, for its meter.
   knownShare: (table: Table) => number;
+  // The tables with a badge, which their tiles mark (ADR 0005).
+  badges: readonly Table[];
   // The gems left to spend, which the corner shows, and the gems earned,
   // which the unlocks are read from (ADR 0005).
   balance: number;
@@ -65,6 +67,16 @@ function renderMeter(share: number): HTMLElement {
   fill.style.width = `${share * 100}%`;
   meter.append(fill);
   return meter;
+}
+
+// A badge, in the top right corner of its table's tile. The tile's name
+// says so, so the mark itself is not read out.
+function renderBadge(): HTMLElement {
+  const badge = document.createElement('span');
+  badge.className = 'badge';
+  badge.setAttribute('aria-hidden', 'true');
+  badge.textContent = '🏅';
+  return badge;
 }
 
 // The balance, in the top right corner. The gem is a picture and the words
@@ -237,6 +249,10 @@ export function renderStart(options: StartOptions): HTMLElement {
   for (const table of TABLES) {
     const tile = renderTile(`${table}s`);
     tile.append(renderMeter(options.knownShare(table)));
+    if (options.badges.includes(table)) {
+      tile.setAttribute('aria-label', `${table}s, badge`);
+      tile.append(renderBadge());
+    }
     tile.addEventListener('click', () => {
       if (selected.has(table)) selected.delete(table);
       else selected.add(table);
