@@ -40,7 +40,7 @@ import { renderNeedsUpdate } from './screens/needs-update';
 import { renderParent } from './screens/parent';
 import { renderShop } from './screens/shop';
 import { renderStart } from './screens/start';
-import { applyTheme, PALETTES } from './screens/theme';
+import { applyTheme, paletteOf } from './screens/theme';
 import { mountSound } from './sound';
 import {
   eraseProgress,
@@ -111,10 +111,7 @@ const themeColour = document.querySelector('meta[name="theme-color"]');
 // Parent view, which no theme reaches.
 function paint(theme: ThemeId | null): void {
   applyTheme(document.documentElement, theme);
-  themeColour?.setAttribute(
-    'content',
-    PALETTES[theme ?? 'default'].colours.paper,
-  );
+  themeColour?.setAttribute('content', paletteOf(theme).colours.paper);
 }
 
 // Screens are swapped by in-app state: one screen at a time, no routing.

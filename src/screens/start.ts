@@ -237,8 +237,8 @@ function renderThemePick(
 // in its highest open bond pose or sitting, over the meter of its bond; the
 // row of characters is under the name, and under that the row of owned hats
 // once a hat is owned, the row of the chosen character's colours once it has
-// a variant and the row of themes once a theme is owned. The Shop is in one corner and the balance in the
-// other. The tiles keep the selection and the Practise button follows it.
+// a variant and the row of themes once a theme is owned. The Shop is in one
+// corner and the balance in the other. The tiles keep the selection and the Practise button follows it.
 // While nothing is on the screen nudges: the heading asks for a tap, the
 // tiles pulse and the character waves.
 export function renderStart(options: StartOptions): HTMLElement {

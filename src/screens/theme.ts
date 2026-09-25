@@ -1,8 +1,9 @@
 import type { ThemeId } from '../model/catalogue';
 
-// The colours the stylesheet reads, each as a custom property of the same
-// name: --paper, --ink and the rest.
-export type Colour =
+// The colour tokens the stylesheet reads, each as a custom property of the
+// same name: --paper, --ink and the rest. Not to be confused with a
+// character's colour, which is an item.
+export type Token =
   // The page, and the text on it: body text and the quieter captions.
   | 'paper'
   | 'ink'
@@ -35,18 +36,19 @@ export type Colour =
   // The text and the marks on a filled tile or button.
   | 'on-fill';
 
-// One set of the app's colours. A dark scheme also tells the browser to
-// draw its own controls dark, and the stylesheet to light up what it draws
-// in black.
+// One set of the app's colours. A dark scheme also has the stylesheet tell
+// the browser to draw its own controls dark, and light up what it draws in
+// black.
 export type Palette = {
   scheme: 'light' | 'dark';
-  colours: Record<Colour, `#${string}`>;
+  colours: Record<Token, `#${string}`>;
 };
 
 // The default colours, which the Parent view always keeps, and each
 // theme's. Every text colour keeps at least the contrast the default gives
-// it on each background it sits on, or 4.5:1 (theme.test.ts). A theme added
-// to the catalogue needs its palette here.
+// it on each background it sits on, or 4.5:1, and the stylesheet's :root
+// holds the default's too, for the page before this module runs
+// (theme.test.ts). A theme added to the catalogue needs its palette here.
 export const PALETTES: Record<'default' | ThemeId, Palette> = {
   default: {
     scheme: 'light',
@@ -121,14 +123,18 @@ export const PALETTES: Record<'default' | ThemeId, Palette> = {
   },
 };
 
+// The palette of a theme, or the default's for null.
+export function paletteOf(theme: ThemeId | null): Palette {
+  return PALETTES[theme ?? 'default'];
+}
+
 // Sets the theme's colours on an element, for it and everything in it: the
 // default's for null. On the document's root it colours the whole app.
 export function applyTheme(element: HTMLElement, theme: ThemeId | null): void {
-  const { scheme, colours } = PALETTES[theme ?? 'default'];
-  for (const [colour, value] of Object.entries(colours)) {
-    element.style.setProperty(`--${colour}`, value);
+  const { scheme, colours } = paletteOf(theme);
+  for (const [token, value] of Object.entries(colours)) {
+    element.style.setProperty(`--${token}`, value);
   }
-  element.style.colorScheme = scheme;
   element.dataset.scheme = scheme;
 }
 

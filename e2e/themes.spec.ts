@@ -2,6 +2,7 @@ import type { Locator, Page } from '@playwright/test';
 import { PALETTES } from '../src/screens/theme';
 import { expect, test } from './fixtures';
 import {
+  advance,
   answerCard,
   balance,
   buyButton,
@@ -54,7 +55,10 @@ test('a theme bought in the Shop is chosen on the Start screen and colours a dri
 }) => {
   await seedProgress(page, shopper(100));
   await expect(themeRow(page)).toHaveCount(0);
-  expect(await pageColour(page)).toBe(paperOf('default'));
+  await expect(page.locator('body')).toHaveCSS(
+    'background-color',
+    paperOf('default'),
+  );
 
   await openShop(page);
   await expect(themeShelf(page).getByRole('button')).toHaveCount(2);
@@ -77,7 +81,10 @@ test('a theme bought in the Shop is chosen on the Start screen and colours a dri
 
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(startHeading(page)).toBeVisible();
-  expect(await pageColour(page)).toBe(paperOf('default'));
+  await expect(page.locator('body')).toHaveCSS(
+    'background-color',
+    paperOf('default'),
+  );
   await expect(themeRow(page).getByRole('button')).toHaveCount(2);
   await expect(themePick(page, 'Default')).toHaveAttribute(
     'aria-pressed',
@@ -89,18 +96,40 @@ test('a theme bought in the Shop is chosen on the Start screen and colours a dri
     'aria-pressed',
     'true',
   );
-  expect(await pageColour(page)).toBe(paperOf('ocean'));
+  await expect(page.locator('body')).toHaveCSS(
+    'background-color',
+    paperOf('ocean'),
+  );
   expect((await storedProgress(page)).theme).toBe('ocean');
 
   await practiseButton(page).click();
-  expect(await pageColour(page)).toBe(paperOf('ocean'));
+  await expect(page.locator('body')).toHaveCSS(
+    'background-color',
+    paperOf('ocean'),
+  );
   await answerCard(page, 'fast');
-  expect(await pageColour(page)).toBe(paperOf('ocean'));
+  await expect(page.locator('body')).toHaveCSS(
+    'background-color',
+    paperOf('ocean'),
+  );
+  await advance(page);
+  await page.getByRole('button', { name: 'Quit' }).click();
+  await expect(page.getByRole('button', { name: 'Home' })).toBeVisible();
+  await expect(page.locator('body')).toHaveCSS(
+    'background-color',
+    paperOf('ocean'),
+  );
 
   await page.reload();
-  expect(await pageColour(page)).toBe(paperOf('ocean'));
+  await expect(page.locator('body')).toHaveCSS(
+    'background-color',
+    paperOf('ocean'),
+  );
   await themePick(page, 'Default').click();
-  expect(await pageColour(page)).toBe(paperOf('default'));
+  await expect(page.locator('body')).toHaveCSS(
+    'background-color',
+    paperOf('default'),
+  );
   expect((await storedProgress(page)).theme).toBeNull();
 });
 
@@ -126,14 +155,20 @@ test('a theme tried on in the Shop is not kept', async ({ page }) => {
 
   await item(page, 'Space').click();
   await page.getByRole('button', { name: 'Back' }).click();
-  expect(await pageColour(page)).toBe(paperOf('ocean'));
+  await expect(page.locator('body')).toHaveCSS(
+    'background-color',
+    paperOf('ocean'),
+  );
   expect((await storedProgress(page)).theme).toBe('ocean');
 });
 
 // The Parent view as a picture, which no theme may change.
 async function parentPicture(page: Page): Promise<Buffer> {
   await openParent(page);
-  const picture = await page.screenshot({ fullPage: true });
+  const picture = await page.screenshot({
+    fullPage: true,
+    animations: 'disabled',
+  });
   await page.getByRole('button', { name: 'Back' }).click();
   await expect(startHeading(page)).toBeVisible();
   return picture;
@@ -150,7 +185,7 @@ test('the Parent view keeps its own colours under every theme', async ({
     const themed = await pageColour(page);
     expect(themed).not.toBe(paperOf('default'));
     expect((await parentPicture(page)).equals(plain)).toBe(true);
-    expect(await pageColour(page)).toBe(themed);
+    await expect(page.locator('body')).toHaveCSS('background-color', themed);
   }
 });
 
@@ -160,9 +195,15 @@ test("the device's light or dark setting leaves every theme's colours as they ar
   await seedProgress(page, shopper(0, { owned: ['space'], theme: 'space' }));
   for (const colorScheme of ['light', 'dark'] as const) {
     await page.emulateMedia({ colorScheme });
-    expect(await pageColour(page)).toBe(paperOf('space'));
+    await expect(page.locator('body')).toHaveCSS(
+      'background-color',
+      paperOf('space'),
+    );
     await themePick(page, 'Default').click();
-    expect(await pageColour(page)).toBe(paperOf('default'));
+    await expect(page.locator('body')).toHaveCSS(
+      'background-color',
+      paperOf('default'),
+    );
     await themePick(page, 'Space').click();
   }
 });

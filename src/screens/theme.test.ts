@@ -1,6 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { CATALOGUE } from '../model/catalogue';
-import { PALETTES, type Colour } from './theme';
+import { PALETTES, type Token } from './theme';
 
 // The relative luminance of a #rrggbb colour, as WCAG 2 defines it.
 function luminance(hex: string): number {
@@ -21,7 +22,7 @@ function contrast(a: string, b: string): number {
 
 // Every colour of text the stylesheet sets, each on every background the
 // stylesheet puts it on.
-const TEXT_ON: readonly [text: Colour, background: Colour][] = [
+const TEXT_ON: readonly [text: Token, background: Token][] = [
   ['ink', 'paper'],
   ['muted', 'paper'],
   ['tile', 'paper'],
@@ -53,6 +54,22 @@ describe('PALETTES', () => {
     expect(Object.keys(PALETTES).sort()).toEqual(
       ['default', ...themes.map((item) => item.id)].sort(),
     );
+  });
+
+  it("matches the stylesheet's :root, which colours the page before the app runs", () => {
+    const sheet = readFileSync(
+      new URL('../style.css', import.meta.url),
+      'utf8',
+    );
+    const root = /:root \{([^}]*)\}/.exec(sheet)?.[1] ?? '';
+    const declared = new Map(
+      [...root.matchAll(/--([a-z-]+): (#[0-9a-f]{6});/g)].map(
+        ([, token, value]) => [token, value],
+      ),
+    );
+    for (const [token, value] of Object.entries(PALETTES.default.colours)) {
+      expect(declared.get(token), token).toBe(value);
+    }
   });
 
   it('gives every colour as #rrggbb', () => {
