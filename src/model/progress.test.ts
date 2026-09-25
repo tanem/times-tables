@@ -1,15 +1,19 @@
 import { describe, expect, it } from 'vitest';
+import { CROWN, type HatId } from './catalogue';
 import { pool, type Table } from './facts';
 import {
   applyOutcome,
   badges,
+  buy,
   chooseCharacter,
+  chooseHat,
   factCounts,
   factLevel,
   freshProgress,
   keepAnswerTime,
   knownCount,
   knownShare,
+  ownedHats,
   parseProgress,
   recordDrill,
   type DrillRecord,
@@ -67,7 +71,7 @@ const valid: Progress = {
 };
 
 // The six hats of the set.
-const SET_OWNED = [
+const SET_OWNED: HatId[] = [
   'party-hat',
   'top-hat',
   'wizard-hat',
@@ -1077,5 +1081,123 @@ describe('chooseCharacter', () => {
     const after = chooseCharacter(valid, 'dragon');
     expect({ ...after, character: 'cat' }).toEqual(valid);
     expect(valid.character).toBe('cat');
+  });
+});
+
+describe('buy', () => {
+  const rich = { ...freshProgress(), earned: 300, balance: 100 };
+
+  it('takes the price off the balance and adds the item to what is owned', () => {
+    const after = buy(rich, 'top-hat');
+    expect(after).toMatchObject({
+      earned: 300,
+      balance: 60,
+      owned: ['top-hat'],
+    });
+  });
+
+  it('buys with a balance of exactly the price', () => {
+    const after = buy({ ...rich, balance: 40 }, 'top-hat');
+    expect(after).toMatchObject({ balance: 0, owned: ['top-hat'] });
+  });
+
+  it('adds to what is owned already, in the order bought', () => {
+    const after = buy(buy(rich, 'top-hat'), 'party-hat');
+    expect(after.owned).toEqual(['top-hat', 'party-hat']);
+    expect(after.balance).toBe(20);
+  });
+
+  it('buys any item whatever the earned total has unlocked', () => {
+    const poor = { ...freshProgress(), earned: 100, balance: 100 };
+    expect(buy(poor, 'backflip').owned).toEqual(['backflip']);
+    expect(buy(poor, 'cat-black').owned).toEqual(['cat-black']);
+  });
+
+  it('leaves the document as it was when the balance is short of the price', () => {
+    const short = { ...rich, balance: 39 };
+    expect(buy(short, 'top-hat')).toBe(short);
+  });
+
+  it('leaves the document as it was for an item owned already', () => {
+    const owning = { ...rich, owned: ['top-hat' as const] };
+    expect(buy(owning, 'top-hat')).toBe(owning);
+  });
+
+  it('never sells the crown, which has no price', () => {
+    expect(buy(rich, 'crown')).toBe(rich);
+  });
+
+  it('adds the crown with the sixth hat of the set', () => {
+    const five = { ...rich, owned: SET_OWNED.slice(0, 5) };
+    const after = buy(five, 'bobble-hat');
+    expect(after.owned).toEqual([...SET_OWNED, 'crown']);
+    expect(after.balance).toBe(60);
+  });
+
+  it('adds the crown once, whatever is bought after the set', () => {
+    const crowned: Progress = { ...rich, owned: [...SET_OWNED, CROWN] };
+    expect(buy(crowned, 'ocean').owned).toEqual([...SET_OWNED, CROWN, 'ocean']);
+  });
+
+  it('adds no crown while a hat of the set is still to buy', () => {
+    const four = { ...rich, owned: SET_OWNED.slice(0, 4) };
+    expect(buy(four, 'pirate-hat').owned).not.toContain('crown');
+  });
+
+  it('keeps every document it makes valid', () => {
+    let progress: Progress = { ...freshProgress(), earned: 400, balance: 400 };
+    for (const id of [...SET_OWNED, 'ocean' as const]) {
+      progress = buy(progress, id);
+      expect(read(progress)).toEqual(asRead(progress));
+    }
+    expect(progress.owned).toContain('crown');
+  });
+
+  it('leaves the given document as it was', () => {
+    buy(rich, 'top-hat');
+    expect(rich).toMatchObject({ balance: 100, owned: [] });
+  });
+});
+
+describe('ownedHats', () => {
+  it('lists none for a fresh document', () => {
+    expect(ownedHats(freshProgress())).toEqual([]);
+  });
+
+  it('lists the owned hats in catalogue order, the crown last, and no other item', () => {
+    const progress: Progress = {
+      ...freshProgress(),
+      owned: ['ocean', ...SET_OWNED.toReversed(), 'crown', 'cat-grey'],
+    };
+    expect(ownedHats(progress)).toEqual([...SET_OWNED, 'crown']);
+  });
+});
+
+describe('chooseHat', () => {
+  const owning: Progress = {
+    ...freshProgress(),
+    owned: ['top-hat', 'ocean'],
+    hat: null,
+  };
+
+  it('sets an owned hat', () => {
+    expect(chooseHat(owning, 'top-hat').hat).toBe('top-hat');
+  });
+
+  it('takes the hat off for none', () => {
+    const wearing = { ...owning, hat: 'top-hat' as const };
+    expect(chooseHat(wearing, null).hat).toBeNull();
+  });
+
+  it('leaves the choice as it was for a hat not owned', () => {
+    const wearing = { ...owning, hat: 'top-hat' as const };
+    expect(chooseHat(wearing, 'party-hat').hat).toBe('top-hat');
+    expect(chooseHat(owning, 'crown').hat).toBeNull();
+  });
+
+  it('keeps the document it makes valid and leaves the given one as it was', () => {
+    const after = chooseHat(owning, 'top-hat');
+    expect(read(after)).toEqual(asRead(after));
+    expect(owning.hat).toBeNull();
   });
 });

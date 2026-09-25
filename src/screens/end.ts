@@ -1,3 +1,4 @@
+import type { HatId } from '../model/catalogue';
 import type { Character } from '../model/characters';
 import { bandOf, type Band, type Drill } from '../model/drill';
 import type { Table } from '../model/facts';
@@ -51,7 +52,10 @@ const WHERE_TO_CHOOSE = 'Tap Home, then tap it to play as it';
 // its place from the first render and the styles keep the words a line high
 // while they are empty, so that Home and Go again never move under a finger.
 // The words are a live region, and the bolt before them is not read out.
-function renderMoment(character: Character): {
+function renderMoment(
+  character: Character,
+  hat: HatId | null,
+): {
   moment: HTMLElement;
   sayWords: () => void;
 } {
@@ -72,7 +76,7 @@ function renderMoment(character: Character): {
     label.textContent = text;
     const runner = document.createElement('div');
     runner.className = 'runner';
-    runner.append(renderCharacter({ character, pose: 'sit' }));
+    runner.append(renderCharacter({ character, pose: 'sit', hat }));
     row.append(label, runner);
     race.append(row);
   }
@@ -102,7 +106,10 @@ function renderMoment(character: Character): {
 // character; OK closes it, as Escape does on a keyboard. It is the
 // browser's own modal dialog, so it sits in the top layer over the screen
 // and nothing under it moves or can be reached while it is open.
-function renderUnlock(character: Character): {
+function renderUnlock(
+  character: Character,
+  hat: HatId | null,
+): {
   dialog: HTMLDialogElement;
   ok: HTMLButtonElement;
 } {
@@ -130,7 +137,7 @@ function renderUnlock(character: Character): {
 
   dialog.append(
     heading,
-    renderCharacter({ character, pose: 'big-jump', sparkles: 'burst' }),
+    renderCharacter({ character, pose: 'big-jump', sparkles: 'burst', hat }),
     name,
     where,
     ok,
@@ -150,6 +157,8 @@ function renderPay(gems: number, reason: string): HTMLElement {
 export type EndOptions = {
   drill: Drill;
   character: Character;
+  // The worn hat, or none, which every character on the screen wears.
+  hat: HatId | null;
   // Whether the drill was faster than last time, which the moment shows and
   // the bonus has already been paid for (ADR 0004).
   faster: boolean;
@@ -177,7 +186,7 @@ export type EndOptions = {
 // leaving by Home or Go again before then brings the dialogs forward, and
 // the leave follows the last OK, so that no unlock goes unannounced.
 export function renderEnd(options: EndOptions): HTMLElement {
-  const { drill, character } = options;
+  const { drill, character, hat } = options;
 
   const screen = document.createElement('main');
   screen.className = 'end';
@@ -185,7 +194,7 @@ export function renderEnd(options: EndOptions): HTMLElement {
   const band = bandOf(drill);
   const celebration = CELEBRATIONS[band];
   sound.end(band);
-  const figure = renderCharacter({ character, ...celebration });
+  const figure = renderCharacter({ character, hat, ...celebration });
 
   const heading = document.createElement('h1');
   heading.textContent = drill.quit
@@ -248,7 +257,7 @@ export function renderEnd(options: EndOptions): HTMLElement {
 
   if (options.faster) {
     screen.classList.add('faster');
-    const { moment, sayWords } = renderMoment(character);
+    const { moment, sayWords } = renderMoment(character, hat);
     actions.before(moment);
     pending.push(
       schedule(() => moment.classList.add('go'), RACE_AT),
@@ -256,7 +265,12 @@ export function renderEnd(options: EndOptions): HTMLElement {
         moment.classList.add('won');
         sayWords();
         figure.replaceWith(
-          renderCharacter({ character, pose: 'proud', sparkles: 'breath' }),
+          renderCharacter({
+            character,
+            pose: 'proud',
+            sparkles: 'breath',
+            hat,
+          }),
         );
         sound.faster();
       }, RACE_AT + RACE_RUN),
@@ -274,7 +288,7 @@ export function renderEnd(options: EndOptions): HTMLElement {
         onClose();
         return;
       }
-      const { dialog, ok } = renderUnlock(unlocked);
+      const { dialog, ok } = renderUnlock(unlocked, hat);
       dialog.addEventListener('close', () => {
         dialog.remove();
         showFrom(index + 1, onClose);

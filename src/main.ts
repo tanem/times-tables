@@ -16,12 +16,15 @@ import { gradeAnswer, paceOf } from './model/pace';
 import {
   applyOutcome,
   badges,
+  buy,
   chooseCharacter,
+  chooseHat,
   factLevel,
   freshProgress,
   keepAnswerTime,
   knownCount,
   knownShare,
+  ownedHats,
   recordDrill,
 } from './model/progress';
 import { random } from './random';
@@ -30,6 +33,7 @@ import { renderEnd } from './screens/end';
 import { renderFeedback } from './screens/feedback';
 import { renderNeedsUpdate } from './screens/needs-update';
 import { renderParent } from './screens/parent';
+import { renderShop } from './screens/shop';
 import { renderStart } from './screens/start';
 import { mountSound } from './sound';
 import {
@@ -113,6 +117,8 @@ function showStart(): void {
       balance: progress.balance,
       earned: progress.earned,
       character: progress.character,
+      hats: ownedHats(progress),
+      hat: progress.hat,
       onTablesChange: (tables) => {
         progress = { ...progress, tables };
         saveProgress(store, progress);
@@ -121,10 +127,34 @@ function showStart(): void {
         progress = chooseCharacter(progress, character);
         saveProgress(store, progress);
       },
+      onHatChange: (hat) => {
+        progress = chooseHat(progress, hat);
+        saveProgress(store, progress);
+      },
       onPractise: beginDrill,
+      onShop: showShop,
       onParents: showParent,
     }),
     { reloadable: true },
+  );
+}
+
+// The Shop reads the document as it stands when the learner opens it. Each
+// purchase is saved at once, and the Shop stays up with what it bought.
+function showShop(): void {
+  show(
+    renderShop({
+      balance: progress.balance,
+      owned: progress.owned,
+      character: progress.character,
+      hat: progress.hat,
+      onBuy: (id) => {
+        progress = buy(progress, id);
+        saveProgress(store, progress);
+        return { balance: progress.balance, owned: progress.owned };
+      },
+      onBack: showStart,
+    }),
   );
 }
 
@@ -195,6 +225,7 @@ function showFeedback(drill: Drill, outcome: Outcome, gem: boolean): void {
       presentation: drill.current,
       outcome,
       character: progress.character,
+      hat: progress.hat,
       nth: drill[outcome],
       streak: drill.streak,
       gem,
@@ -225,6 +256,7 @@ function endDrill(drill: Drill): void {
     renderEnd({
       drill,
       character: progress.character,
+      hat: progress.hat,
       faster: recorded.faster,
       bandPay: recorded.bandPay,
       newBadges: recorded.newBadges,

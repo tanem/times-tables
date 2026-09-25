@@ -1,3 +1,4 @@
+import { itemOf, type HatId } from '../model/catalogue';
 import {
   CHARACTERS,
   isUnlocked,
@@ -8,7 +9,8 @@ import { DRILL_LENGTH } from '../model/drill';
 import { TABLES, tablesList, type Table } from '../model/facts';
 import { renderBadge } from './badge';
 import { renderCharacter } from './character';
-import { renderGem } from './gem';
+import { renderBalance } from './gem';
+import { renderHat } from './hat';
 
 export type StartOptions = {
   tables: readonly Table[];
@@ -21,13 +23,19 @@ export type StartOptions = {
   balance: number;
   earned: number;
   character: Character;
+  // The owned hats, in catalogue order, and the worn one, or none.
+  hats: readonly HatId[];
+  hat: HatId | null;
   // Called with the new selection, in table order, after every change.
   onTablesChange: (tables: Table[]) => void;
   // Called with the character the learner tapped, one the earned total has
   // unlocked.
   onCharacterChange: (character: Character) => void;
+  // Called with the hat the learner tapped, an owned one, or null for none.
+  onHatChange: (hat: HatId | null) => void;
   // Called with the selection when the learner taps Practise.
   onPractise: (tables: Table[]) => void;
+  onShop: () => void;
   onParents: () => void;
 };
 
@@ -70,26 +78,13 @@ function renderMeter(share: number): HTMLElement {
   return meter;
 }
 
-// The balance, in the top right corner. The gem is a picture and the words
-// say what it is.
-function renderBalance(balance: number): HTMLElement {
-  const line = document.createElement('p');
-  line.className = 'gems';
-  const count = document.createElement('b');
-  count.textContent = String(balance);
-  const word = document.createElement('span');
-  word.className = 'gems-word';
-  word.textContent = balance === 1 ? 'gem' : 'gems';
-  line.append(renderGem(), count, ' ', word);
-  return line;
-}
-
 function capitalised(word: string): string {
   return word.charAt(0).toUpperCase() + word.slice(1);
 }
 
-// One character in the row: a small figure sitting still, pressed when it is
-// the chosen one. A locked one is a grey silhouette with a lock and the
+// One character in the row, pressed when it is the chosen one. An unlocked
+// one's figure, a small one sitting still in the worn hat, is drawn by the
+// row. A locked one is a grey silhouette with a lock and the
 // earned total that unlocks it, and a tap on it does nothing. The button's
 // name says which character it is, so the figure inside is hidden from a
 // screen reader and does not answer to the masthead's name.
@@ -103,9 +98,6 @@ function renderPick(
   const pick = document.createElement('button');
   pick.type = 'button';
   pick.className = 'pick';
-  const figure = renderCharacter({ character, pose: 'sit' });
-  figure.setAttribute('aria-hidden', 'true');
-  pick.append(figure);
   if (unlocked) {
     pick.setAttribute('aria-label', name);
     pick.addEventListener('click', onPick);
@@ -118,20 +110,52 @@ function renderPick(
     lock.className = 'lock';
     lock.setAttribute('aria-hidden', 'true');
     lock.textContent = `🔒 ${needs}`;
-    pick.append(lock);
+    pick.append(renderFigure(character, null), lock);
   }
   return pick;
 }
 
+// A small figure of the character sitting still, for a button whose name
+// says which character it is: hidden from a screen reader, so that it does
+// not answer to the masthead's name.
+function renderFigure(character: Character, hat: HatId | null): HTMLElement {
+  const figure = renderCharacter({ character, pose: 'sit', hat });
+  figure.setAttribute('aria-hidden', 'true');
+  return figure;
+}
+
+// One hat in the row of hats, or none for the button that takes the hat
+// off, pressed when it is the worn one.
+function renderHatPick(hat: HatId | null, onPick: () => void): HTMLElement {
+  const pick = document.createElement('button');
+  pick.type = 'button';
+  pick.className = 'hat-pick';
+  if (hat) {
+    pick.setAttribute('aria-label', itemOf(hat).name);
+    pick.append(renderHat(hat));
+  } else {
+    pick.setAttribute('aria-label', 'No hat');
+    const none = document.createElement('span');
+    none.className = 'no-hat';
+    none.setAttribute('aria-hidden', 'true');
+    none.textContent = '✕';
+    pick.append(none);
+  }
+  pick.addEventListener('click', onPick);
+  return pick;
+}
+
 // Builds the Start screen. The character sits with the app's name at the
-// top, the row of characters under the name and the balance in the
-// corner. The tiles keep the selection and the Practise button follows it.
+// top, the row of characters under the name, the row of owned hats under
+// that once a hat is owned, the Shop in one corner and the balance in the
+// other. The tiles keep the selection and the Practise button follows it.
 // While nothing is on the screen nudges: the heading asks for a tap, the
 // tiles pulse and the character waves.
 export function renderStart(options: StartOptions): HTMLElement {
   const selected = new Set<Table>(options.tables);
   const selection = () => TABLES.filter((table) => selected.has(table));
   let character = options.character;
+  let hat = options.hat;
 
   const screen = document.createElement('main');
   screen.className = 'start';
@@ -158,8 +182,28 @@ export function renderStart(options: StartOptions): HTMLElement {
     picks.set(candidate, pick);
     row.append(pick);
   }
-
   title.append(name, row);
+
+  // The hats row: none, then each owned hat. It is left out until a hat is
+  // owned, since none would be the only choice.
+  const hatPicks = new Map<HatId | null, HTMLElement>();
+  if (options.hats.length > 0) {
+    const hats = document.createElement('div');
+    hats.className = 'hats';
+    hats.setAttribute('role', 'group');
+    hats.setAttribute('aria-label', 'Your hat');
+    for (const candidate of [null, ...options.hats]) {
+      const pick = renderHatPick(candidate, () => {
+        if (candidate === hat) return;
+        hat = candidate;
+        drawCharacter();
+        options.onHatChange(hat);
+      });
+      hatPicks.set(candidate, pick);
+      hats.append(pick);
+    }
+    title.append(hats);
+  }
   masthead.append(title);
 
   const question = document.createElement('h2');
@@ -198,15 +242,23 @@ export function renderStart(options: StartOptions): HTMLElement {
   let figure: HTMLElement | null = null;
   let nudging: boolean | null = null;
 
-  // Draws the chosen character on the masthead, waving while the screen
-  // nudges, and marks it as chosen in the row.
+  // Draws the chosen character on the masthead in the worn hat, waving
+  // while the screen nudges, and marks both as chosen in their rows. Every
+  // unlocked character in the row wears the hat too.
   const drawCharacter = () => {
     for (const [candidate, pick] of picks) {
       pick.setAttribute('aria-pressed', String(candidate === character));
+      if (isUnlocked(candidate, options.earned)) {
+        pick.replaceChildren(renderFigure(candidate, hat));
+      }
+    }
+    for (const [candidate, pick] of hatPicks) {
+      pick.setAttribute('aria-pressed', String(candidate === hat));
     }
     const next = renderCharacter({
       character,
       pose: nudging ? nudgePose : 'sit',
+      hat,
     });
     if (figure) figure.replaceWith(next);
     else masthead.prepend(next);
@@ -272,8 +324,19 @@ export function renderStart(options: StartOptions): HTMLElement {
   parents.textContent = 'For parents';
   parents.addEventListener('click', options.onParents);
 
+  // The way to the Shop, in the top left corner across from the balance.
+  const shop = document.createElement('button');
+  shop.type = 'button';
+  shop.className = 'shop-link';
+  const bag = document.createElement('span');
+  bag.setAttribute('aria-hidden', 'true');
+  bag.textContent = '🛍️';
+  shop.append(bag, ' Shop');
+  shop.addEventListener('click', options.onShop);
+
   update();
   screen.append(
+    shop,
     renderBalance(options.balance),
     masthead,
     question,
