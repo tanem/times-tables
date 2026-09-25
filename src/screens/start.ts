@@ -13,11 +13,14 @@ export type StartOptions = {
   tables: readonly Table[];
   // The share of a table's facts at level 4, from 0 to 1, for its meter.
   knownShare: (table: Table) => number;
-  gems: number;
+  // The gems left to spend, which the corner shows, and the gems earned,
+  // which the unlocks are read from (ADR 0005).
+  balance: number;
+  earned: number;
   character: Character;
   // Called with the new selection, in table order, after every change.
   onTablesChange: (tables: Table[]) => void;
-  // Called with the character the learner tapped, one the gems have
+  // Called with the character the learner tapped, one the earned total has
   // unlocked.
   onCharacterChange: (character: Character) => void;
   // Called with the selection when the learner taps Practise.
@@ -64,16 +67,16 @@ function renderMeter(share: number): HTMLElement {
   return meter;
 }
 
-// The gem total, in the top right corner. The gem is a picture and the
-// words say what it is.
-function renderGems(gems: number): HTMLElement {
+// The balance, in the top right corner. The gem is a picture and the words
+// say what it is.
+function renderBalance(balance: number): HTMLElement {
   const total = document.createElement('p');
   total.className = 'gems';
   const count = document.createElement('b');
-  count.textContent = String(gems);
+  count.textContent = String(balance);
   const word = document.createElement('span');
   word.className = 'gems-word';
-  word.textContent = gems === 1 ? 'gem' : 'gems';
+  word.textContent = balance === 1 ? 'gem' : 'gems';
   total.append(renderGem(), count, ' ', word);
   return total;
 }
@@ -84,15 +87,15 @@ function capitalised(word: string): string {
 
 // One character in the row: a small figure sitting still, pressed when it is
 // the chosen one. A locked one is a grey silhouette with a lock and the
-// gems that unlock it, and a tap on it does nothing. The button's name says
+// earned total that unlocks it, and a tap on it does nothing. The button's name says
 // which character it is, so the figure inside is hidden from a screen
 // reader and does not answer to the masthead's name.
 function renderPick(
   character: Character,
-  gems: number,
+  earned: number,
   onPick: () => void,
 ): HTMLButtonElement {
-  const unlocked = isUnlocked(character, gems);
+  const unlocked = isUnlocked(character, earned);
   const name = capitalised(character);
   const pick = document.createElement('button');
   pick.type = 'button';
@@ -118,7 +121,7 @@ function renderPick(
 }
 
 // Builds the Start screen. The character sits with the app's name at the
-// top, the row of characters under the name and the gem total in the
+// top, the row of characters under the name and the balance in the
 // corner. The tiles keep the selection and the Practise button follows it.
 // While nothing is on the screen nudges: the heading asks for a tap, the
 // tiles pulse and the character waves.
@@ -143,7 +146,7 @@ export function renderStart(options: StartOptions): HTMLElement {
   row.setAttribute('aria-label', 'Your character');
   const picks = new Map<Character, HTMLButtonElement>();
   for (const candidate of CHARACTERS) {
-    const pick = renderPick(candidate, options.gems, () => {
+    const pick = renderPick(candidate, options.earned, () => {
       if (candidate === character) return;
       character = candidate;
       drawCharacter();
@@ -262,7 +265,7 @@ export function renderStart(options: StartOptions): HTMLElement {
 
   update();
   screen.append(
-    renderGems(options.gems),
+    renderBalance(options.balance),
     masthead,
     question,
     tiles,

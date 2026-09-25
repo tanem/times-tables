@@ -109,7 +109,8 @@ function showStart(): void {
     renderStart({
       tables: progress.tables,
       knownShare: (table) => knownShare(progress, table),
-      gems: progress.gems,
+      balance: progress.balance,
+      earned: progress.earned,
       character: progress.character,
       onTablesChange: (tables) => {
         progress = { ...progress, tables };
@@ -145,14 +146,14 @@ function showParent(): void {
   );
 }
 
-// The gem total as the drill began. The end screen announces the characters
-// unlocked between it and the total at the end, so a character unlocked at
-// the migration or between drills is never announced (ADR 0004). A drill
-// can unlock more than one (ADR 0005).
-let gemsAtStart = 0;
+// The earned total as the drill began. The end screen announces the
+// characters unlocked between it and the total at the end, so a character
+// unlocked at the migration or between drills is never announced (ADR
+// 0004). A drill can unlock more than one (ADR 0005).
+let earnedAtStart = 0;
 
 function beginDrill(tables: Table[]): void {
-  gemsAtStart = progress.gems;
+  earnedAtStart = progress.earned;
   showCard(startDrill(tables, levelOf, random), true);
 }
 
@@ -176,14 +177,14 @@ function showCard(drill: Drill, entering: boolean): void {
 // the levels as they now are.
 function recordAnswer(before: Drill, right: boolean, time: number): void {
   const outcome = gradeAnswer(right, time, paceOf(progress.times));
-  const gemsBefore = progress.gems;
+  const earnedBefore = progress.earned;
   progress = applyOutcome(progress, before.current.fact.key, outcome);
   if (right) progress = keepAnswerTime(progress, time);
   saveProgress(store, progress);
   showFeedback(
     answer(before, outcome, time),
     outcome,
-    progress.gems > gemsBefore,
+    progress.earned > earnedBefore,
   );
 }
 
@@ -205,8 +206,9 @@ function showFeedback(drill: Drill, outcome: Outcome, gem: boolean): void {
 }
 
 // The drill record is written when the drill ends or is quit. Recording it
-// pays the bonus for a drill faster than last time and hands back the
-// verdict it paid on, which the end screen shows (ADR 0004).
+// pays the bonus for a drill faster than last time (ADR 0004) and band pay
+// for the drill's band (ADR 0005), and hands back what it paid, which the
+// end screen shows.
 function endDrill(drill: Drill): void {
   const record = drillRecord(
     drill,
@@ -222,7 +224,8 @@ function endDrill(drill: Drill): void {
       drill,
       character: progress.character,
       faster: recorded.faster,
-      unlocks: newUnlocks(gemsAtStart, progress.gems),
+      bandPay: recorded.bandPay,
+      unlocks: newUnlocks(earnedAtStart, progress.earned),
       onHome: showStart,
       onAgain: () => beginDrill(drill.tables),
     }),

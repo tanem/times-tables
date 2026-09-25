@@ -103,8 +103,8 @@ export function dragon(page: Page, doing: string): Locator {
   return character(page, 'dragon', doing);
 }
 
-// The gem total on the Start screen, which reads as "27 gems".
-export function gemTotal(page: Page): Locator {
+// The balance on the Start screen, which reads as "27 gems".
+export function balance(page: Page): Locator {
   return page.locator('.gems');
 }
 
@@ -234,11 +234,12 @@ function lastTimeRecord(median: number): DrillRecord {
 const KNOWN_GEMS = 132;
 
 // How the document a drill after last time starts from differs from the
-// usual: the chosen character, and a gem total above what the facts paid,
-// standing in for bonuses paid earlier.
+// usual: the chosen character, and an earned total above what the facts
+// paid, standing in for bonuses and band pay paid earlier. The balance is
+// the whole of it.
 export type AfterOptions = {
   character?: Character;
-  gems?: number;
+  earned?: number;
 };
 
 // Opens the app on a document with the seeded tables on, every fact of their
@@ -250,7 +251,7 @@ export type AfterOptions = {
 export async function startDrillAfter(
   page: Page,
   median: number,
-  { character = 'dragon', gems = KNOWN_GEMS }: AfterOptions = {},
+  { character = 'dragon', earned = KNOWN_GEMS }: AfterOptions = {},
 ): Promise<void> {
   const facts: Progress['facts'] = {};
   for (const fact of pool(SEEDED_TABLES)) {
@@ -260,7 +261,8 @@ export async function startDrillAfter(
     ...freshProgress(),
     tables: [...SEEDED_TABLES],
     facts,
-    gems,
+    earned,
+    balance: earned,
     character,
     records: [lastTimeRecord(median)],
   });
@@ -276,6 +278,12 @@ export const GEM_AT = 300;
 // answer paid nothing.
 export function gemPaid(page: Page): Locator {
   return page.locator('.feedback').getByRole('status');
+}
+
+// The line on the end screen for what the drill's band paid, which reads as
+// "+3 gems for this drill". There is none when the band paid nothing.
+export function bandPay(page: Page): Locator {
+  return page.locator('.end .pay');
 }
 
 // The dialog that announces a new character on the end screen.
@@ -360,18 +368,23 @@ export async function finishDrillAfter(
 }
 
 // Runs a whole drill of right answers given on the instant from a document
-// with the seeded tables on, every fact new and the given gem total, and
-// lands on the end screen. Every answer takes its fact to a level it has not
-// reached, so the drill pays 20 gems.
-export async function finishDrillFrom(page: Page, gems: number): Promise<void> {
+// with the seeded tables on, every fact new and the given earned total, all
+// of it the balance, and lands on the end screen. Every answer takes its
+// fact to a level it has not reached, so the answers pay 20 gems, and the
+// top band pays 3.
+export async function finishDrillFrom(
+  page: Page,
+  earned: number,
+): Promise<void> {
   await seedProgress(page, {
     ...freshProgress(),
     tables: [...SEEDED_TABLES],
-    gems,
+    earned,
+    balance: earned,
   });
   await practiseButton(page).click();
   await answerAllFast(page);
-  expect((await storedProgress(page)).gems).toBe(gems + 20);
+  expect((await storedProgress(page)).earned).toBe(earned + 23);
 }
 
 // Makes the page report the given visibility and announces the change, as

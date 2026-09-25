@@ -1,6 +1,7 @@
 import type { BuildInfo } from '../build';
 import {
   countsLine,
+  gemsLine,
   GRID_COLUMNS,
   gridRows,
   LEGEND,
@@ -150,7 +151,8 @@ function renderRecent(
 }
 
 // Builds the Parent view: the trend, the fact grid with its legend and
-// tap-for-counts, this week's practice, the recent list, the press-and-hold
+// tap-for-counts, this week's practice, the gems earned and left to spend,
+// the recent list, the press-and-hold
 // erase control, and the build version in the foot.
 // Read-only otherwise: plain typography, no dragon, and the erase ring is
 // the screen's only animation.
@@ -189,6 +191,10 @@ export function renderParent(options: ParentOptions): HTMLElement {
   week.className = 'week';
   week.textContent = weekLine(progress.records, dayOf, today);
 
+  const gems = document.createElement('p');
+  gems.className = 'gems-line';
+  gems.textContent = gemsLine(progress);
+
   const recentHeading = document.createElement('h2');
   recentHeading.textContent = 'Recent';
   const recent = renderRecent(progress, dayOf, today);
@@ -207,6 +213,7 @@ export function renderParent(options: ParentOptions): HTMLElement {
     legend,
     status,
     week,
+    gems,
     recentHeading,
     recent,
     erase,

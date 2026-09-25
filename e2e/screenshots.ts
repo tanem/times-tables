@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
 import { pool, type Table } from '../src/model/facts';
 import { BONUS } from '../src/model/bonus';
+import { BAND_PAY, bandOf } from '../src/model/drill';
 import type { Level } from '../src/model/level';
 import {
   freshProgress,
@@ -124,11 +125,17 @@ function facts(): Record<string, FactProgress> {
 function inventedProgress(): Progress {
   const known = facts();
   const paid = Object.values(known).reduce((sum, fact) => sum + fact.best, 0);
+  const bandPay = RECORDS.reduce(
+    (sum, drill) => sum + BAND_PAY[bandOf(drill)],
+    0,
+  );
+  const earned = paid + BONUS * BONUSES_PAID + bandPay;
   return {
     ...freshProgress(),
     tables: TABLES_ON,
     facts: known,
-    gems: paid + BONUS * BONUSES_PAID,
+    earned,
+    balance: earned,
     character: 'owl',
     times: TIMES,
     records: RECORDS,

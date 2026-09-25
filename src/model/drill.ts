@@ -149,6 +149,14 @@ export function bandOf(drill: Pick<Drill, 'fast' | 'quit'>): Band {
   return share >= 0.4 ? 'middle' : 'low';
 }
 
+// The gems a drill pays for its band, with its record (ADR 0005). A quit
+// drill is in the low band, so it pays nothing.
+export const BAND_PAY: Readonly<Record<Band, number>> = {
+  top: 3,
+  middle: 1,
+  low: 0,
+};
+
 // The entry the drill leaves in the progress, timestamped with when it
 // ended, with the learner's pace and the number of facts at level 4 as it
 // ended, and the median of the drill's own answer times.

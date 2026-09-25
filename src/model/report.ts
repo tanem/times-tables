@@ -86,6 +86,12 @@ export function weekLine(
   return share === null ? line : `${line}, ${share}% fast`;
 }
 
+// The gems in one line: what the learner has earned, and the balance left
+// to spend (ADR 0005).
+export function gemsLine(progress: Progress): string {
+  return `Gems: ${progress.earned} earned, ${progress.balance} to spend`;
+}
+
 // The tables a record covers: the list, or "All tables" for all eleven.
 function tablesWording(tables: readonly Table[]): string {
   return tables.length === TABLES.length ? 'All tables' : tablesList(tables);

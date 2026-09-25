@@ -9,7 +9,7 @@ import {
   dragon,
   ALL_TILES,
   expectNoTableOn,
-  gemTotal,
+  balance,
   pick,
   practiseButton,
   seedProgress,
@@ -100,31 +100,46 @@ test('the dragon sits with the app’s name at the top of the Start screen', asy
   expect(nameBox.y + nameBox.height).toBeLessThanOrEqual(questionBox.y);
 });
 
-test('the gem total sits in the top right corner and a fresh document has none', async ({
+test('the balance sits in the top right corner and a fresh document has none', async ({
   page,
 }) => {
   await page.goto('./');
-  await expect(gemTotal(page)).toHaveText('0 gems');
+  await expect(balance(page)).toHaveText('0 gems');
 
-  const box = await gemTotal(page).boundingBox();
+  const box = await balance(page).boundingBox();
   const viewport = page.viewportSize();
   if (!box || !viewport) throw new Error('not laid out');
   expect(box.y).toBeLessThan(40);
   expect(box.x + box.width).toBeGreaterThan(viewport.width - 40);
 });
 
-test('the gem total reads the stored gems, and one gem is one gem', async ({
+test('the corner shows the stored balance, and one gem is one gem', async ({
   page,
 }) => {
-  await seedProgress(page, { ...freshProgress(), gems: 27 });
-  await expect(gemTotal(page)).toHaveText('27 gems');
+  await seedProgress(page, { ...freshProgress(), earned: 27, balance: 27 });
+  await expect(balance(page)).toHaveText('27 gems');
 
   await seedProgress(page, {
     ...freshProgress(),
     facts: { '6x7': { level: 1, best: 1, fast: 1, slow: 0, missed: 0 } },
-    gems: 1,
+    earned: 1,
+    balance: 1,
   });
-  await expect(gemTotal(page)).toHaveText('1 gem');
+  await expect(balance(page)).toHaveText('1 gem');
+});
+
+test('the corner shows the balance while the row reads its unlocks from the gems earned', async ({
+  page,
+}) => {
+  await seedProgress(page, {
+    ...freshProgress(),
+    earned: 60,
+    balance: 5,
+    owned: ['top-hat'],
+  });
+  await expect(balance(page)).toHaveText('5 gems');
+  await expect(pick(page, 'Robot')).toHaveAccessibleName('Robot');
+  await expect(pick(page, 'Owl')).toHaveAccessibleName('Owl, locked, 110 gems');
 });
 
 // The six characters, the first three unlocked at 60 gems.
@@ -140,7 +155,7 @@ const ROW_AT_60 = [
 test('the row shows the six characters in unlock order under the app’s name, the locked ones with the gems that unlock them', async ({
   page,
 }) => {
-  await seedProgress(page, { ...freshProgress(), gems: 60 });
+  await seedProgress(page, { ...freshProgress(), earned: 60, balance: 60 });
 
   const picks = characterRow(page).getByRole('button');
   await expect(picks).toHaveCount(6);
@@ -178,7 +193,7 @@ test('a fresh document has the dragon alone unlocked, and 240 gems has every cha
   ).toHaveCount(5);
   await expect(pick(page, 'Cat')).toHaveAccessibleName('Cat, locked, 25 gems');
 
-  await seedProgress(page, { ...freshProgress(), gems: 240 });
+  await seedProgress(page, { ...freshProgress(), earned: 240, balance: 240 });
   await expect(
     characterRow(page).getByRole('button', { name: /locked/ }),
   ).toHaveCount(0);
@@ -187,7 +202,7 @@ test('a fresh document has the dragon alone unlocked, and 240 gems has every cha
 test('tapping an unlocked character chooses it, saves it and puts it on the masthead', async ({
   page,
 }) => {
-  await seedProgress(page, { ...freshProgress(), gems: 60 });
+  await seedProgress(page, { ...freshProgress(), earned: 60, balance: 60 });
   await expect(dragon(page, 'waves')).toBeVisible();
 
   await pick(page, 'Robot').click();
@@ -206,7 +221,7 @@ test('tapping an unlocked character chooses it, saves it and puts it on the mast
 });
 
 test('tapping a locked character changes nothing', async ({ page }) => {
-  await seedProgress(page, { ...freshProgress(), gems: 60 });
+  await seedProgress(page, { ...freshProgress(), earned: 60, balance: 60 });
 
   // A locked character is marked disabled for a screen reader, which
   // Playwright would wait on; a finger taps it all the same.
@@ -214,13 +229,17 @@ test('tapping a locked character changes nothing', async ({ page }) => {
   await expect(pick(page, 'Owl')).toHaveAttribute('aria-pressed', 'false');
   await expect(pick(page, 'Dragon')).toHaveAttribute('aria-pressed', 'true');
   await expect(dragon(page, 'waves')).toBeVisible();
-  expect(await storedProgress(page)).toEqual({ ...freshProgress(), gems: 60 });
+  expect(await storedProgress(page)).toEqual({
+    ...freshProgress(),
+    earned: 60,
+    balance: 60,
+  });
 });
 
 test('a locked character is a grey silhouette, an unlocked one is in colour, and the row sits still', async ({
   page,
 }) => {
-  await seedProgress(page, { ...freshProgress(), gems: 25 });
+  await seedProgress(page, { ...freshProgress(), earned: 25, balance: 25 });
   const filterOf = (el: Element) =>
     getComputedStyle(el.querySelector('svg') as Element).filter;
   expect(await pick(page, 'Cat').evaluate(filterOf)).toBe('none');
@@ -373,7 +392,8 @@ test('each tile carries a meter of the share of its facts at level 4, without nu
     ...freshProgress(),
     tables: [3],
     facts,
-    gems: 27,
+    earned: 27,
+    balance: 27,
   });
 
   expect(await meterShare(page, '3s')).toBeCloseTo(0.5, 2);
@@ -387,26 +407,34 @@ test('each tile carries a meter of the share of its facts at level 4, without nu
 });
 
 // A backup left by an earlier corrupt document, which the next one replaces.
-const EARLIER_BACKUP = '{"version":3,"tables":"old"}';
+const EARLIER_BACKUP = '{"version":4,"tables":"old"}';
+
+// A fresh document with the 6s on and some fields replaced, as stored text.
+function storedWith(fields: Record<string, unknown>): string {
+  return JSON.stringify({ ...freshProgress(), tables: [6], ...fields });
+}
 
 const corruptDocuments: ReadonlyArray<readonly [string, string]> = [
-  ['fails to parse', '{"version":3,'],
-  [
-    'fails the schema',
-    '{"version":3,"tables":[6],"facts":{},"gems":0,"character":"dragon","times":[]}',
-  ],
+  ['fails to parse', '{"version":4,'],
+  ['fails the schema', storedWith({ records: undefined })],
   [
     'holds a level out of range',
-    '{"version":3,"tables":[6],"facts":{"6x7":{"level":9,"best":9,"fast":0,"slow":0,"missed":0}},"gems":9,"character":"dragon","times":[],"records":[]}',
+    storedWith({
+      facts: { '6x7': { level: 9, best: 9, fast: 0, slow: 0, missed: 0 } },
+      earned: 9,
+      balance: 9,
+    }),
   ],
-  [
-    'has a version given as a string',
-    '{"version":"3","tables":[6],"facts":{},"gems":0,"character":"dragon","times":[],"records":[]}',
-  ],
+  ['has a version given as a string', storedWith({ version: '4' })],
   [
     'holds a character its gems have not unlocked',
-    '{"version":3,"tables":[6],"facts":{},"gems":24,"character":"cat","times":[],"records":[]}',
+    storedWith({ earned: 24, balance: 24, character: 'cat' }),
   ],
+  [
+    'holds a balance above the gems earned',
+    storedWith({ earned: 24, balance: 25 }),
+  ],
+  ['wears a hat it does not own', storedWith({ hat: 'top-hat' })],
 ];
 
 for (const [kind, text] of corruptDocuments) {
@@ -478,7 +506,7 @@ for (const [orientation, width, height, columns] of [
     const parts = [
       page.getByRole('img', { name: /^The dragon/ }),
       startHeading(page),
-      gemTotal(page),
+      balance(page),
       ...ROW_AT_60.map((name) => pick(page, name.split(',')[0] ?? '')),
       ...ALL_TILES.map((name) => tile(page, name)),
       practiseButton(page),

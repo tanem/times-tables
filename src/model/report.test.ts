@@ -10,6 +10,7 @@ import {
   countsLine,
   dateWording,
   earlyLine,
+  gemsLine,
   GRID_COLUMNS,
   gridRows,
   recentRows,
@@ -326,6 +327,17 @@ describe('earlyLine', () => {
       records: [paced('2026-09-15', 2000, 0)],
     };
     expect(earlyLine(progress)).toBeNull();
+  });
+});
+
+describe('gemsLine', () => {
+  it('says what was earned and what is left to spend', () => {
+    const progress = { ...freshProgress(), earned: 312, balance: 47 };
+    expect(gemsLine(progress)).toBe('Gems: 312 earned, 47 to spend');
+  });
+
+  it('says so when nothing has been earned', () => {
+    expect(gemsLine(freshProgress())).toBe('Gems: 0 earned, 0 to spend');
   });
 });
 

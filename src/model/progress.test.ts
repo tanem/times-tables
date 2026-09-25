@@ -15,16 +15,27 @@ import {
   type ProgressRead,
 } from './progress';
 
+// Each character's own colour, and no finished drill with any of them.
+const OWN_COLOURS = freshProgress().colours;
+const NO_BOND = freshProgress().bond;
+
 const valid: Progress = {
-  version: 3,
+  version: 4,
   tables: [6, 12],
   facts: {
     '6x7': { level: 3, best: 4, fast: 12, slow: 3, missed: 2 },
     '8x12': { level: 0, best: 1, fast: 1, slow: 0, missed: 1 },
   },
-  // The 5 the facts have paid, and 22 in bonuses.
-  gems: 27,
+  // The 5 the facts have paid, and 122 in bonuses and band pay.
+  earned: 127,
+  // What is left after a hat, a colour variant and a theme at 125.
+  balance: 2,
   character: 'cat',
+  owned: ['party-hat', 'cat-grey', 'ocean'],
+  hat: 'party-hat',
+  colours: { ...OWN_COLOURS, cat: 'cat-grey' },
+  theme: 'ocean',
+  bond: { ...NO_BOND, dragon: 12, cat: 3 },
   times: [2400, 0, 19999],
   records: [
     {
@@ -52,6 +63,16 @@ const valid: Progress = {
   ],
 };
 
+// The six hats of the set.
+const SET_OWNED = [
+  'party-hat',
+  'top-hat',
+  'wizard-hat',
+  'cowboy-hat',
+  'pirate-hat',
+  'bobble-hat',
+];
+
 // What parseProgress makes of a parsed document.
 function read(document: unknown): ProgressRead {
   return parseProgress(JSON.stringify(document));
@@ -71,13 +92,26 @@ function withRecord(fields: Record<string, unknown>): unknown {
 }
 
 describe('freshProgress', () => {
-  it('starts at version 3 with no table on, nothing learnt, no gems and the dragon', () => {
+  it('starts at version 4 with no table on, nothing learnt, no gems, nothing owned and the dragon', () => {
     expect(freshProgress()).toEqual({
-      version: 3,
+      version: 4,
       tables: [],
       facts: {},
-      gems: 0,
+      earned: 0,
+      balance: 0,
       character: 'dragon',
+      owned: [],
+      hat: null,
+      colours: {
+        dragon: null,
+        cat: null,
+        robot: null,
+        owl: null,
+        unicorn: null,
+        monster: null,
+      },
+      theme: null,
+      bond: { dragon: 0, cat: 0, robot: 0, owl: 0, unicorn: 0, monster: 0 },
       times: [],
       records: [],
     });
@@ -129,22 +163,95 @@ describe('parseProgress on gems, characters and highest levels', () => {
     });
   });
 
-  it('reads a gem total equal to the sum of the highest levels', () => {
-    const document = { ...valid, gems: 5, character: 'dragon' };
+  it('reads an earned total equal to the sum of the highest levels', () => {
+    const document = { ...valid, earned: 5, balance: 0, character: 'dragon' };
     expect(read(document)).toEqual(asRead(document));
   });
 
-  it('reads each character that unlocks at the gem total that unlocks it', () => {
-    for (const [character, gems] of [
+  it('reads each character that unlocks at the earned total that unlocks it', () => {
+    for (const [character, earned] of [
       ['cat', 25],
       ['robot', 60],
       ['owl', 110],
       ['unicorn', 170],
       ['monster', 240],
     ] as const) {
-      const document = { ...valid, gems, character };
+      const document = { ...valid, earned, balance: 0, character };
       expect(read(document)).toEqual(asRead(document));
     }
+  });
+
+  it('reads a balance of 0 and a balance equal to what was earned', () => {
+    for (const balance of [0, 127]) {
+      const document = { ...valid, balance };
+      expect(read(document)).toEqual(asRead(document));
+    }
+  });
+
+  it('reads a balance too high for what is owned, since a price can change', () => {
+    const document = { ...valid, balance: 127 };
+    expect(read(document)).toEqual(asRead(document));
+  });
+});
+
+describe('parseProgress on items', () => {
+  it('reads nothing owned, no hat, own colours and the default theme', () => {
+    const document = {
+      ...valid,
+      owned: [],
+      hat: null,
+      colours: OWN_COLOURS,
+      theme: null,
+    };
+    expect(read(document)).toEqual(asRead(document));
+  });
+
+  it('reads an owned item that is not in use', () => {
+    const document = { ...valid, hat: null, theme: null };
+    expect(read(document)).toEqual(asRead(document));
+  });
+
+  it('reads every item of the first shelf owned, the crown worn', () => {
+    const document = {
+      ...valid,
+      owned: [
+        ...SET_OWNED,
+        'crown',
+        'dragon-blue',
+        'dragon-purple',
+        'cat-grey',
+        'cat-black',
+        'ocean',
+        'space',
+        'backflip',
+      ],
+      hat: 'crown',
+      colours: { ...OWN_COLOURS, dragon: 'dragon-purple', cat: 'cat-black' },
+      theme: 'space',
+    };
+    expect(read(document)).toEqual(asRead(document));
+  });
+
+  it('reads the set owned without the crown', () => {
+    const document = {
+      ...valid,
+      owned: SET_OWNED,
+      colours: OWN_COLOURS,
+      theme: null,
+    };
+    expect(read(document)).toEqual(asRead(document));
+  });
+
+  it('reads a bond with every character', () => {
+    const bond = {
+      dragon: 50,
+      cat: 25,
+      robot: 10,
+      owl: 1,
+      unicorn: 0,
+      monster: 0,
+    };
+    expect(read({ ...valid, bond })).toEqual(asRead({ ...valid, bond }));
   });
 });
 
@@ -245,20 +352,90 @@ describe('parseProgress on a corrupt document', () => {
     ['a record whose median is a string', withRecord({ median: '2.4' })],
     ['a version 1 document', { ...valid, version: 1 }],
     ['a version 0 document', { ...valid, version: 0 }],
-    ['a version given as a string', { ...valid, version: '3' }],
-    ['a newer version given as a string', { ...valid, version: '4' }],
-    ['a fractional version', { ...valid, version: 3.5 }],
-    ['no gems field', { ...valid, gems: undefined }],
-    ['a negative gem total', { ...valid, gems: -1, character: 'dragon' }],
-    ['a fractional gem total', { ...valid, gems: 27.5 }],
-    ['a gem total that is a string', { ...valid, gems: '27' }],
+    ['a version given as a string', { ...valid, version: '4' }],
+    ['a newer version given as a string', { ...valid, version: '5' }],
+    ['a fractional version', { ...valid, version: 4.5 }],
+    ['no earned field', { ...valid, earned: undefined }],
     [
-      'a gem total under the sum of the highest levels',
-      { ...valid, gems: 4, character: 'dragon' },
+      'a negative earned total',
+      { ...valid, earned: -1, balance: 0, character: 'dragon' },
     ],
+    ['a fractional earned total', { ...valid, earned: 127.5 }],
+    ['an earned total that is a string', { ...valid, earned: '127' }],
+    [
+      'an earned total under the sum of the highest levels',
+      { ...valid, earned: 4, balance: 0, character: 'dragon' },
+    ],
+    ['no balance field', { ...valid, balance: undefined }],
+    ['a negative balance', { ...valid, balance: -1 }],
+    ['a fractional balance', { ...valid, balance: 1.5 }],
+    ['a balance that is a string', { ...valid, balance: '2' }],
+    ['a balance above the earned total', { ...valid, balance: 128 }],
     ['no character field', { ...valid, character: undefined }],
     ['a character that is not one of the six', { ...valid, character: 'fox' }],
-    ['a character the gem total has not unlocked', { ...valid, gems: 24 }],
+    [
+      'a character the earned total has not unlocked',
+      { ...valid, earned: 24, balance: 0 },
+    ],
+    ['no owned field', { ...valid, owned: undefined }],
+    ['an owned field that is not an array', { ...valid, owned: {} }],
+    [
+      'an owned item that is not in the catalogue',
+      { ...valid, owned: [...valid.owned, 'jetpack'] },
+    ],
+    [
+      'an owned item given twice',
+      { ...valid, owned: [...valid.owned, 'party-hat'] },
+    ],
+    [
+      'the crown without every hat of the set',
+      { ...valid, owned: [...valid.owned, ...SET_OWNED.slice(1, 5), 'crown'] },
+    ],
+    ['no hat field', { ...valid, hat: undefined }],
+    ['a hat that is not owned', { ...valid, hat: 'top-hat' }],
+    ['a worn item that is not a hat', { ...valid, hat: 'ocean' }],
+    ['a hat that is not in the catalogue', { ...valid, hat: 'jetpack' }],
+    ['no colours field', { ...valid, colours: undefined }],
+    ['a colours field that is an array', { ...valid, colours: [] }],
+    [
+      'a character missing from the colours',
+      { ...valid, colours: { ...valid.colours, owl: undefined } },
+    ],
+    [
+      'a colour for a character that is not one of the six',
+      { ...valid, colours: { ...valid.colours, fox: null } },
+    ],
+    [
+      'a colour that is not owned',
+      { ...valid, colours: { ...valid.colours, cat: 'cat-black' } },
+    ],
+    [
+      'a colour variant chosen for the wrong character',
+      { ...valid, colours: { ...valid.colours, dragon: 'cat-grey' } },
+    ],
+    [
+      'a colour that is not a colour variant',
+      { ...valid, colours: { ...valid.colours, cat: 'ocean' } },
+    ],
+    ['no theme field', { ...valid, theme: undefined }],
+    ['a theme that is not owned', { ...valid, theme: 'space' }],
+    ['a theme that is not a theme', { ...valid, theme: 'party-hat' }],
+    ['no bond field', { ...valid, bond: undefined }],
+    ['a bond field that is an array', { ...valid, bond: [] }],
+    [
+      'a character missing from the bond',
+      { ...valid, bond: { ...valid.bond, owl: undefined } },
+    ],
+    [
+      'a bond with a character that is not one of the six',
+      { ...valid, bond: { ...valid.bond, fox: 1 } },
+    ],
+    ['a negative bond', { ...valid, bond: { ...valid.bond, cat: -1 } }],
+    ['a fractional bond', { ...valid, bond: { ...valid.bond, cat: 1.5 } }],
+    [
+      'a bond that is a string',
+      { ...valid, bond: { ...valid.bond, cat: '3' } },
+    ],
     [
       'a fact with no highest level',
       { ...valid, facts: { '6x7': { level: 1, fast: 1, slow: 0, missed: 0 } } },
@@ -329,42 +506,51 @@ describe('parseProgress on a document with extra fields', () => {
   });
 });
 
-// A document the version 2 build accepts.
-const VERSION_2 = {
-  version: 2,
+// A document the version 3 build accepts.
+const VERSION_3 = {
+  version: 3,
   tables: [6, 12],
-  facts: {
-    '6x7': { level: 3, fast: 12, slow: 3, missed: 2 },
-    '8x12': { level: 0, fast: 0, slow: 0, missed: 1 },
-    '3x5': { level: 4, fast: 6, slow: 0, missed: 0 },
-  },
+  facts: valid.facts,
+  // The 5 the facts have paid, and 22 in bonuses.
+  gems: 27,
+  character: 'cat',
   times: valid.times,
   records: valid.records,
 };
 
-describe('parseProgress on a version 2 document', () => {
-  it('migrates it: each highest level is the level now, the gems are their sum and the dragon is chosen', () => {
-    expect(read(VERSION_2)).toEqual({
+describe('parseProgress on a version 3 document', () => {
+  it('migrates it: earned and the balance are both its gems, nothing is owned or worn and every bond is 0', () => {
+    expect(read(VERSION_3)).toEqual({
       kind: 'read',
       migrated: true,
       progress: {
-        version: 3,
+        version: 4,
         tables: [6, 12],
-        facts: {
-          '6x7': { level: 3, best: 3, fast: 12, slow: 3, missed: 2 },
-          '8x12': { level: 0, best: 0, fast: 0, slow: 0, missed: 1 },
-          '3x5': { level: 4, best: 4, fast: 6, slow: 0, missed: 0 },
-        },
-        gems: 7,
-        character: 'dragon',
+        facts: valid.facts,
+        earned: 27,
+        balance: 27,
+        character: 'cat',
+        owned: [],
+        hat: null,
+        colours: OWN_COLOURS,
+        theme: null,
+        bond: NO_BOND,
         times: valid.times,
         records: valid.records,
       },
     });
   });
 
-  it('migrates a fresh version 2 document to a fresh version 3 document', () => {
-    const fresh = { version: 2, tables: [], facts: {}, times: [], records: [] };
+  it('migrates a fresh version 3 document to a fresh version 4 document', () => {
+    const fresh = {
+      version: 3,
+      tables: [],
+      facts: {},
+      gems: 0,
+      character: 'dragon',
+      times: [],
+      records: [],
+    };
     expect(read(fresh)).toEqual({
       kind: 'read',
       migrated: true,
@@ -372,37 +558,56 @@ describe('parseProgress on a version 2 document', () => {
     });
   });
 
-  it('takes nothing from version 3 fields a version 2 document happens to hold', () => {
-    const document = {
-      ...VERSION_2,
-      gems: 300,
-      character: 'monster',
-      facts: { '6x7': { level: 1, best: 4, fast: 1, slow: 0, missed: 0 } },
-    };
-    expect(read(document)).toMatchObject({
+  it('takes nothing from version 4 fields a version 3 document happens to hold', () => {
+    const document = { ...valid, ...VERSION_3 };
+    expect(read(document)).toEqual({
+      kind: 'read',
       migrated: true,
       progress: {
-        gems: 1,
-        character: 'dragon',
-        facts: { '6x7': { level: 1, best: 1 } },
+        ...valid,
+        earned: 27,
+        balance: 27,
+        owned: [],
+        hat: null,
+        colours: OWN_COLOURS,
+        theme: null,
+        bond: NO_BOND,
       },
     });
   });
 
-  it('reads one that fails version 2 validation as corrupt', () => {
-    expect(read({ ...VERSION_2, times: undefined })).toEqual(CORRUPT);
+  it('reads one that fails version 3 validation as corrupt', () => {
+    for (const document of [
+      { ...VERSION_3, gems: undefined },
+      { ...VERSION_3, gems: 4 },
+      { ...VERSION_3, gems: 24 },
+      { ...VERSION_3, times: undefined },
+      { ...valid, version: 3 },
+    ]) {
+      expect(read(document)).toEqual(CORRUPT);
+    }
+  });
+});
+
+describe('parseProgress on a version 2 document', () => {
+  it('reads it as corrupt, however well-formed', () => {
+    const version2 = {
+      version: 2,
+      tables: [6, 12],
+      facts: { '6x7': { level: 3, fast: 12, slow: 3, missed: 2 } },
+      times: valid.times,
+      records: valid.records,
+    };
+    expect(read(version2)).toEqual(CORRUPT);
     expect(
-      read({
-        ...VERSION_2,
-        facts: { '6x7': { level: 5, fast: 0, slow: 0, missed: 0 } },
-      }),
+      read({ version: 2, tables: [], facts: {}, times: [], records: [] }),
     ).toEqual(CORRUPT);
   });
 });
 
 describe('parseProgress on a document from a newer build', () => {
-  it('reads a whole-number version above 3 as newer, whatever else it holds', () => {
-    expect(read({ ...valid, version: 4 })).toEqual({ kind: 'newer' });
+  it('reads a whole-number version above 4 as newer, whatever else it holds', () => {
+    expect(read({ ...valid, version: 5 })).toEqual({ kind: 'newer' });
     expect(read({ version: 12, learner: {} })).toEqual({ kind: 'newer' });
   });
 });
@@ -515,41 +720,44 @@ describe('applyOutcome', () => {
 });
 
 describe('applyOutcome paying gems', () => {
-  it('pays one gem when a fast outcome takes a fact to a level it has not reached before', () => {
+  it('pays one gem to earned and the balance when a fast outcome takes a fact to a level it has not reached before', () => {
     const after = applyOutcome(valid, '6x9', 'fast');
     expect(after.facts['6x9']).toMatchObject({ level: 1, best: 1 });
-    expect(after.gems).toBe(28);
+    expect(after).toMatchObject({ earned: 128, balance: 3 });
   });
 
   it('pays nothing for a level the fact has reached before', () => {
     // 6 x 7 is at level 3 and has been at level 4.
     const after = applyOutcome(valid, '6x7', 'fast');
     expect(after.facts['6x7']).toMatchObject({ level: 4, best: 4 });
-    expect(after.gems).toBe(27);
+    expect(after).toMatchObject({ earned: 127, balance: 2 });
   });
 
   it('pays nothing for a slow or missed outcome and keeps the highest level', () => {
     for (const outcome of ['slow', 'missed'] as const) {
       const after = applyOutcome(valid, '6x7', outcome);
       expect(after.facts['6x7']?.best).toBe(4);
-      expect(after.gems).toBe(27);
+      expect(after).toMatchObject({ earned: 127, balance: 2 });
     }
   });
 
   it('pays nothing for a fast outcome on a fact already at level 4', () => {
     const atTop = applyOutcome(valid, '6x7', 'fast');
-    expect(applyOutcome(atTop, '6x7', 'fast').gems).toBe(27);
+    expect(applyOutcome(atTop, '6x7', 'fast')).toMatchObject({
+      earned: 127,
+      balance: 2,
+    });
   });
 
   it('pays a fact 4 gems on its way from new to level 4 and no more after a miss', () => {
     let progress = freshProgress();
     for (let n = 0; n < 4; n++)
       progress = applyOutcome(progress, '2x3', 'fast');
-    expect(progress.gems).toBe(4);
+    expect(progress).toMatchObject({ earned: 4, balance: 4 });
     progress = applyOutcome(progress, '2x3', 'missed');
     for (let n = 0; n < 4; n++)
       progress = applyOutcome(progress, '2x3', 'fast');
-    expect(progress.gems).toBe(4);
+    expect(progress).toMatchObject({ earned: 4, balance: 4 });
     expect(progress.facts['2x3']).toMatchObject({ level: 4, best: 4 });
   });
 
@@ -597,7 +805,8 @@ describe('recordDrill', () => {
   });
 
   // The document's last record is a finished drill on the 6s, 8s and 12s
-  // with 18 right answers and a median of 19999.
+  // with 18 right answers and a median of 19999. This one is in the top
+  // band.
   const faster: DrillRecord = {
     at: '2026-01-03T09:00:00.000Z',
     tables: [6, 8, 12],
@@ -609,41 +818,75 @@ describe('recordDrill', () => {
     known: 77,
     median: 8000,
   };
+  const slower: DrillRecord = { ...faster, median: 19999 };
 
-  it('pays two gems for a drill faster than last time', () => {
-    expect(recordDrill(valid, faster).progress.gems).toBe(29);
+  it('pays the bonus of two gems and top band pay of three for a top drill faster than last time', () => {
+    const recorded = recordDrill(valid, faster);
+    expect(recorded.progress).toMatchObject({ earned: 132, balance: 7 });
+    expect(recorded).toMatchObject({ faster: true, bandPay: 3 });
   });
 
-  it('pays nothing for a drill that was not faster', () => {
-    const slower: DrillRecord = { ...faster, median: 19999 };
+  it('pays band pay alone for a drill that was not faster', () => {
+    const recorded = recordDrill(valid, slower);
+    expect(recorded.progress).toMatchObject({ earned: 130, balance: 5 });
+    expect(recorded).toMatchObject({ faster: false, bandPay: 3 });
+  });
 
-    expect(recordDrill(valid, slower).progress.gems).toBe(27);
+  it('pays 3 in the top band, 1 in the middle band and nothing in the low band', () => {
+    for (const [fast, pay] of [
+      [20, 3],
+      [15, 3],
+      [14, 1],
+      [8, 1],
+      [7, 0],
+      [0, 0],
+    ] as const) {
+      const record = { ...slower, fast, slow: 18 - fast };
+      const recorded = recordDrill(valid, record);
+      expect(recorded.bandPay).toBe(pay);
+      expect(recorded.progress).toMatchObject({
+        earned: 127 + pay,
+        balance: 2 + pay,
+      });
+    }
+  });
+
+  it('pays nothing for a quit drill, however many fast answers it held', () => {
+    const recorded = recordDrill(valid, { ...faster, fast: 16, quit: true });
+    expect(recorded).toMatchObject({ faster: false, bandPay: 0 });
+    expect(recorded.progress).toMatchObject({ earned: 127, balance: 2 });
   });
 
   it('says a drill was faster when, and only when, it paid the bonus', () => {
-    const slower: DrillRecord = { ...faster, median: 19999 };
-
     expect(recordDrill(valid, faster).faster).toBe(true);
     expect(recordDrill(valid, slower).faster).toBe(false);
+  });
+
+  it('keeps the document it makes valid', () => {
+    const { progress } = recordDrill(valid, faster);
+    expect(read(progress)).toEqual(asRead(progress));
   });
 
   it('leaves the given document as it was', () => {
     recordDrill(valid, faster);
 
-    expect(valid.gems).toBe(27);
+    expect(valid).toMatchObject({ earned: 127, balance: 2 });
   });
 });
 
 describe('chooseCharacter', () => {
-  it('sets a character the gems have unlocked', () => {
+  it('sets a character the earned total has unlocked', () => {
     expect(chooseCharacter(valid, 'dragon').character).toBe('dragon');
-    expect(chooseCharacter({ ...valid, gems: 60 }, 'robot').character).toBe(
-      'robot',
-    );
+    expect(chooseCharacter(valid, 'owl').character).toBe('owl');
   });
 
-  it('leaves the choice as it was for a character the gems have not unlocked', () => {
-    expect(chooseCharacter(valid, 'robot').character).toBe('cat');
+  it('reads the unlocks from earned, not the balance', () => {
+    const spent = { ...valid, earned: 60, balance: 0 };
+    expect(chooseCharacter(spent, 'robot').character).toBe('robot');
+  });
+
+  it('leaves the choice as it was for a character the earned total has not unlocked', () => {
+    expect(chooseCharacter(valid, 'unicorn').character).toBe('cat');
     expect(chooseCharacter(freshProgress(), 'cat').character).toBe('dragon');
   });
 
