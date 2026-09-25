@@ -12,7 +12,7 @@ Times tables practice for an iPad, from the 2s to the 12s.
 - The learner types each answer on an on-screen keypad.
 - Each answer is judged against the learner's own pace, not a fixed time limit.
 - Each fact has a level, and facts at a low level come round more often.
-- Gems reward progress, unlock characters that react to each answer, and buy hats and colours in the Shop.
+- Gems reward progress, unlock characters that react to each answer, and buy hats, colours and themes in the Shop.
 - Works offline on an iPad once installed, with no accounts and no server.
 
 Built for a child learning the tables at home.
@@ -33,7 +33,7 @@ A right answer is fast or slow depending on how long it took against the learner
 
 Each fact has a level. A fast answer moves it up, a slow one moves it down, and a missed one takes it back to the start. The next fact is chosen so that facts at a low level come round more often, and no fact is ever retired.
 
-A fact pays a gem the first time it reaches each level. A finished drill pays 3 gems when most of its answers were fast and 1 when a fair share were, and a drill that was faster than the last one on the same tables pays a small bonus. A table earns a badge once every one of its facts has reached level 4, and the answer that earns it pays 10 gems; the badge stays even if a fact slips later. Gems are spent in the Shop, where six hats cost 40 gems each and owning all six earns a crown; any character can wear any owned hat, chosen under the row of characters on the Start screen. The dragon and the cat each have two colour variants at 25 gems, and each character keeps its own chosen colour, picked beside the hats. Characters unlock by the gems earned, not the gems left, so spending never locks one again: the cat unlocks at 25 gems earned, the robot at 60, the owl at 110, the unicorn at 170 and the monster at 240, and the dragon is there from the start. Each character also keeps a bond, the count of finished drills done with it: at 10, 25 and 50 it gains a new pose on the Start screen, and a meter under it shows how close the next one is. A quit drill does not count.
+A fact pays a gem the first time it reaches each level. A finished drill pays 3 gems when most of its answers were fast and 1 when a fair share were, and a drill that was faster than the last one on the same tables pays a small bonus. A table earns a badge once every one of its facts has reached level 4, and the answer that earns it pays 10 gems; the badge stays even if a fact slips later. Gems are spent in the Shop, where six hats cost 40 gems each and owning all six earns a crown; any character can wear any owned hat, chosen under the row of characters on the Start screen. The dragon and the cat each have two colour variants at 25 gems, and each character keeps its own chosen colour, picked beside the hats. The ocean and space themes cost 60 gems each and change the app's colours on every screen but the Parent view; the chosen theme, or the default, is picked beside the colours. Characters unlock by the gems earned, not the gems left, so spending never locks one again: the cat unlocks at 25 gems earned, the robot at 60, the owl at 110, the unicorn at 170 and the monster at 240, and the dragon is there from the start. Each character also keeps a bond, the count of finished drills done with it: at 10, 25 and 50 it gains a new pose on the Start screen, and a meter under it shows how close the next one is. A quit drill does not count.
 
 The terms are defined in [CONTEXT.md](CONTEXT.md), the pace rule in [ADR 0002](docs/adr/0002-pace-rule.md), the gem rule in [ADR 0004](docs/adr/0004-gem-rule.md) and the rule for spending gems in [ADR 0005](docs/adr/0005-spending-gems.md).
 
@@ -41,11 +41,11 @@ The terms are defined in [CONTEXT.md](CONTEXT.md), the pace rule in [ADR 0002](d
 
 The layout turns with the iPad; these are portrait.
 
-|                                                                                                                                  |                                                                                                                      |
-| -------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- |
-| ![The card: one fact with the keypad under it](docs/screenshots/card.png)                                                        | ![The feedback: the answer, the character, the word Fast and the gem the answer paid](docs/screenshots/feedback.png) |
-| ![The end screen: the tally, the best streak and the race against last time](docs/screenshots/end.png)                           | ![The Parent view: the trend, the chart of pace and the grid of facts by level](docs/screenshots/parent.png)         |
-| ![The Shop: the hats and colours with their prices, a hat tried on the character, and the Buy button](docs/screenshots/shop.png) |                                                                                                                      |
+|                                                                                                                          |                                                                                                                      |
+| ------------------------------------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------- |
+| ![The card: one fact with the keypad under it](docs/screenshots/card.png)                                                | ![The feedback: the answer, the character, the word Fast and the gem the answer paid](docs/screenshots/feedback.png) |
+| ![The end screen: the tally, the best streak and the race against last time](docs/screenshots/end.png)                   | ![The Parent view: the trend, the chart of pace and the grid of facts by level](docs/screenshots/parent.png)         |
+| ![The Shop: the hats, colours and themes with their prices, and a hat tried on the character](docs/screenshots/shop.png) |                                                                                                                      |
 
 ## For parents
 

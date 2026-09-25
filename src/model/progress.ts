@@ -271,6 +271,24 @@ export function chooseColour(
   return { ...progress, colours: { ...progress.colours, [character]: colour } };
 }
 
+// The owned themes, in catalogue order.
+export function ownedThemes(progress: Progress): ThemeId[] {
+  return CATALOGUE.flatMap((item) =>
+    item.kind === 'theme' && progress.owned.includes(item.id) ? [item.id] : [],
+  );
+}
+
+// The document with the given theme chosen, when it is owned, or with the
+// default for null, which is always a choice; a theme not owned leaves the
+// choice as it was. The given document is left as it was.
+export function chooseTheme(
+  progress: Progress,
+  theme: ThemeId | null,
+): Progress {
+  if (theme !== null && !progress.owned.includes(theme)) return progress;
+  return { ...progress, theme };
+}
+
 // The document with one more answer time kept towards pace (ADR 0002). Only
 // the times of right answers are ever passed.
 export function keepAnswerTime(progress: Progress, time: number): Progress {
