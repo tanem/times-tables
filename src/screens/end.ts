@@ -244,12 +244,12 @@ export function renderEnd(options: EndOptions): HTMLElement {
     // brought the dialogs forward, or focus back on Home, which is where
     // they said to go.
     const showFrom = (index: number, onClose: () => void): void => {
-      const character = options.unlocks[index];
-      if (!character) {
+      const unlocked = options.unlocks[index];
+      if (!unlocked) {
         onClose();
         return;
       }
-      const { dialog, ok } = renderUnlock(character);
+      const { dialog, ok } = renderUnlock(unlocked);
       dialog.addEventListener('close', () => {
         dialog.remove();
         showFrom(index + 1, onClose);

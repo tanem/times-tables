@@ -146,8 +146,9 @@ function showParent(): void {
 }
 
 // The gem total as the drill began. The end screen announces the characters
-// unlocked between it and the total at the end (ADR 0005), so a character
-// unlocked at the migration or between drills is never announced.
+// unlocked between it and the total at the end, so a character unlocked at
+// the migration or between drills is never announced (ADR 0004). A drill
+// can unlock more than one (ADR 0005).
 let gemsAtStart = 0;
 
 function beginDrill(tables: Table[]): void {

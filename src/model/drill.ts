@@ -140,8 +140,8 @@ export type Band = 'top' | 'middle' | 'low';
 
 // The band of an ended drill, from its fast count as a share of the drill's
 // length. A quit drill is in the low band whatever its count. It reads a
-// drill or its drill record alike, so that what the record pays and what the
-// end screen shows agree.
+// drill or its drill record alike, so that band pay can be worked out from
+// the record and agree with what the end screen shows (ADR 0005).
 export function bandOf(drill: Pick<Drill, 'fast' | 'quit'>): Band {
   if (drill.quit) return 'low';
   const share = drill.fast / DRILL_LENGTH;
