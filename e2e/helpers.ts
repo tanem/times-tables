@@ -90,8 +90,13 @@ export async function storedProgress(page: Page): Promise<Progress> {
 }
 
 // The character named doing the given thing, as its accessible name says:
-// "The cat jumps", or "The cat" sitting.
-export function character(page: Page, name: Character, doing = ''): Locator {
+// "The cat jumps", or "The cat" sitting. A character in a colour variant is
+// named by the variant: "The black cat".
+export function character(
+  page: Page,
+  name: Character | `${string} ${Character}`,
+  doing = '',
+): Locator {
   return page.getByRole('img', {
     name: doing ? `The ${name} ${doing}` : `The ${name}`,
     exact: true,

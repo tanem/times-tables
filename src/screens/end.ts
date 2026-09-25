@@ -1,4 +1,4 @@
-import type { HatId } from '../model/catalogue';
+import type { ColourId, HatId } from '../model/catalogue';
 import type { Character } from '../model/characters';
 import { bandOf, type Band, type Drill } from '../model/drill';
 import type { Table } from '../model/facts';
@@ -55,6 +55,7 @@ const WHERE_TO_CHOOSE = 'Tap Home, then tap it to play as it';
 function renderMoment(
   character: Character,
   hat: HatId | null,
+  colour: ColourId | null,
 ): {
   moment: HTMLElement;
   sayWords: () => void;
@@ -76,7 +77,7 @@ function renderMoment(
     label.textContent = text;
     const runner = document.createElement('div');
     runner.className = 'runner';
-    runner.append(renderCharacter({ character, pose: 'sit', hat }));
+    runner.append(renderCharacter({ character, pose: 'sit', hat, colour }));
     row.append(label, runner);
     race.append(row);
   }
@@ -109,6 +110,7 @@ function renderMoment(
 function renderUnlock(
   character: Character,
   hat: HatId | null,
+  colour: ColourId | null,
 ): {
   dialog: HTMLDialogElement;
   ok: HTMLButtonElement;
@@ -137,7 +139,13 @@ function renderUnlock(
 
   dialog.append(
     heading,
-    renderCharacter({ character, pose: 'big-jump', sparkles: 'burst', hat }),
+    renderCharacter({
+      character,
+      pose: 'big-jump',
+      sparkles: 'burst',
+      hat,
+      colour,
+    }),
     name,
     where,
     ok,
@@ -159,6 +167,9 @@ export type EndOptions = {
   character: Character;
   // The worn hat, or none, which every character on the screen wears.
   hat: HatId | null;
+  // Each character's chosen colour, a variant or null for its own, which
+  // it wears wherever it appears on the screen.
+  colours: Readonly<Record<Character, ColourId | null>>;
   // Whether the drill was faster than last time, which the moment shows and
   // the bonus has already been paid for (ADR 0004).
   faster: boolean;
@@ -186,7 +197,8 @@ export type EndOptions = {
 // leaving by Home or Go again before then brings the dialogs forward, and
 // the leave follows the last OK, so that no unlock goes unannounced.
 export function renderEnd(options: EndOptions): HTMLElement {
-  const { drill, character, hat } = options;
+  const { drill, character, hat, colours } = options;
+  const colour = colours[character];
 
   const screen = document.createElement('main');
   screen.className = 'end';
@@ -194,7 +206,7 @@ export function renderEnd(options: EndOptions): HTMLElement {
   const band = bandOf(drill);
   const celebration = CELEBRATIONS[band];
   sound.end(band);
-  const figure = renderCharacter({ character, hat, ...celebration });
+  const figure = renderCharacter({ character, hat, colour, ...celebration });
 
   const heading = document.createElement('h1');
   heading.textContent = drill.quit
@@ -257,7 +269,7 @@ export function renderEnd(options: EndOptions): HTMLElement {
 
   if (options.faster) {
     screen.classList.add('faster');
-    const { moment, sayWords } = renderMoment(character, hat);
+    const { moment, sayWords } = renderMoment(character, hat, colour);
     actions.before(moment);
     pending.push(
       schedule(() => moment.classList.add('go'), RACE_AT),
@@ -270,6 +282,7 @@ export function renderEnd(options: EndOptions): HTMLElement {
             pose: 'proud',
             sparkles: 'breath',
             hat,
+            colour,
           }),
         );
         sound.faster();
@@ -288,7 +301,7 @@ export function renderEnd(options: EndOptions): HTMLElement {
         onClose();
         return;
       }
-      const { dialog, ok } = renderUnlock(unlocked, hat);
+      const { dialog, ok } = renderUnlock(unlocked, hat, colours[unlocked]);
       dialog.addEventListener('close', () => {
         dialog.remove();
         showFrom(index + 1, onClose);

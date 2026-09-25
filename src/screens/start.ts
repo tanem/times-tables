@@ -1,5 +1,5 @@
 import { bondLevel, bondReading, type BondLevel } from '../model/bond';
-import { itemOf, type HatId } from '../model/catalogue';
+import { itemOf, type ColourId, type HatId } from '../model/catalogue';
 import {
   CHARACTERS,
   isUnlocked,
@@ -27,6 +27,10 @@ export type StartOptions = {
   // The owned hats, in catalogue order, and the worn one, or none.
   hats: readonly HatId[];
   hat: HatId | null;
+  // Each character's chosen colour, a variant or null for its own, and
+  // each character's owned variants, in catalogue order.
+  colours: Readonly<Record<Character, ColourId | null>>;
+  ownedColours: (character: Character) => readonly ColourId[];
   // The finished drills done with each character, which its meter and its
   // pose on the masthead are read from.
   bond: Readonly<Record<Character, number>>;
@@ -37,6 +41,9 @@ export type StartOptions = {
   onCharacterChange: (character: Character) => void;
   // Called with the hat the learner tapped, an owned one, or null for none.
   onHatChange: (hat: HatId | null) => void;
+  // Called with the chosen character and the colour the learner tapped for
+  // it, an owned variant of it, or null for its own.
+  onColourChange: (character: Character, colour: ColourId | null) => void;
   // Called with the selection when the learner taps Practise.
   onPractise: (tables: Table[]) => void;
   onShop: () => void;
@@ -141,7 +148,7 @@ function renderPick(
     lock.className = 'lock';
     lock.setAttribute('aria-hidden', 'true');
     lock.textContent = `🔒 ${needs}`;
-    pick.append(renderFigure(character, null), lock);
+    pick.append(renderFigure(character, null, null), lock);
   }
   return pick;
 }
@@ -149,8 +156,12 @@ function renderPick(
 // A small figure of the character sitting still, for a button whose name
 // says which character it is: hidden from a screen reader, so that it does
 // not answer to the masthead's name.
-function renderFigure(character: Character, hat: HatId | null): HTMLElement {
-  const figure = renderCharacter({ character, pose: 'sit', hat });
+function renderFigure(
+  character: Character,
+  hat: HatId | null,
+  colour: ColourId | null,
+): HTMLElement {
+  const figure = renderCharacter({ character, pose: 'sit', hat, colour });
   figure.setAttribute('aria-hidden', 'true');
   return figure;
 }
@@ -176,10 +187,29 @@ function renderHatPick(hat: HatId | null, onPick: () => void): HTMLElement {
   return pick;
 }
 
+// One colour in the chosen character's row of colours, or its own colour
+// for null, as a small figure of the character in it. It is pressed when
+// it is the chosen one.
+function renderColourPick(
+  character: Character,
+  colour: ColourId | null,
+  onPick: () => void,
+): HTMLElement {
+  const pick = document.createElement('button');
+  pick.type = 'button';
+  pick.className = 'colour-pick';
+  pick.setAttribute('aria-label', colour ? itemOf(colour).name : 'Own colour');
+  pick.append(renderFigure(character, null, colour));
+  pick.addEventListener('click', onPick);
+  return pick;
+}
+
 // Builds the Start screen. The character is at the top with the app's name,
 // in its highest open bond pose or sitting, over the meter of its bond; the
-// row of characters is under the name, the row of owned hats under that once
-// a hat is owned, the Shop in one corner and the balance in the other. The tiles keep the selection and the Practise button follows it.
+// row of characters is under the name, and under that the row of owned hats
+// once a hat is owned beside the row of the chosen character's colours once
+// it has a variant. The Shop is in one corner and the balance in the
+// other. The tiles keep the selection and the Practise button follows it.
 // While nothing is on the screen nudges: the heading asks for a tap, the
 // tiles pulse and the character waves.
 export function renderStart(options: StartOptions): HTMLElement {
@@ -187,6 +217,7 @@ export function renderStart(options: StartOptions): HTMLElement {
   const selection = () => TABLES.filter((table) => selected.has(table));
   let character = options.character;
   let hat = options.hat;
+  const colours = { ...options.colours };
 
   const screen = document.createElement('main');
   screen.className = 'start';
@@ -207,13 +238,17 @@ export function renderStart(options: StartOptions): HTMLElement {
     const pick = renderPick(candidate, options.earned, () => {
       if (candidate === character) return;
       character = candidate;
+      drawColours();
       drawCharacter();
       options.onCharacterChange(character);
     });
     picks.set(candidate, pick);
     row.append(pick);
   }
-  title.append(name, row);
+  // The hats and the colours share a line under the characters.
+  const wardrobe = document.createElement('div');
+  wardrobe.className = 'wardrobe';
+  title.append(name, row, wardrobe);
 
   // The hats row: none, then each owned hat. It is left out until a hat is
   // owned, since none would be the only choice.
@@ -234,8 +269,17 @@ export function renderStart(options: StartOptions): HTMLElement {
       hatPicks.set(candidate, pick);
       hats.append(pick);
     }
-    title.append(hats);
+    wardrobe.append(hats);
   }
+
+  // The chosen character's colours: its own, then each owned variant. It is
+  // redrawn for each character chosen, and left out while the character
+  // has no variant, since its own would be the only choice.
+  const colourRow = document.createElement('div');
+  colourRow.className = 'colours';
+  colourRow.setAttribute('role', 'group');
+  colourRow.setAttribute('aria-label', 'Your colour');
+  wardrobe.append(colourRow);
   // The chosen character over the meter of its bond.
   const companion = document.createElement('div');
   companion.className = 'companion';
@@ -273,12 +317,12 @@ export function renderStart(options: StartOptions): HTMLElement {
   // draws the character.
   let nudging: boolean | null = null;
 
-  // Dresses every unlocked character in the row in the worn hat, and marks
-  // the hat as chosen in its row.
+  // Dresses every unlocked character in the row in the worn hat and its
+  // colour, and marks the hat as chosen in its row.
   const drawHat = () => {
     for (const [candidate, pick] of picks) {
       if (isUnlocked(candidate, options.earned)) {
-        pick.replaceChildren(renderFigure(candidate, hat));
+        pick.replaceChildren(renderFigure(candidate, hat, colours[candidate]));
       }
     }
     for (const [candidate, pick] of hatPicks) {
@@ -286,9 +330,32 @@ export function renderStart(options: StartOptions): HTMLElement {
     }
   };
 
-  // Draws the chosen character on the masthead in the worn hat over the
-  // meter of its bond, waving while the screen nudges and in its bond pose
-  // otherwise, and marks it as chosen in the row.
+  // Draws the chosen character's row of colours, its colour marked as
+  // chosen.
+  const drawColours = () => {
+    const variants = options.ownedColours(character);
+    colourRow.hidden = variants.length === 0;
+    wardrobe.hidden = colourRow.hidden && options.hats.length === 0;
+    colourRow.replaceChildren(
+      ...[null, ...variants].map((candidate) => {
+        const pick = renderColourPick(character, candidate, () => {
+          if (candidate === colours[character]) return;
+          colours[character] = candidate;
+          drawHat();
+          drawColours();
+          drawCharacter();
+          options.onColourChange(character, candidate);
+        });
+        const chosen = candidate === colours[character];
+        pick.setAttribute('aria-pressed', String(chosen));
+        return pick;
+      }),
+    );
+  };
+
+  // Draws the chosen character on the masthead in the worn hat and its
+  // colour over the meter of its bond, waving while the screen nudges and
+  // in its bond pose otherwise, and marks it as chosen in the row.
   const drawCharacter = () => {
     for (const [candidate, pick] of picks) {
       pick.setAttribute('aria-pressed', String(candidate === character));
@@ -300,7 +367,7 @@ export function renderStart(options: StartOptions): HTMLElement {
         ? 'beckon'
         : BOND_POSES[bondLevel(count)];
     companion.replaceChildren(
-      renderCharacter({ character, pose, hat }),
+      renderCharacter({ character, pose, hat, colour: colours[character] }),
       renderBondMeter(character, count),
     );
   };
@@ -379,6 +446,7 @@ export function renderStart(options: StartOptions): HTMLElement {
   shop.addEventListener('click', options.onShop);
 
   drawHat();
+  drawColours();
   update();
   screen.append(
     shop,

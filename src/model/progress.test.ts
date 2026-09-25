@@ -6,6 +6,7 @@ import {
   badges,
   buy,
   chooseCharacter,
+  chooseColour,
   chooseHat,
   factCounts,
   factLevel,
@@ -13,6 +14,7 @@ import {
   keepAnswerTime,
   knownCount,
   knownShare,
+  ownedColours,
   ownedHats,
   parseProgress,
   recordDrill,
@@ -1210,5 +1212,68 @@ describe('chooseHat', () => {
     const after = chooseHat(owning, 'top-hat');
     expect(read(after)).toEqual(asRead(after));
     expect(owning.hat).toBeNull();
+  });
+});
+
+describe('ownedColours', () => {
+  it('lists none for a fresh document', () => {
+    expect(ownedColours(freshProgress(), 'dragon')).toEqual([]);
+  });
+
+  it("lists the character's owned variants in catalogue order, and no other character's", () => {
+    const progress: Progress = {
+      ...freshProgress(),
+      owned: ['dragon-purple', 'cat-grey', 'top-hat', 'dragon-blue'],
+    };
+    expect(ownedColours(progress, 'dragon')).toEqual([
+      'dragon-blue',
+      'dragon-purple',
+    ]);
+    expect(ownedColours(progress, 'cat')).toEqual(['cat-grey']);
+    expect(ownedColours(progress, 'robot')).toEqual([]);
+  });
+});
+
+describe('chooseColour', () => {
+  const owning: Progress = {
+    ...freshProgress(),
+    earned: 100,
+    owned: ['dragon-blue', 'cat-grey'],
+  };
+
+  it("sets an owned variant as the character's colour and leaves the others as they were", () => {
+    const after = chooseColour(owning, 'dragon', 'dragon-blue');
+    expect(after.colours).toEqual({ ...OWN_COLOURS, dragon: 'dragon-blue' });
+  });
+
+  it("goes back to the character's own colour for none", () => {
+    const blue = chooseColour(owning, 'dragon', 'dragon-blue');
+    expect(chooseColour(blue, 'dragon', null).colours).toEqual(OWN_COLOURS);
+  });
+
+  it('changing the cat leaves the dragon as it was', () => {
+    const blue = chooseColour(owning, 'dragon', 'dragon-blue');
+    const both = chooseColour(blue, 'cat', 'cat-grey');
+    expect(both.colours).toMatchObject({
+      dragon: 'dragon-blue',
+      cat: 'cat-grey',
+    });
+    expect(chooseColour(both, 'cat', null).colours.dragon).toBe('dragon-blue');
+  });
+
+  it('leaves the choice as it was for a variant not owned', () => {
+    const blue = chooseColour(owning, 'dragon', 'dragon-blue');
+    expect(chooseColour(blue, 'dragon', 'dragon-purple')).toBe(blue);
+  });
+
+  it("leaves the choice as it was for another character's variant", () => {
+    expect(chooseColour(owning, 'dragon', 'cat-grey')).toBe(owning);
+    expect(chooseColour(owning, 'robot', 'dragon-blue')).toBe(owning);
+  });
+
+  it('keeps the document it makes valid and leaves the given one as it was', () => {
+    const after = chooseColour(owning, 'cat', 'cat-grey');
+    expect(read(after)).toEqual(asRead(after));
+    expect(owning.colours).toEqual(OWN_COLOURS);
   });
 });
