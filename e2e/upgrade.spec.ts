@@ -1,16 +1,21 @@
+import { freshProgress } from '../src/model/progress';
 import { PROGRESS_KEY, BACKUP_KEY } from '../src/storage';
 import { expect, test } from './fixtures';
 import {
   advance,
   answerCard,
+  balance,
   character,
+  DIALOG_AT,
   expectNoTableOn,
   factOnScreen,
   openParent,
+  pick,
   startHeading,
   storedProgress,
   practiseButton,
   tile,
+  unlockDialog,
 } from './helpers';
 
 // A document the version 1 build accepts: a table selection, some levels, a
@@ -46,7 +51,7 @@ const VERSION_1 = JSON.stringify({
   ],
 });
 
-test('a version 1 document is backed up, the app starts fresh and a drill saves a version 3 document', async ({
+test('a version 1 document is backed up, the app starts fresh and a drill saves a version 4 document', async ({
   page,
 }) => {
   await page.addInitScript(([key, text]) => localStorage.setItem(key, text), [
@@ -75,9 +80,9 @@ test('a version 1 document is backed up, the app starts fresh and a drill saves 
   await page.getByRole('button', { name: 'Quit' }).click();
 
   const stored = await storedProgress(page);
-  expect(stored.version).toBe(3);
+  expect(stored.version).toBe(4);
   // The one fast answer took its fact to level 1 for the first time.
-  expect(stored.gems).toBe(1);
+  expect(stored).toMatchObject({ earned: 1, balance: 1 });
   expect(stored.character).toBe('dragon');
   expect(stored.tables).toEqual([6]);
   // The one right answer, given on the instant, starts the answer times.
@@ -100,9 +105,37 @@ test('a version 1 document is backed up, the app starts fresh and a drill saves 
   ]);
 });
 
-// A document the version 2 build accepts: the 6s on, every fact of the 6s at
-// level 2, one fact known from outside them, answer times and a drill record.
-const VERSION_2_RECORD = {
+// A document the version 2 build accepts: the 6s on, a fact at level 2,
+// answer times and a drill record.
+const VERSION_2 = JSON.stringify({
+  version: 2,
+  tables: [6],
+  facts: { '6x7': { level: 2, fast: 2, slow: 0, missed: 0 } },
+  times: [2600, 2200],
+  records: [],
+});
+
+test('a version 2 document is backed up and the app starts fresh', async ({
+  page,
+}) => {
+  await page.addInitScript(([key, text]) => localStorage.setItem(key, text), [
+    PROGRESS_KEY,
+    VERSION_2,
+  ] as const);
+  await page.goto('./');
+
+  await expectNoTableOn(page);
+  await expect(balance(page)).toHaveText('0 gems');
+  expect(
+    await page.evaluate((key) => localStorage.getItem(key), BACKUP_KEY),
+  ).toBe(VERSION_2);
+});
+
+// A document the version 3 build accepts: the 6s on, every fact of the 6s
+// at level 2, one fact known from outside them, answer times, a drill
+// record, the owl chosen and 150 gems, which have unlocked the cat, the
+// robot and the owl.
+const VERSION_3_RECORD = {
   at: '2025-12-31T09:00:00.000Z',
   tables: [6],
   fast: 14,
@@ -114,90 +147,105 @@ const VERSION_2_RECORD = {
   median: 2200,
 };
 
-function version2Facts(): Record<string, object> {
+function version3Facts(): Record<string, object> {
   const facts: Record<string, object> = {
-    '3x5': { level: 4, fast: 6, slow: 0, missed: 0 },
+    '3x5': { level: 4, best: 4, fast: 6, slow: 0, missed: 0 },
   };
   for (let n = 1; n <= 12; n++) {
     facts[`${Math.min(6, n)}x${Math.max(6, n)}`] = {
       level: 2,
-      fast: 2,
+      best: 3,
+      fast: 3,
       slow: 0,
-      missed: 0,
+      missed: 1,
     };
   }
   return facts;
 }
 
-const VERSION_2 = JSON.stringify({
-  version: 2,
+const VERSION_3 = JSON.stringify({
+  version: 3,
   tables: [6],
-  facts: version2Facts(),
+  facts: version3Facts(),
+  gems: 150,
+  character: 'owl',
   times: [2600, 2200],
-  records: [VERSION_2_RECORD],
+  records: [VERSION_3_RECORD],
 });
 
-test('a version 2 document is migrated with its levels kept and back-paid in gems, and a drill pays from there', async ({
+test('a version 3 document is migrated with its gems as both earned and the balance, and its characters stay unlocked with no dialog', async ({
   page,
 }) => {
   await page.goto('./');
   await page.evaluate(([key, text]) => localStorage.setItem(key, text), [
     PROGRESS_KEY,
-    VERSION_2,
+    VERSION_3,
   ] as const);
   await page.goto('./');
 
   // The migrated document is written back at launch, with no backup.
   await expect(tile(page, '6s')).toHaveAttribute('aria-pressed', 'true');
   const migrated = await storedProgress(page);
-  expect(migrated.version).toBe(3);
-  expect(migrated.tables).toEqual([6]);
-  // One fact at level 4 and twelve at level 2.
-  expect(migrated.gems).toBe(28);
-  expect(migrated.character).toBe('dragon');
-  expect(migrated.facts['3x5']).toEqual({
-    level: 4,
-    best: 4,
-    fast: 6,
-    slow: 0,
-    missed: 0,
+  expect(migrated).toEqual({
+    ...freshProgress(),
+    tables: [6],
+    facts: version3Facts(),
+    earned: 150,
+    balance: 150,
+    character: 'owl',
+    times: [2600, 2200],
+    records: [VERSION_3_RECORD],
   });
-  expect(migrated.facts['6x7']).toEqual({
-    level: 2,
-    best: 2,
-    fast: 2,
-    slow: 0,
-    missed: 0,
-  });
-  expect(migrated.times).toEqual([2600, 2200]);
-  expect(migrated.records).toEqual([VERSION_2_RECORD]);
   expect(
     await page.evaluate((key) => localStorage.getItem(key), BACKUP_KEY),
   ).toBeNull();
 
-  await openParent(page);
-  // The twelve cells of the 6s row, and the 6 column of the ten other rows.
-  await expect(page.getByRole('button', { name: /, level 2$/ })).toHaveCount(
-    22,
+  // The balance shows in the corner, and the characters the gems unlocked
+  // stay unlocked, the owl still chosen.
+  await expect(balance(page)).toHaveText('150 gems');
+  for (const name of ['Dragon', 'Cat', 'Robot', 'Owl']) {
+    await expect(pick(page, name)).toHaveAccessibleName(name);
+  }
+  await expect(pick(page, 'Owl')).toHaveAttribute('aria-pressed', 'true');
+  await expect(pick(page, 'Unicorn')).toHaveAccessibleName(
+    'Unicorn, locked, 170 gems',
   );
+
+  await openParent(page);
+  await expect(page.getByText('Gems: 150 earned, 150 to spend')).toBeVisible();
   await page.getByRole('button', { name: 'Back' }).click();
 
-  // A fast answer takes its fact to level 3 for the first time and pays a
-  // gem.
+  // A fast answer takes a fact of the 6s back to level 3, which it reached
+  // before, so it pays nothing: the migration kept every highest level.
   await practiseButton(page).click();
   const { x, y } = await factOnScreen(page);
   const factKey = `${Math.min(x, y)}x${Math.max(x, y)}`;
   await answerCard(page, 'fast');
-  const paid = await storedProgress(page);
-  expect(paid.gems).toBe(29);
-  expect(paid.facts[factKey]).toMatchObject({ level: 3, best: 3 });
+  expect(await storedProgress(page)).toMatchObject({
+    earned: 150,
+    balance: 150,
+  });
+  expect((await storedProgress(page)).facts[factKey]).toMatchObject({
+    level: 3,
+    best: 3,
+  });
+
+  // Quitting pays no band pay, and nothing unlocked is announced.
+  await advance(page);
+  await page.getByRole('button', { name: 'Quit' }).click();
+  await page.clock.runFor(DIALOG_AT);
+  await expect(unlockDialog(page)).toHaveCount(0);
+  expect(await storedProgress(page)).toMatchObject({
+    earned: 150,
+    balance: 150,
+  });
 });
 
 test('a document from a newer build is left untouched and the app asks to be closed and reopened', async ({
   page,
 }) => {
-  const newer = '{"version":4,"learner":{"tables":[6]}}';
-  const backup = '{"version":3,"tables":"old"}';
+  const newer = '{"version":5,"learner":{"tables":[6]}}';
+  const backup = '{"version":4,"tables":"old"}';
   await page.addInitScript(
     ({ entries }: { entries: [string, string][] }) => {
       for (const [key, value] of entries) localStorage.setItem(key, value);

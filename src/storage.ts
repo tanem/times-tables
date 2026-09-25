@@ -14,8 +14,8 @@ export type ProgressStore = {
 };
 
 // Reads the document once, at launch. An empty store starts fresh. A version
-// 2 document is migrated and written back as version 3 (ADR 0004). A corrupt
-// document, a version 1 document included, is copied to the backup key,
+// 3 document is migrated and written back as version 4 (ADR 0005). A corrupt
+// document, a version 1 or 2 document included, is copied to the backup key,
 // overwriting any earlier backup, and the app starts fresh. All of these
 // happen silently. A document from a newer build reads as 'newer' and
 // nothing is written: the caller must not save over it.

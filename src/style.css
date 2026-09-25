@@ -13,6 +13,8 @@
   --missed: #de5a52;
   --track: #dce2f0;
   --sparkle: #ffc93c;
+  /* The words beside a gem paid, on the feedback and the end screen. */
+  --gem-paid: #a86f00;
   /* The fact grid's five levels, red through amber to green, told apart at
      a glance. Each keeps at least 4.5:1 contrast against --ink text. */
   --level-0: #f5a9a3;
@@ -548,7 +550,7 @@ button {
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: clamp(1.5rem, 5vmin, 3rem);
-  color: #a86f00;
+  color: var(--gem-paid);
 }
 
 .feedback .gem-paid .gem {
@@ -620,6 +622,24 @@ button {
   font-size: clamp(1.25rem, 3vmin, 1.75rem);
 }
 
+/* The band pay, under the best streak, styled as the gem an answer pays on
+   the feedback. */
+.end .pay {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 0.3em;
+  font-family: var(--font-heading);
+  font-weight: 600;
+  font-size: clamp(1.25rem, 3vmin, 1.75rem);
+  color: var(--gem-paid);
+}
+
+.end .pay .gem {
+  width: 1.1em;
+  height: 1.1em;
+}
+
 /* The moment a drill faster than last time earns, between the best streak
    and the buttons: the race, then the words. The track is hidden by
    visibility and not by display, and the words keep a line's height while
@@ -644,9 +664,11 @@ button {
 
 .moment-words {
   margin: 0;
-  /* One line of the words' own size, held whether they are there or not. */
+  /* One line of the words' own size, held whether they are there or not.
+     A height rather than a least height, since the filled line box can
+     round a fraction of a pixel taller and move the buttons under it. */
   line-height: 1.2;
-  min-height: 1.2em;
+  height: 1.2em;
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: clamp(1.5rem, 4.5vmin, 2.5rem);
@@ -1113,7 +1135,8 @@ button {
   font-weight: 600;
 }
 
-.parent .week {
+.parent .week,
+.parent .gems-line {
   margin: 0;
 }
 

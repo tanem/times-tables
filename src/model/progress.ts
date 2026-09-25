@@ -1,5 +1,22 @@
 import { BONUS, fasterThanLastTime } from './bonus';
-import { isCharacter, isUnlocked, type Character } from './characters';
+import {
+  CROWN,
+  isIdOf,
+  isItemId,
+  itemOf,
+  SET,
+  type ColourId,
+  type HatId,
+  type ItemId,
+  type ThemeId,
+} from './catalogue';
+import {
+  CHARACTERS,
+  isCharacter,
+  isUnlocked,
+  type Character,
+} from './characters';
+import { BAND_PAY, bandOf } from './drill';
 import { FACTS, pool, TABLES, type Table } from './facts';
 import { grade, type Level, type Outcome } from './level';
 import { keepTime, TIME_CAP, TIMES_KEPT } from './pace';
@@ -37,9 +54,9 @@ export type DrillRecord = OutcomeCounts & {
 };
 
 // The version of the document this build reads and writes.
-const VERSION = 3;
+const VERSION = 4;
 
-// The progress document, version 3: the whole of what the app stores.
+// The progress document, version 4: the whole of what the app stores.
 // Everything beside the version belongs to the learner (ADR 0003).
 export type Progress = {
   version: typeof VERSION;
@@ -47,26 +64,70 @@ export type Progress = {
   tables: Table[];
   facts: Record<string, FactProgress>;
   // The gems paid so far: at least the sum of every fact's highest level,
-  // and more by the bonuses. The total never falls (ADR 0004).
-  gems: number;
-  // The chosen character, one that the gems have unlocked.
+  // and more by the bonuses and band pay. It never falls, and the unlocks are
+  // read from it (ADR 0004, ADR 0005).
+  earned: number;
+  // What is left of earned after the purchases so far, from 0 to earned. It
+  // is stored rather than worked out from the prices of what is owned, so
+  // that a price change moves no balance (ADR 0005).
+  balance: number;
+  // The chosen character, one that earned has unlocked.
   character: Character;
+  // The items bought or earned, without repeats. The crown is owned only
+  // with every hat of the set.
+  owned: ItemId[];
+  // The worn hat, an owned one, or null for none.
+  hat: HatId | null;
+  // Each character's chosen colour: an owned variant of that character, or
+  // null for its own.
+  colours: Record<Character, ColourId | null>;
+  // The chosen theme, an owned one, or null for the default.
+  theme: ThemeId | null;
+  // The finished drills done with each character.
+  bond: Record<Character, number>;
   // The answer times that count towards pace (ADR 0002), oldest first.
   times: number[];
   records: DrillRecord[];
 };
 
+// A value per character, from an entry for each of the six.
+function fromEntries<T>(entries: [Character, T][]): Record<Character, T> {
+  return Object.fromEntries(entries) as Record<Character, T>;
+}
+
+// Every character with the same value.
+function perCharacter<T>(value: T): Record<Character, T> {
+  return fromEntries(CHARACTERS.map((character) => [character, value]));
+}
+
 // The document for a first launch or a fresh start: no table on, nothing
-// learnt, no gems and the dragon chosen.
+// learnt, no gems, nothing owned or worn, every bond at 0 and the dragon
+// chosen.
 export function freshProgress(): Progress {
   return {
     version: VERSION,
     tables: [],
     facts: {},
-    gems: 0,
+    earned: 0,
+    balance: 0,
     character: 'dragon',
+    owned: [],
+    hat: null,
+    colours: perCharacter(null),
+    theme: null,
+    bond: perCharacter(0),
     times: [],
     records: [],
+  };
+}
+
+// The document with gems paid: earning adds to earned and the balance alike
+// (ADR 0005).
+function earn(progress: Progress, gems: number): Progress {
+  return {
+    ...progress,
+    earned: progress.earned + gems,
+    balance: progress.balance + gems,
   };
 }
 
@@ -100,9 +161,9 @@ export function knownShare(progress: Progress, table: Table): number {
 
 // The document after one outcome on a fact: its level moved and the
 // outcome's lifetime count up by one. A level the fact has not reached
-// before becomes its highest level and pays one gem; only a fast outcome
-// raises a level, so nothing else pays. The given document is left as it
-// was.
+// before becomes its highest level and pays one gem, to earned and the
+// balance; only a fast outcome raises a level, so nothing else pays. The
+// given document is left as it was.
 export function applyOutcome(
   progress: Progress,
   key: string,
@@ -117,21 +178,20 @@ export function applyOutcome(
     best: firstTime ? level : before.best,
     [outcome]: before[outcome] + 1,
   };
-  return {
-    ...progress,
-    facts: { ...progress.facts, [key]: after },
-    gems: progress.gems + (firstTime ? 1 : 0),
-  };
+  return earn(
+    { ...progress, facts: { ...progress.facts, [key]: after } },
+    firstTime ? 1 : 0,
+  );
 }
 
-// The document with the given character chosen, when the gems have unlocked
+// The document with the given character chosen, when earned has unlocked
 // it; a locked character leaves the choice as it was. The given document is
 // left as it was.
 export function chooseCharacter(
   progress: Progress,
   character: Character,
 ): Progress {
-  if (!isUnlocked(character, progress.gems)) return progress;
+  if (!isUnlocked(character, progress.earned)) return progress;
   return { ...progress, character };
 }
 
@@ -141,25 +201,31 @@ export function keepAnswerTime(progress: Progress, time: number): Progress {
   return { ...progress, times: keepTime(progress.times, time) };
 }
 
-// The document with a record appended and the bonus paid if the drill was
-// faster than last time, with the verdict it was paid on, which the end
-// screen shows (ADR 0004). The given document is left as it was.
-export function recordDrill(
-  progress: Progress,
-  record: DrillRecord,
-): { progress: Progress; faster: boolean } {
+// What recording a drill paid and why, which the end screen shows: whether
+// the drill was faster than last time, which pays the bonus (ADR 0004), and
+// the band pay (ADR 0005).
+export type Recorded = {
+  progress: Progress;
+  faster: boolean;
+  bandPay: number;
+};
+
+// The document with a record appended, the bonus paid if the drill was
+// faster than last time and band pay paid by the drill's band, with what
+// was paid. A quit drill is in the low band and pays nothing. The given
+// document is left as it was.
+export function recordDrill(progress: Progress, record: DrillRecord): Recorded {
   const faster = fasterThanLastTime(progress.records, record);
+  const bandPay = BAND_PAY[bandOf(record)];
+  const withRecord = { ...progress, records: [...progress.records, record] };
   return {
-    progress: {
-      ...progress,
-      gems: progress.gems + (faster ? BONUS : 0),
-      records: [...progress.records, record],
-    },
+    progress: earn(withRecord, (faster ? BONUS : 0) + bandPay),
     faster,
+    bandPay,
   };
 }
 
-// What a stored document reads as: a version 3 document, migrated or not;
+// What a stored document reads as: a version 4 document, migrated or not;
 // corrupt; or newer than this build knows.
 export type ProgressRead =
   | { kind: 'read'; progress: Progress; migrated: boolean }
@@ -167,13 +233,13 @@ export type ProgressRead =
   | { kind: 'newer' };
 
 // The one version there is a migration from.
-const MIGRATES_FROM = 2;
+const MIGRATES_FROM = 3;
 
-// Reads a stored document. Reading is strict: a well-formed version 3
-// document is read and a well-formed version 2 document is migrated
-// (ADR 0004). A whole-number version above 3 is a newer build's
-// document, which this build cannot judge. Anything else, a version 1
-// document included, is corrupt.
+// Reads a stored document. Reading is strict: a well-formed version 4
+// document is read and a well-formed version 3 document is migrated
+// (ADR 0005). A whole-number version above 4 is a newer build's document,
+// which this build cannot judge. Anything else, a version 1 or 2 document
+// included, is corrupt.
 export function parseProgress(text: string): ProgressRead {
   let value: unknown;
   try {
@@ -193,26 +259,102 @@ export function parseProgress(text: string): ProgressRead {
 }
 
 // Checks a parsed value against the shape and ranges of its version, and
-// rebuilds it as a version 3 document from the known fields. A version 2
-// document has no gems, character or highest levels, and is given them: each
-// fact's highest level is its level now, the gems are the sum of those and
-// the dragon is chosen.
+// rebuilds it as a version 4 document from the known fields. A version 3
+// document holds its gems in place of earned and the balance, and nothing
+// of the Shop's: both are set from its gems, and it is given a fresh
+// document's items, colours, theme and bond.
 function validateProgress(
   value: Record<string, unknown>,
   version: typeof VERSION | typeof MIGRATES_FROM,
 ): Progress | null {
-  const migrating = version === MIGRATES_FROM;
   const tables = validateTables(value.tables);
-  const facts = validateFacts(value.facts, migrating);
+  const facts = validateFacts(value.facts);
   const times = validateTimes(value.times);
   const records = validateRecords(value.records);
   if (!tables || !facts || !times || !records) return null;
   const paid = Object.values(facts).reduce((sum, fact) => sum + fact.best, 0);
-  const gems = migrating ? paid : value.gems;
-  const character = migrating ? 'dragon' : value.character;
-  if (!isCount(gems) || gems < paid) return null;
-  if (!isCharacter(character) || !isUnlocked(character, gems)) return null;
-  return { version: VERSION, tables, facts, gems, character, times, records };
+  const earned = version === MIGRATES_FROM ? value.gems : value.earned;
+  const { character } = value;
+  if (!isCount(earned) || earned < paid) return null;
+  if (!isCharacter(character) || !isUnlocked(character, earned)) return null;
+  const learner = { tables, facts, earned, character, times, records };
+  if (version === MIGRATES_FROM) {
+    return { ...freshProgress(), ...learner, balance: earned };
+  }
+  const shop = validateShop(value, earned);
+  if (!shop) return null;
+  return { version: VERSION, ...learner, ...shop };
+}
+
+// The version 4 fields of the Shop and the bond, checked against the
+// catalogue and against what is owned.
+function validateShop(
+  value: Record<string, unknown>,
+  earned: number,
+): Pick<
+  Progress,
+  'balance' | 'owned' | 'hat' | 'colours' | 'theme' | 'bond'
+> | null {
+  const { balance } = value;
+  if (!isCount(balance) || balance > earned) return null;
+  const owned = validateOwned(value.owned);
+  if (!owned) return null;
+  const hat = validateChoice(value.hat, (id) => isIdOf(id, 'hat'), owned);
+  const theme = validateChoice(value.theme, (id) => isIdOf(id, 'theme'), owned);
+  if (hat === undefined || theme === undefined) return null;
+  const colours = validatePerCharacter(
+    value.colours,
+    (colour, character): colour is ColourId | null => {
+      if (colour === null) return true;
+      if (!isIdOf(colour, 'colour') || !owned.includes(colour)) return false;
+      const item = itemOf(colour);
+      return item.kind === 'colour' && item.character === character;
+    },
+  );
+  const bond = validatePerCharacter(value.bond, isCount);
+  if (!colours || !bond) return null;
+  return { balance, owned, hat, colours, theme, bond };
+}
+
+// Owned item ids: in the catalogue, without repeats, and the crown only
+// with the whole set.
+function validateOwned(value: unknown): ItemId[] | null {
+  if (!Array.isArray(value)) return null;
+  if (!value.every(isItemId)) return null;
+  if (new Set(value).size !== value.length) return null;
+  if (value.includes(CROWN) && !SET.every((hat) => value.includes(hat))) {
+    return null;
+  }
+  return [...value];
+}
+
+// A choice among the owned items of one kind: an owned item's id, or null
+// for none of them. Undefined when the value is neither.
+function validateChoice<T extends ItemId>(
+  value: unknown,
+  ofKind: (id: unknown) => id is T,
+  owned: readonly ItemId[],
+): T | null | undefined {
+  if (value === null) return null;
+  if (ofKind(value) && owned.includes(value)) return value;
+  return undefined;
+}
+
+// A value per character: an object with a key for every character and no
+// other, each value passing the check.
+function validatePerCharacter<T>(
+  value: unknown,
+  check: (entry: unknown, character: Character) => entry is T,
+): Record<Character, T> | null {
+  if (!isObject(value)) return null;
+  if (!Object.keys(value).every(isCharacter)) return null;
+  const entries: [Character, T][] = [];
+  for (const character of CHARACTERS) {
+    const entry = value[character];
+    if (!check(entry, character)) return null;
+    entries.push([character, entry]);
+  }
+  return fromEntries(entries);
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {
@@ -261,12 +403,7 @@ function validateTimes(value: unknown): number[] | null {
   return [...value];
 }
 
-// A fact of a document being migrated has no highest level, and takes its
-// level now.
-function validateFacts(
-  value: unknown,
-  migrating: boolean,
-): Record<string, FactProgress> | null {
+function validateFacts(value: unknown): Record<string, FactProgress> | null {
   if (!isObject(value)) return null;
   const facts: Record<string, FactProgress> = {};
   for (const [key, entry] of Object.entries(value)) {
@@ -275,7 +412,7 @@ function validateFacts(
     const counts = validateCounts(entry);
     const { level } = entry;
     if (!counts || !isLevel(level)) return null;
-    const best = migrating ? level : entry.best;
+    const { best } = entry;
     if (!isLevel(best) || best < level) return null;
     facts[key] = { ...counts, level, best };
   }

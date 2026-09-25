@@ -8,6 +8,7 @@ import {
   type Pose,
   type SparkleKind,
 } from './character';
+import { renderGem } from './gem';
 
 // How each band celebrates: what the character does, and what goes with
 // it.
@@ -135,12 +136,27 @@ function renderUnlock(character: Character): {
   return { dialog, ok };
 }
 
+// The line for the band pay the drill's record paid, under the best streak
+// (ADR 0005).
+function renderBandPay(bandPay: number): HTMLElement {
+  const line = document.createElement('p');
+  line.className = 'pay';
+  line.append(
+    renderGem(),
+    `+${bandPay} ${bandPay === 1 ? 'gem' : 'gems'} for this drill`,
+  );
+  return line;
+}
+
 export type EndOptions = {
   drill: Drill;
   character: Character;
   // Whether the drill was faster than last time, which the moment shows and
   // the bonus has already been paid for (ADR 0004).
   faster: boolean;
+  // The band pay the drill's record paid, which a line shows when it is not
+  // 0 (ADR 0005).
+  bandPay: number;
   // The characters the drill's gems unlocked, in unlock order, which a
   // dialog each announces (ADR 0005).
   unlocks: readonly Character[];
@@ -149,11 +165,11 @@ export type EndOptions = {
 };
 
 // Builds the end screen: the character, a heading, the tally of fast, slow
-// and missed, the best streak, then Home and Go again. The character
-// celebrates by the drill's band, and a run up plays that is longer for a
-// higher band. A drill faster than last time runs the race 0.9 seconds into
-// the celebration, and the words, the proud character and the improvement
-// sweep follow it. Each new character is announced in a dialog with the
+// and missed, the best streak, the band pay when the band paid any, then
+// Home and Go again. The character celebrates by the drill's band, and a run
+// up plays that is longer for a higher band. A drill faster than last time
+// runs the race 0.9 seconds into the celebration, and the words, the proud
+// character and the improvement sweep follow it. Each new character is announced in a dialog with the
 // fanfare, last of all, the next one following the OK of the one before;
 // leaving by Home or Go again before then brings the dialogs forward, and
 // the leave follows the last OK, so that no unlock goes unannounced.
@@ -220,6 +236,7 @@ export function renderEnd(options: EndOptions): HTMLElement {
 
   actions.append(home, again);
   screen.append(figure, heading, tally, best, actions);
+  if (options.bandPay > 0) actions.before(renderBandPay(options.bandPay));
 
   if (options.faster) {
     screen.classList.add('faster');

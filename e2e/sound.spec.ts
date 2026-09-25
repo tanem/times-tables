@@ -163,8 +163,8 @@ test('the improvement sweep plays as the race ends and not before', async ({
 test('the unlock fanfare plays with the dialog and not before', async ({
   page,
 }) => {
-  // 168 gems and the bonus of 2 cross the unicorn's 170.
-  await finishDrillAfter(page, 15000, { gems: 168 });
+  // 166 gems, the bonus of 2 and band pay of 3 cross the unicorn's 170.
+  await finishDrillAfter(page, 15000, { earned: 166 });
   await page.clock.runFor(WORDS_AT);
 
   const afterTheSweep = await heardDuring(page, () =>
@@ -201,7 +201,7 @@ for (const [action, landing] of WAYS_OFF) {
   test(`leaving by ${action} before the dialog brings it forward with the fanfare, and nothing follows the learner off`, async ({
     page,
   }) => {
-    await finishDrillAfter(page, 15000, { gems: 168 });
+    await finishDrillAfter(page, 15000, { earned: 166 });
 
     const fanfare = await heardDuring(page, async () => {
       await page.getByRole('button', { name: action }).click();

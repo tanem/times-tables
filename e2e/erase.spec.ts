@@ -9,7 +9,7 @@ import { expect, test } from './fixtures';
 import {
   dragon,
   expectNoTableOn,
-  gemTotal,
+  balance,
   openParent,
   pick,
   progressHeading,
@@ -29,14 +29,21 @@ const OLD_DRILL: DrillRecord = {
   median: 2200,
 };
 
-// A stored document visibly not fresh: one table, a levelled fact, answer
-// times and a drill record, so an erase has something real to remove.
+// A stored document visibly not fresh: one table, a levelled fact, gems,
+// items owned and in use, bond, answer times and a drill record, so an
+// erase has something real to remove.
 const NOT_FRESH: Progress = {
-  version: 3,
+  ...freshProgress(),
   tables: [6],
   facts: { '6x7': { level: 3, best: 4, fast: 5, slow: 1, missed: 1 } },
-  gems: 26,
+  earned: 126,
+  balance: 1,
   character: 'cat',
+  owned: ['wizard-hat', 'cat-grey', 'space'],
+  hat: 'wizard-hat',
+  colours: { ...freshProgress().colours, cat: 'cat-grey' },
+  theme: 'space',
+  bond: { ...freshProgress().bond, dragon: 9, cat: 2 },
   times: [2600, 2200],
   records: [OLD_DRILL],
 };
@@ -94,7 +101,7 @@ test('holding the erase control for three seconds erases progress and returns to
   expect(dialogShown).toBe(false);
 
   // The gems and the chosen cat went with everything else.
-  await expect(gemTotal(page)).toHaveText('0 gems');
+  await expect(balance(page)).toHaveText('0 gems');
   await expect(dragon(page, 'waves')).toBeVisible();
   await expect(pick(page, 'Dragon')).toHaveAttribute('aria-pressed', 'true');
   await expect(pick(page, 'Cat')).toHaveAccessibleName('Cat, locked, 25 gems');

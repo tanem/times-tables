@@ -6,6 +6,7 @@ import {
   advance,
   animates,
   answerCard,
+  bandPay,
   character,
   confetti,
   dontKnow,
@@ -525,7 +526,7 @@ async function finishDrill(page: Page, fast: number): Promise<void> {
   ).toBeVisible();
 }
 
-test('a drill with 15 fast answers ends with confetti and a big jump', async ({
+test('a drill with 15 fast answers ends with confetti and a big jump, and pays 3 gems for its band', async ({
   page,
 }) => {
   await finishDrill(page, 15);
@@ -533,6 +534,12 @@ test('a drill with 15 fast answers ends with confetti and a big jump', async ({
   await expect(dragon(page, 'jumps high')).toBeVisible();
   await expect(confetti(page)).toBeVisible();
   await expect(sparkles(page)).toHaveCount(0);
+  await expect(bandPay(page)).toHaveText('+3 gems for this drill');
+  // Each fast answer took a fact to a new level and paid a gem.
+  expect(await storedProgress(page)).toMatchObject({
+    earned: 18,
+    balance: 18,
+  });
 
   // The confetti falls once and goes.
   await page.clock.runFor(2400);
@@ -541,7 +548,7 @@ test('a drill with 15 fast answers ends with confetti and a big jump', async ({
 });
 
 for (const fast of [14, 8]) {
-  test(`a drill with ${fast} fast answers ends with sparkles and a hop`, async ({
+  test(`a drill with ${fast} fast answers ends with sparkles and a hop, and pays 1 gem for its band`, async ({
     page,
   }) => {
     await finishDrill(page, fast);
@@ -549,6 +556,11 @@ for (const fast of [14, 8]) {
     await expect(dragon(page, 'hops')).toBeVisible();
     await expect(sparkles(page)).toBeVisible();
     await expect(confetti(page)).toHaveCount(0);
+    await expect(bandPay(page)).toHaveText('+1 gem for this drill');
+    expect(await storedProgress(page)).toMatchObject({
+      earned: fast + 1,
+      balance: fast + 1,
+    });
   });
 }
 
@@ -590,7 +602,7 @@ test('a fast answer that takes a fact to a new level shows the gem it paid, a mo
   await page.clock.runFor(1);
   await expect(gemPaid(page)).toHaveText('+1 gem');
   await expect(page.getByText('Fast!')).toBeVisible();
-  expect((await storedProgress(page)).gems).toBe(1);
+  expect(await storedProgress(page)).toMatchObject({ earned: 1, balance: 1 });
 });
 
 test('a fast answer on a fact at its highest level shows no gem, on the same layout', async ({
@@ -645,17 +657,20 @@ test('the chosen character reacts on the feedback, the end screen and the race i
   await expect(character(page, 'cat', 'shrugs')).toBeVisible();
 });
 
-test('a drill faster than last time pays a bonus of two gems', async ({
+test('a drill faster than last time pays a bonus of two gems beside its band pay', async ({
   page,
 }) => {
   await finishDrillAfter(page, 15000);
 
   // Every fact was already at level 4, so the 132 they had paid is all the
-  // drill's own answers were worth.
-  expect((await storedProgress(page)).gems).toBe(134);
+  // drill's own answers were worth. The bonus and top band pay add 5.
+  expect(await storedProgress(page)).toMatchObject({
+    earned: 137,
+    balance: 137,
+  });
 });
 
-test('a drill that was not faster than last time says nothing and pays nothing', async ({
+test('a drill that was not faster than last time says nothing and pays no bonus', async ({
   page,
 }) => {
   // The earlier drill's median matches this one's, and a tie does not pay.
@@ -664,7 +679,12 @@ test('a drill that was not faster than last time says nothing and pays nothing',
   await page.clock.runFor(WORDS_AT);
   await expect(race(page)).toHaveCount(0);
   await expect(momentWords(page)).toHaveCount(0);
-  expect((await storedProgress(page)).gems).toBe(132);
+  // Top band pay is all it earned.
+  await expect(bandPay(page)).toHaveText('+3 gems for this drill');
+  expect(await storedProgress(page)).toMatchObject({
+    earned: 135,
+    balance: 135,
+  });
 });
 
 test('a quit drill says nothing and pays nothing however fast it was', async ({
@@ -680,7 +700,11 @@ test('a quit drill says nothing and pays nothing however fast it was', async ({
   await page.clock.runFor(WORDS_AT);
   await expect(race(page)).toHaveCount(0);
   await expect(momentWords(page)).toHaveCount(0);
-  expect((await storedProgress(page)).gems).toBe(132);
+  await expect(bandPay(page)).toHaveCount(0);
+  expect(await storedProgress(page)).toMatchObject({
+    earned: 132,
+    balance: 132,
+  });
 });
 
 test('reduced motion leaves the runners where the race ends them and still says so', async ({
@@ -729,8 +753,9 @@ test('a drill whose answers unlock a character announces it in a dialog once the
 test('a drill whose bonus unlocks a character announces it after the words', async ({
   page,
 }) => {
-  // 168 gems and the bonus of 2 cross the unicorn's 170.
-  await finishDrillAfter(page, 15000, { gems: 168 });
+  // 166 gems and top band pay of 3 fall short of the unicorn's 170, and
+  // the bonus of 2 crosses it.
+  await finishDrillAfter(page, 15000, { earned: 166 });
 
   await page.clock.runFor(DIALOG_AFTER_WORDS_AT - 1);
   await expect(momentWords(page)).toContainText('Faster than last time!');
@@ -765,7 +790,7 @@ test('the dialog closes on OK and does not switch character, which the Start scr
 test('a drill that crosses no unlock total announces nothing', async ({
   page,
 }) => {
-  // 132 and the bonus of 2 fall short of the unicorn's 170.
+  // 132, the bonus of 2 and band pay of 3 fall short of the unicorn's 170.
   await finishDrillAfter(page, 15000);
 
   await page.clock.runFor(DIALOG_AFTER_WORDS_AT);
@@ -776,7 +801,7 @@ test('a character unlocked before the drill is not announced', async ({
   page,
 }) => {
   // The cat unlocked at 25 gems earlier, with no dialog to show for it,
-  // and 46 is short of the robot's 60.
+  // and 49 is short of the robot's 60.
   await finishDrillFrom(page, 26);
 
   await page.clock.runFor(DIALOG_AFTER_WORDS_AT);
@@ -789,7 +814,8 @@ test('a quit drill whose answers unlocked a character announces it too', async (
   await seedProgress(page, {
     ...freshProgress(),
     tables: [...SEEDED_TABLES],
-    gems: 20,
+    earned: 20,
+    balance: 20,
   });
   await practiseButton(page).click();
   for (let index = 0; index < 5; index++) {
@@ -807,7 +833,7 @@ test('a quit drill whose answers unlocked a character announces it too', async (
 test('leaving before the dialog brings it forward, and OK then leaves', async ({
   page,
 }) => {
-  await finishDrillAfter(page, 15000, { gems: 168 });
+  await finishDrillAfter(page, 15000, { earned: 166 });
   await page.clock.runFor(RACE_AT);
 
   await page.getByRole('button', { name: 'Go again' }).click();
@@ -831,15 +857,19 @@ test('Escape closes the dialog as OK does, and focus returns to Home', async ({
   await expect(page.getByRole('button', { name: 'Home' })).toBeFocused();
 });
 
-test('a drill with 7 fast answers ends with a warm wave', async ({ page }) => {
+test('a drill with 7 fast answers ends with a warm wave and pays nothing for its band', async ({
+  page,
+}) => {
   await finishDrill(page, 7);
 
   await expect(dragon(page, 'waves')).toBeVisible();
   await expect(sparkles(page)).toHaveCount(0);
   await expect(confetti(page)).toHaveCount(0);
+  await expect(bandPay(page)).toHaveCount(0);
+  expect(await storedProgress(page)).toMatchObject({ earned: 7, balance: 7 });
 });
 
-test('a quit drill ends with a warm wave however many answers were fast', async ({
+test('a quit drill ends with a warm wave and pays nothing for its band however many answers were fast', async ({
   page,
 }) => {
   await startDrill(page);
@@ -858,6 +888,11 @@ test('a quit drill ends with a warm wave however many answers were fast', async 
   await expect(dragon(page, 'waves')).toBeVisible();
   await expect(sparkles(page)).toHaveCount(0);
   await expect(confetti(page)).toHaveCount(0);
+  await expect(bandPay(page)).toHaveCount(0);
+  expect(await storedProgress(page)).toMatchObject({
+    earned: 15,
+    balance: 15,
+  });
 });
 
 test('the stored document holds the updated level and counts after each answer', async ({
@@ -924,7 +959,8 @@ test('a drill record holds the number of facts at level 4 as the drill ended', a
     tables: [6],
     facts,
     // Two facts at level 4 and twelve at level 3 have paid 44.
-    gems: 44,
+    earned: 44,
+    balance: 44,
   };
   await seedProgress(page, progress);
   await practiseButton(page).click();
@@ -1108,6 +1144,7 @@ for (const [orientation, width, height] of [
       page.getByRole('heading', { level: 1 }),
       page.getByText('20 Fast'),
       page.getByText('Best streak: 20'),
+      bandPay(page),
       race(page),
       momentWords(page),
       home,
@@ -1124,7 +1161,7 @@ for (const [orientation, width, height] of [
     page,
   }) => {
     await page.setViewportSize({ width, height });
-    await finishDrillAfter(page, 15000, { gems: 168 });
+    await finishDrillAfter(page, 15000, { earned: 166 });
 
     await page.clock.runFor(DIALOG_AFTER_WORDS_AT);
 

@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test';
 import { TABLES } from '../src/model/facts';
-import type { DrillRecord } from '../src/model/progress';
+import { freshProgress, type DrillRecord } from '../src/model/progress';
 import { expect, test } from './fixtures';
 import {
   advance,
@@ -9,6 +9,7 @@ import {
   openWithRecords,
   PACE_TIMES,
   practiseButton,
+  seedProgress,
   startDrill,
   startHeading,
   storedProgress,
@@ -68,6 +69,23 @@ test('For parents opens the Parent view on one tap, and Back returns to the Star
   await expect(startHeading(page)).toBeVisible();
 });
 
+test('the gems earned and the balance show on one line, with nothing of what was bought', async ({
+  page,
+}) => {
+  await seedProgress(page, {
+    ...freshProgress(),
+    earned: 150,
+    balance: 25,
+    owned: ['top-hat', 'ocean', 'cat-black'],
+    hat: 'top-hat',
+    theme: 'ocean',
+  });
+  await openParent(page);
+
+  await expect(page.getByText('Gems: 150 earned, 25 to spend')).toBeVisible();
+  await expect(page.getByText(/\b(hat|ocean|shop)\b/i)).toHaveCount(0);
+});
+
 test('a fresh document shows the empty states, an unlevelled grid and the legend', async ({
   page,
 }) => {
@@ -76,6 +94,7 @@ test('a fresh document shows the empty states, an unlevelled grid and the legend
 
   await expect(page.getByText('No practice this week')).toBeVisible();
   await expect(page.getByText('No drills yet')).toBeVisible();
+  await expect(page.getByText('Gems: 0 earned, 0 to spend')).toBeVisible();
   await expect(page.getByText(/speed run/i)).toHaveCount(0);
 
   // No trend yet: one line says when it shows, with no figures or chart.
