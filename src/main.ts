@@ -10,6 +10,7 @@ import {
   startDrill,
   type Drill,
 } from './model/drill';
+import type { ThemeId } from './model/catalogue';
 import type { Table } from './model/facts';
 import type { Outcome } from './model/level';
 import { gradeAnswer, paceOf } from './model/pace';
@@ -20,6 +21,7 @@ import {
   chooseCharacter,
   chooseColour,
   chooseHat,
+  chooseTheme,
   factLevel,
   freshProgress,
   keepAnswerTime,
@@ -27,6 +29,7 @@ import {
   knownShare,
   ownedColours,
   ownedHats,
+  ownedThemes,
   recordDrill,
 } from './model/progress';
 import { random } from './random';
@@ -37,6 +40,7 @@ import { renderNeedsUpdate } from './screens/needs-update';
 import { renderParent } from './screens/parent';
 import { renderShop } from './screens/shop';
 import { renderStart } from './screens/start';
+import { applyTheme, paletteOf } from './screens/theme';
 import { mountSound } from './sound';
 import {
   eraseProgress,
@@ -100,10 +104,26 @@ const updateSW = registerSW({
   onNeedReload: () => updater.workerTookOver(),
 });
 
+// The browser's own bar over the app, which takes the page's colour.
+const themeColour = document.querySelector('meta[name="theme-color"]');
+
+// Colours the whole app in the chosen theme, or in the default for the
+// Parent view, which no theme reaches.
+function paint(theme: ThemeId | null): void {
+  applyTheme(document.documentElement, theme);
+  themeColour?.setAttribute('content', paletteOf(theme).colours.paper);
+}
+
 // Screens are swapped by in-app state: one screen at a time, no routing.
 // reloadable marks the screens an update may reload on: the Start screen,
 // and the screen for a newer document, where the update is what is needed.
-function show(screen: HTMLElement, { reloadable = false } = {}): void {
+// themed marks the screens the chosen theme colours: every one but the
+// Parent view.
+function show(
+  screen: HTMLElement,
+  { reloadable = false, themed = true } = {},
+): void {
+  paint(themed ? progress.theme : null);
   app?.replaceChildren(screen);
   updater.screenShown(reloadable);
 }
@@ -123,6 +143,8 @@ function showStart(): void {
       hat: progress.hat,
       colours: progress.colours,
       ownedColours: (character) => ownedColours(progress, character),
+      themes: ownedThemes(progress),
+      theme: progress.theme,
       bond: progress.bond,
       onTablesChange: (tables) => {
         progress = { ...progress, tables };
@@ -139,6 +161,11 @@ function showStart(): void {
       onColourChange: (character, colour) => {
         progress = chooseColour(progress, character, colour);
         saveProgress(store, progress);
+      },
+      onThemeChange: (theme) => {
+        progress = chooseTheme(progress, theme);
+        saveProgress(store, progress);
+        paint(progress.theme);
       },
       onPractise: beginDrill,
       onShop: showShop,
@@ -158,6 +185,7 @@ function showShop(): void {
       character: progress.character,
       hat: progress.hat,
       colours: progress.colours,
+      theme: progress.theme,
       onBuy: (id) => {
         progress = buy(progress, id);
         saveProgress(store, progress);
@@ -184,6 +212,7 @@ function showParent(): void {
         showStart();
       },
     }),
+    { themed: false },
   );
 }
 

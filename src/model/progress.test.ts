@@ -8,6 +8,7 @@ import {
   chooseCharacter,
   chooseColour,
   chooseHat,
+  chooseTheme,
   factCounts,
   factLevel,
   freshProgress,
@@ -16,6 +17,7 @@ import {
   knownShare,
   ownedColours,
   ownedHats,
+  ownedThemes,
   parseProgress,
   recordDrill,
   type DrillRecord,
@@ -1275,5 +1277,48 @@ describe('chooseColour', () => {
     const after = chooseColour(owning, 'cat', 'cat-grey');
     expect(read(after)).toEqual(asRead(after));
     expect(owning.colours).toEqual(OWN_COLOURS);
+  });
+});
+
+describe('ownedThemes', () => {
+  it('lists none for a fresh document', () => {
+    expect(ownedThemes(freshProgress())).toEqual([]);
+  });
+
+  it('lists the owned themes in catalogue order, and nothing else', () => {
+    const progress: Progress = {
+      ...freshProgress(),
+      owned: ['space', 'top-hat', 'dragon-blue', 'ocean'],
+    };
+    expect(ownedThemes(progress)).toEqual(['ocean', 'space']);
+  });
+});
+
+describe('chooseTheme', () => {
+  const owning: Progress = { ...freshProgress(), owned: ['ocean', 'top-hat'] };
+
+  it('sets an owned theme', () => {
+    expect(chooseTheme(owning, 'ocean').theme).toBe('ocean');
+  });
+
+  it('goes back to the default for none', () => {
+    const ocean = chooseTheme(owning, 'ocean');
+    expect(chooseTheme(ocean, null).theme).toBeNull();
+  });
+
+  it('accepts the default with nothing owned', () => {
+    expect(chooseTheme(freshProgress(), null).theme).toBeNull();
+  });
+
+  it('leaves the choice as it was for a theme not owned', () => {
+    const ocean = chooseTheme(owning, 'ocean');
+    expect(chooseTheme(ocean, 'space')).toBe(ocean);
+    expect(chooseTheme(owning, 'space')).toBe(owning);
+  });
+
+  it('keeps the document it makes valid and leaves the given one as it was', () => {
+    const after = chooseTheme(owning, 'ocean');
+    expect(read(after)).toEqual(asRead(after));
+    expect(owning.theme).toBeNull();
   });
 });

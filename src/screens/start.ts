@@ -1,5 +1,10 @@
 import { bondLevel, bondReading, type BondLevel } from '../model/bond';
-import { itemOf, type ColourId, type HatId } from '../model/catalogue';
+import {
+  itemOf,
+  type ColourId,
+  type HatId,
+  type ThemeId,
+} from '../model/catalogue';
 import {
   CHARACTERS,
   isUnlocked,
@@ -13,6 +18,7 @@ import { renderBadge } from './badge';
 import { renderCharacter, type Pose } from './character';
 import { renderBalance } from './gem';
 import { renderHat } from './hat';
+import { renderSwatch } from './theme';
 
 export type StartOptions = {
   tables: readonly Table[];
@@ -32,6 +38,10 @@ export type StartOptions = {
   // each character's owned variants, in catalogue order.
   colours: Readonly<ChosenColours>;
   ownedColours: (character: Character) => readonly ColourId[];
+  // The owned themes, in catalogue order, and the chosen one, or null for
+  // the default.
+  themes: readonly ThemeId[];
+  theme: ThemeId | null;
   // The finished drills done with each character, which its meter and its
   // pose on the masthead are read from.
   bond: Readonly<Record<Character, number>>;
@@ -45,6 +55,9 @@ export type StartOptions = {
   // Called with the chosen character and the colour the learner tapped for
   // it, an owned variant of it, or null for its own.
   onColourChange: (character: Character, colour: ColourId | null) => void;
+  // Called with the theme the learner tapped, an owned one, or null for the
+  // default.
+  onThemeChange: (theme: ThemeId | null) => void;
   // Called with the selection when the learner taps Practise.
   onPractise: (tables: Table[]) => void;
   onShop: () => void;
@@ -205,12 +218,27 @@ function renderColourPick(
   return pick;
 }
 
+// One theme in the row of themes, or the default for null, as a swatch of
+// its colours. It is pressed when it is the chosen one.
+function renderThemePick(
+  theme: ThemeId | null,
+  onPick: () => void,
+): HTMLElement {
+  const pick = document.createElement('button');
+  pick.type = 'button';
+  pick.className = 'theme-pick';
+  pick.setAttribute('aria-label', theme ? itemOf(theme).name : 'Default');
+  pick.append(renderSwatch(theme));
+  pick.addEventListener('click', onPick);
+  return pick;
+}
+
 // Builds the Start screen. The character is at the top with the app's name,
 // in its highest open bond pose or sitting, over the meter of its bond; the
 // row of characters is under the name, and under that the row of owned hats
-// once a hat is owned beside the row of the chosen character's colours once
-// it has a variant. The Shop is in one corner and the balance in the
-// other. The tiles keep the selection and the Practise button follows it.
+// once a hat is owned, the row of the chosen character's colours once it has
+// a variant and the row of themes once a theme is owned. The Shop is in one
+// corner and the balance in the other. The tiles keep the selection and the Practise button follows it.
 // While nothing is on the screen nudges: the heading asks for a tap, the
 // tiles pulse and the character waves.
 export function renderStart(options: StartOptions): HTMLElement {
@@ -218,6 +246,7 @@ export function renderStart(options: StartOptions): HTMLElement {
   const selection = () => TABLES.filter((table) => selected.has(table));
   let character = options.character;
   let hat = options.hat;
+  let theme = options.theme;
   const colours = { ...options.colours };
 
   const screen = document.createElement('main');
@@ -246,7 +275,7 @@ export function renderStart(options: StartOptions): HTMLElement {
     picks.set(candidate, pick);
     row.append(pick);
   }
-  // The hats and the colours share a line under the characters.
+  // The hats, the colours and the themes share a line under the characters.
   const wardrobe = document.createElement('div');
   wardrobe.className = 'wardrobe';
   title.append(name, row, wardrobe);
@@ -281,6 +310,32 @@ export function renderStart(options: StartOptions): HTMLElement {
   colourRow.setAttribute('role', 'group');
   colourRow.setAttribute('aria-label', 'Your colour');
   wardrobe.append(colourRow);
+
+  // The themes row: the default, then each owned theme. It is left out until
+  // a theme is owned, since the default would be the only choice.
+  if (options.themes.length > 0) {
+    const themes = document.createElement('div');
+    themes.className = 'themes';
+    themes.setAttribute('role', 'group');
+    themes.setAttribute('aria-label', 'Your theme');
+    const themePicks = [null, ...options.themes].map((candidate) => {
+      const pick = renderThemePick(candidate, () => {
+        if (candidate === theme) return;
+        theme = candidate;
+        drawThemes();
+        options.onThemeChange(theme);
+      });
+      themes.append(pick);
+      return [candidate, pick] as const;
+    });
+    const drawThemes = () => {
+      for (const [candidate, pick] of themePicks) {
+        pick.setAttribute('aria-pressed', String(candidate === theme));
+      }
+    };
+    drawThemes();
+    wardrobe.append(themes);
+  }
   // The chosen character over the meter of its bond.
   const companion = document.createElement('div');
   companion.className = 'companion';
@@ -336,7 +391,10 @@ export function renderStart(options: StartOptions): HTMLElement {
   const drawColours = () => {
     const variants = options.ownedColours(character);
     colourRow.hidden = variants.length === 0;
-    wardrobe.hidden = colourRow.hidden && options.hats.length === 0;
+    wardrobe.hidden =
+      colourRow.hidden &&
+      options.hats.length === 0 &&
+      options.themes.length === 0;
     colourRow.replaceChildren(
       ...[null, ...variants].map((candidate) => {
         const pick = renderColourPick(character, candidate, () => {

@@ -3,22 +3,32 @@
 :root {
   --font-heading: 'Fredoka', sans-serif;
   --font-body: 'Nunito', sans-serif;
+  /* The default palette from src/screens/theme.ts, which colours the page
+     until the app sets the chosen theme's palette on the root in its place.
+     theme.test.ts keeps the two the same. */
   --paper: #fffaf0;
   --ink: #2b2d42;
   --muted: #6b7280;
   --tile: #4c6ef5;
   --go: #2f9e44;
+  --go-edge: #237a34;
   --fast: #2f9e44;
   --slow: #e39a1e;
   --missed: #de5a52;
   --track: #dce2f0;
   --sparkle: #ffc93c;
-  /* The fill of the meter under the character on the Start screen. */
   --bond: #e64980;
-  /* The words beside a gem paid, on the feedback and the end screen. */
   --gem-paid: #a86f00;
+  --surface: #ffffff;
+  --pressed: #eef1fb;
+  --chosen: #e7ecff;
+  --gem-bg: #fff3cf;
+  --on-fill: #ffffff;
+  color-scheme: light;
   /* The fact grid's five levels, red through amber to green, told apart at
-     a glance. Each keeps at least 4.5:1 contrast against --ink text. */
+     a glance. They show on the Parent view alone, which keeps the default
+     colours, so no theme has its own. Each keeps at least 4.5:1 contrast
+     against --ink text. */
   --level-0: #f5a9a3;
   --level-1: #f7c08a;
   --level-2: #f5dc7a;
@@ -77,7 +87,7 @@ button {
   gap: 8px;
   padding: 6px 14px 6px 8px;
   border-radius: 999px;
-  background: #fff3cf;
+  background: var(--gem-bg);
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: clamp(1.25rem, 3.2vmin, 1.75rem);
@@ -102,7 +112,7 @@ button {
   padding: 8px 16px;
   border: 3px solid var(--tile);
   border-radius: 999px;
-  background: white;
+  background: var(--surface);
   color: var(--tile);
   font-family: var(--font-heading);
   font-weight: 600;
@@ -178,7 +188,7 @@ button {
 
 .pick[aria-pressed='true'] {
   border-color: var(--tile);
-  background: #e7ecff;
+  background: var(--chosen);
 }
 
 .pick.locked {
@@ -190,6 +200,16 @@ button {
   opacity: 0.22;
 }
 
+/* A dark theme has the browser draw its own controls dark. */
+[data-scheme='dark'] {
+  color-scheme: dark;
+}
+
+/* On a dark theme the silhouette is drawn light, so it still shows. */
+[data-scheme='dark'] .pick.locked .character {
+  filter: brightness(0) invert(1);
+}
+
 .lock {
   position: absolute;
   left: 50%;
@@ -197,7 +217,7 @@ button {
   transform: translateX(-50%);
   padding: 1px 6px;
   border-radius: 999px;
-  background: #fff3cf;
+  background: var(--gem-bg);
   font-size: clamp(0.7rem, 1.6vmin, 0.875rem);
   font-weight: 700;
   white-space: nowrap;
@@ -212,11 +232,12 @@ button {
   gap: clamp(4px, 1vmin, 10px) clamp(16px, 4vmin, 40px);
 }
 
-/* The row of owned hats, none first, and the row of the chosen character's
-   colours, its own first, the chosen one in each ringed as the chosen
-   character is. */
+/* The row of owned hats, none first, the row of the chosen character's
+   colours, its own first, and the row of themes, the default first, the
+   chosen one in each ringed as the chosen character is. */
 .hats,
-.colours {
+.colours,
+.themes {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
@@ -229,7 +250,8 @@ button {
 }
 
 .hat-pick,
-.colour-pick {
+.colour-pick,
+.theme-pick {
   width: clamp(40px, 7vmin, 60px);
   height: clamp(40px, 7vmin, 60px);
   display: flex;
@@ -243,9 +265,10 @@ button {
 }
 
 .hat-pick[aria-pressed='true'],
-.colour-pick[aria-pressed='true'] {
+.colour-pick[aria-pressed='true'],
+.theme-pick[aria-pressed='true'] {
   border-color: var(--tile);
-  background: #e7ecff;
+  background: var(--chosen);
 }
 
 .colour-pick .character-stage {
@@ -257,6 +280,40 @@ button {
 .colour-pick .character.sit,
 .item .character.sit {
   animation: none;
+}
+
+/* A theme's picture: a corner of its page, in its own colours, with a tile
+   and a button on it. */
+.swatch-theme {
+  width: 100%;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12%;
+  border: 2px solid var(--track);
+  border-radius: 22%;
+  background: var(--paper);
+}
+
+.swatch-tile {
+  width: 42%;
+  aspect-ratio: 1;
+  border: 2px solid var(--tile);
+  border-radius: 24%;
+  background: var(--surface);
+}
+
+.swatch-go {
+  width: 62%;
+  height: 16%;
+  border-radius: 999px;
+  background: var(--go);
+}
+
+.item .swatch-theme {
+  width: 60%;
 }
 
 .hat-alone {
@@ -307,7 +364,7 @@ button {
   padding: 0 12px;
   border: 4px solid var(--tile);
   border-radius: 20px;
-  background: white;
+  background: var(--surface);
   color: var(--tile);
   font-family: var(--font-heading);
   font-weight: 600;
@@ -317,7 +374,7 @@ button {
 
 .tile[aria-pressed='true'] {
   background: var(--tile);
-  color: white;
+  color: var(--on-fill);
 }
 
 .tile.all {
@@ -351,11 +408,11 @@ button {
 }
 
 .tile[aria-pressed='true'] .meter {
-  background: rgb(255 255 255 / 35%);
+  background: color-mix(in srgb, var(--on-fill) 35%, transparent);
 }
 
 .tile[aria-pressed='true'] .meter span {
-  background: white;
+  background: var(--on-fill);
 }
 
 /* The meter of the character's bond, under it on the Start screen, as wide
@@ -390,7 +447,7 @@ button {
   border: none;
   border-radius: 999px;
   background: var(--go);
-  color: white;
+  color: var(--on-fill);
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: clamp(1.75rem, 5vmin, 3rem);
@@ -551,7 +608,7 @@ button {
 .key {
   border: none;
   border-radius: 20px;
-  background: white;
+  background: var(--surface);
   box-shadow: 0 4px 0 var(--track);
   color: var(--ink);
   font-family: var(--font-heading);
@@ -563,7 +620,7 @@ button {
 .key:active {
   transform: translateY(3px);
   box-shadow: 0 1px 0 var(--track);
-  background: #eef1fb;
+  background: var(--pressed);
 }
 
 .key.delete {
@@ -572,9 +629,10 @@ button {
 
 .key.enter {
   background: var(--go);
-  /* A darker --go, so the key's edge reads against its own face. */
-  box-shadow: 0 4px 0 #237a34;
-  color: white;
+  /* A darker --go, --go-edge, so the key's edge reads against its own
+     face. */
+  box-shadow: 0 4px 0 var(--go-edge);
+  color: var(--on-fill);
 }
 
 .key.enter:disabled {
@@ -902,14 +960,14 @@ button {
 
 .action.home {
   border: 4px solid var(--tile);
-  background: white;
+  background: var(--surface);
   color: var(--tile);
 }
 
 .action.again {
   border: none;
   background: var(--go);
-  color: white;
+  color: var(--on-fill);
 }
 
 /* The dialog for a new character: the browser's modal dialog, a card that
@@ -975,7 +1033,7 @@ button {
   border: 0;
   border-radius: 20px;
   background: var(--go);
-  color: white;
+  color: var(--on-fill);
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: clamp(1.25rem, 3.5vmin, 1.75rem);
@@ -998,6 +1056,10 @@ button {
 .shop {
   position: relative;
   min-height: 100dvh;
+  /* A theme tried on in the Shop is set on the Shop alone, which paints its
+     own page. */
+  background: var(--paper);
+  color: var(--ink);
   padding: 24px 16px 40px;
   display: flex;
   flex-direction: column;
@@ -1045,7 +1107,7 @@ button {
   padding: 8px 6px 10px;
   border: 4px solid var(--track);
   border-radius: 20px;
-  background: white;
+  background: var(--surface);
   color: var(--ink);
 }
 
@@ -1061,7 +1123,7 @@ button {
 
 .item[aria-pressed='true'] {
   border-color: var(--tile);
-  background: #e7ecff;
+  background: var(--chosen);
 }
 
 .item-name {
@@ -1113,7 +1175,7 @@ button {
   border: none;
   border-radius: 999px;
   background: var(--go);
-  color: white;
+  color: var(--on-fill);
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: clamp(1.5rem, 4vmin, 2.25rem);
@@ -1163,7 +1225,7 @@ button {
   padding: 10px 24px;
   border: 3px solid var(--tile);
   border-radius: 999px;
-  background: white;
+  background: var(--surface);
   color: var(--tile);
   font-family: var(--font-heading);
   font-weight: 600;
@@ -1203,7 +1265,7 @@ button {
   padding: 14px;
   border: 2px solid var(--track);
   border-radius: 16px;
-  background: white;
+  background: var(--surface);
 }
 
 .figure-label {
@@ -1431,7 +1493,7 @@ button {
   padding: 10px 24px;
   border: 3px solid var(--missed);
   border-radius: 999px;
-  background: white;
+  background: var(--surface);
   /* --missed on white is only about 3.7:1, short of the 4.5:1 kept
      elsewhere in this sheet, so the label reads in --ink instead; the
      border and the ring's fill stay --missed so the control still reads

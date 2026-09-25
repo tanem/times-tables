@@ -64,10 +64,10 @@ export const SEEDED_TABLES: readonly Table[] = [6, 8, 12];
 
 // A learner with the seeded tables on, 100 gems earned, which unlocks the
 // dragon and the cat, and the given balance, for the Shop's specs. What
-// they own and wear and each character's colour can be set too.
+// they own and wear, each character's colour and the theme can be set too.
 export function shopper(
   balance: number,
-  items: Partial<Pick<Progress, 'owned' | 'hat' | 'colours'>> = {},
+  items: Partial<Pick<Progress, 'owned' | 'hat' | 'colours' | 'theme'>> = {},
 ): Progress {
   return {
     ...freshProgress(),

@@ -8,6 +8,7 @@ import {
   type Item,
   type ItemId,
   type ItemKind,
+  type ThemeId,
 } from '../model/catalogue';
 import type { Character } from '../model/characters';
 import type { ChosenColours } from '../model/progress';
@@ -15,6 +16,7 @@ import { sound } from '../sound';
 import { renderCharacter, renderConfetti } from './character';
 import { gemWord, renderBalance, renderGem } from './gem';
 import { renderHat } from './hat';
+import { applyTheme, renderSwatch } from './theme';
 
 // The kinds of item the Shop sells so far, in catalogue order, with the
 // heading of each. The rest of the catalogue goes on sale as the app gains
@@ -22,6 +24,7 @@ import { renderHat } from './hat';
 const ON_SALE: readonly { kind: ItemKind; heading: string }[] = [
   { kind: 'hat', heading: 'Hats' },
   { kind: 'colour', heading: 'Colours' },
+  { kind: 'theme', heading: 'Themes' },
 ];
 
 // What the line under the items says with nothing chosen yet.
@@ -41,6 +44,9 @@ export type ShopOptions = {
   character: Character;
   hat: HatId | null;
   colours: Readonly<ChosenColours>;
+  // The chosen theme, or null for the default, which the Shop is in until
+  // a theme is chosen there.
+  theme: ThemeId | null;
   // Buys the item and hands back the balance and the owned items after,
   // which are as they were when the purchase could not be made.
   onBuy: (id: ItemId) => Bought;
@@ -52,9 +58,11 @@ function gems(count: number): string {
   return `${count} ${gemWord(count)}`;
 }
 
-// An item's name inside a sentence: "the top hat".
+// An item's name inside a sentence: "the top hat", or for a theme "the
+// space theme".
 function named(item: Item): string {
-  return item.name.toLowerCase();
+  const name = item.name.toLowerCase();
+  return item.kind === 'theme' ? `${name} theme` : name;
 }
 
 // What an item's button says under the item's name, and after it in the
@@ -74,10 +82,11 @@ function buttonName(item: Item, owned: boolean): string {
 }
 
 // An item's picture on its button, hidden from a screen reader since the
-// button's name says what it is: a hat on its own, or a colour variant's
-// character sitting in that colour.
+// button's name says what it is: a hat on its own, a colour variant's
+// character sitting in that colour, or a swatch of a theme's colours.
 function renderPicture(item: Entry): Element[] {
   if (item.kind === 'hat') return [renderHat(item.id)];
+  if (item.kind === 'theme') return [renderSwatch(item.id)];
   if (item.kind === 'colour') {
     const { character, id: colour } = item;
     const figure = renderCharacter({ character, pose: 'sit', colour });
@@ -90,8 +99,9 @@ function renderPicture(item: Entry): Element[] {
 // Builds the Shop: the balance in the corner, the chosen character, then the
 // items of each kind on sale in catalogue order, each with its price or
 // marked as owned, and under them the line for the chosen item. A tap
-// chooses an item: a hat is tried on the character, and a colour variant
-// shows its own character in that colour, in the worn hat. Only the Buy
+// chooses an item: a hat is tried on the character, a colour variant shows
+// its own character in that colour, in the worn hat, and a theme colours the
+// Shop until another item is chosen or the Shop is left. Only the Buy
 // button on that line buys, and it is disabled while the balance is short.
 // A purchase stays on the Shop. The one that completes the set earns the
 // crown too, and the Shop celebrates it with the crown on the character.
@@ -102,6 +112,7 @@ export function renderShop(options: ShopOptions): HTMLElement {
 
   const screen = document.createElement('main');
   screen.className = 'shop';
+  applyTheme(screen, options.theme);
 
   const top = document.createElement('header');
   top.className = 'shop-top';
@@ -161,6 +172,7 @@ export function renderShop(options: ShopOptions): HTMLElement {
         chosen = item.id;
         update();
         drawCharacter();
+        applyTheme(screen, item.kind === 'theme' ? item.id : options.theme);
       });
       buttons.set(item.id, button);
       items.append(button);
