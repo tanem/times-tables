@@ -9,6 +9,7 @@ import {
   answerCard,
   bondMeter,
   character,
+  dragon,
   pick,
   practiseButton,
   seedProgress,
@@ -107,7 +108,7 @@ const EARLIER_ANIMATIONS = [
 // The animation the character on the masthead plays, by the pose it is
 // named for.
 async function animationOf(page: Page, doing: string): Promise<string> {
-  return character(page, 'dragon', doing).evaluate(
+  return dragon(page, doing).evaluate(
     (el) => getComputedStyle(el).animationName,
   );
 }

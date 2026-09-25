@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BOND_AT, bondLevel, bondMeter } from './bond';
+import { BOND_AT, bondLevel, bondReading } from './bond';
 
 describe('the bond thresholds', () => {
   it('open a pose at 10, 25 and 50 finished drills', () => {
@@ -27,18 +27,35 @@ describe('bondLevel', () => {
   });
 });
 
-describe('bondMeter', () => {
+describe('bondReading', () => {
   it('spans the drills from the last threshold passed to the next', () => {
-    expect(bondMeter(0)).toEqual({ from: 0, to: 10, share: 0 });
-    expect(bondMeter(4)).toEqual({ from: 0, to: 10, share: 0.4 });
-    expect(bondMeter(10)).toEqual({ from: 10, to: 25, share: 0 });
-    expect(bondMeter(16)).toEqual({ from: 10, to: 25, share: 0.4 });
-    expect(bondMeter(25)).toEqual({ from: 25, to: 50, share: 0 });
-    expect(bondMeter(35)).toEqual({ from: 25, to: 50, share: 0.4 });
+    for (const [count, from, to, share] of [
+      [0, 0, 10, 0],
+      [4, 0, 10, 0.4],
+      [10, 10, 25, 0],
+      [16, 10, 25, 0.4],
+      [25, 25, 50, 0],
+      [35, 25, 50, 0.4],
+    ] as const) {
+      expect(bondReading(count)).toEqual({
+        from,
+        to,
+        now: count,
+        share,
+        full: false,
+      });
+    }
   });
 
-  it('is full at 50 and beyond', () => {
-    expect(bondMeter(50)).toEqual({ from: 25, to: 50, share: 1 });
-    expect(bondMeter(80)).toEqual({ from: 25, to: 50, share: 1 });
+  it('is full at 50 and beyond, the drills it shows held at 50', () => {
+    for (const count of [50, 80]) {
+      expect(bondReading(count)).toEqual({
+        from: 25,
+        to: 50,
+        now: 50,
+        share: 1,
+        full: true,
+      });
+    }
   });
 });

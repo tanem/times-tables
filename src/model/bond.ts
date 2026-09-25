@@ -11,17 +11,27 @@ export function bondLevel(count: number): BondLevel {
   return BOND_AT.filter((at) => count >= at).length as BondLevel;
 }
 
-// What the meter under a character shows: the stretch of drills from the
-// last threshold passed to the next, and the share of it done, from 0 to 1.
-// Past the last threshold the meter stays on the last stretch, full.
-export type BondMeter = { from: number; to: number; share: number };
+// What the meter under a character reads: the stretch of drills from the
+// last threshold passed to the next, the drills it shows within that
+// stretch, the share of it done, from 0 to 1, and whether every bond pose is
+// open. Past the last threshold the meter stays on the last stretch, full.
+export type BondReading = {
+  from: number;
+  to: number;
+  now: number;
+  share: number;
+  full: boolean;
+};
 
-export function bondMeter(count: number): BondMeter {
+export function bondReading(count: number): BondReading {
   let from = 0;
   for (const to of BOND_AT) {
-    if (count < to) return { from, to, share: (count - from) / (to - from) };
+    if (count < to) {
+      const share = (count - from) / (to - from);
+      return { from, to, now: count, share, full: false };
+    }
     from = to;
   }
   const [, second, last] = BOND_AT;
-  return { from: second, to: last, share: 1 };
+  return { from: second, to: last, now: last, share: 1, full: true };
 }

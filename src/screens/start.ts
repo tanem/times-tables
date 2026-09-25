@@ -1,4 +1,4 @@
-import { bondLevel, bondMeter, type BondLevel } from '../model/bond';
+import { bondLevel, bondReading, type BondLevel } from '../model/bond';
 import { itemOf, type HatId } from '../model/catalogue';
 import {
   CHARACTERS,
@@ -70,12 +70,10 @@ function renderTile(name: string): HTMLButtonElement {
   return tile;
 }
 
-// How well a table is known: a bar filled to the share, with no numbers. It
-// is left out of the tile's name.
+// A bar filled to the share, from 0 to 1.
 function renderMeter(share: number): HTMLElement {
   const meter = document.createElement('span');
   meter.className = 'meter';
-  meter.setAttribute('aria-hidden', 'true');
   const fill = document.createElement('span');
   fill.style.width = `${share * 100}%`;
   meter.append(fill);
@@ -95,24 +93,19 @@ const BOND_POSES: Readonly<Record<BondLevel, Pose>> = {
 // drills from the last threshold passed to the next, full once every pose
 // is open. Its name says whose bond it is and its reading the drills done.
 function renderBondMeter(character: Character, count: number): HTMLElement {
-  const { from, to, share } = bondMeter(count);
-  const meter = document.createElement('span');
-  meter.className = 'meter bond-meter';
+  const { from, to, now, share, full } = bondReading(count);
+  const meter = renderMeter(share);
+  meter.classList.add('bond-meter');
   meter.setAttribute('role', 'meter');
   meter.setAttribute('aria-label', `Bond with the ${character}`);
   meter.setAttribute('aria-valuemin', String(from));
   meter.setAttribute('aria-valuemax', String(to));
-  meter.setAttribute('aria-valuenow', String(Math.min(count, to)));
+  meter.setAttribute('aria-valuenow', String(now));
   const drills = `${count} ${count === 1 ? 'drill' : 'drills'}`;
   meter.setAttribute(
     'aria-valuetext',
-    share === 1
-      ? `${drills}, every pose open`
-      : `${drills}, next pose at ${to}`,
+    full ? `${drills}, every pose open` : `${drills}, next pose at ${to}`,
   );
-  const fill = document.createElement('span');
-  fill.style.width = `${share * 100}%`;
-  meter.append(fill);
   return meter;
 }
 
@@ -183,11 +176,10 @@ function renderHatPick(hat: HatId | null, onPick: () => void): HTMLElement {
   return pick;
 }
 
-// Builds the Start screen. The character sits with the app's name at the
-// top, in its highest open bond pose over the meter of its bond, the row of
-// characters under the name, the row of owned hats under
-// that once a hat is owned, the Shop in one corner and the balance in the
-// other. The tiles keep the selection and the Practise button follows it.
+// Builds the Start screen. The character is at the top with the app's name,
+// in its highest open bond pose or sitting, over the meter of its bond; the
+// row of characters is under the name, the row of owned hats under that once
+// a hat is owned, the Shop in one corner and the balance in the other. The tiles keep the selection and the Practise button follows it.
 // While nothing is on the screen nudges: the heading asks for a tap, the
 // tiles pulse and the character waves.
 export function renderStart(options: StartOptions): HTMLElement {
@@ -339,7 +331,11 @@ export function renderStart(options: StartOptions): HTMLElement {
 
   for (const table of TABLES) {
     const tile = renderTile(`${table}s`);
-    tile.append(renderMeter(options.knownShare(table)));
+    // How well the table is known, with no numbers: the bar is left out of
+    // the tile's name.
+    const known = renderMeter(options.knownShare(table));
+    known.setAttribute('aria-hidden', 'true');
+    tile.append(known);
     // A badge sits in the tile's top right corner, and the tile's name
     // says so.
     if (options.badges.includes(table)) {

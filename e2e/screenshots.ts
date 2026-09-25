@@ -106,7 +106,7 @@ const TRIED_ON = 'Top hat';
 // The finished drills done with each character: the first few with the
 // dragon, and the rest with the owl once it unlocked, enough for its first
 // bond pose. Together they are the finished drills of the records.
-const BOND = { dragon: 2, owl: 11 };
+const BOND = { dragon: 4, owl: 11 };
 
 // The table whose every fact has been at level 4, so that its tile and its
 // grid row show a badge, though some of its facts have slipped since.
