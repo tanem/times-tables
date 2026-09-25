@@ -313,22 +313,25 @@ export type GridRow = {
 // row shows it.
 export function gridRows(progress: Progress): GridRow[] {
   const badged = badges(progress);
-  return TABLES.map((table) => ({
-    label: `${table}s`,
-    badge: badged.includes(table),
-    ariaLabel: badged.includes(table) ? `${table}s, badge` : `${table}s`,
-    cells: GRID_COLUMNS.map((n) => {
-      const key = factKey(table, n);
-      const level = factLevel(progress, key);
-      return {
-        label: `${table} × ${n}`,
-        product: table * n,
-        level,
-        counts: factCounts(progress, key),
-        ariaLabel: `${table} × ${n}, level ${level}`,
-      };
-    }),
-  }));
+  return TABLES.map((table) => {
+    const badge = badged.includes(table);
+    return {
+      label: `${table}s`,
+      badge,
+      ariaLabel: badge ? `${table}s, badge` : `${table}s`,
+      cells: GRID_COLUMNS.map((n) => {
+        const key = factKey(table, n);
+        const level = factLevel(progress, key);
+        return {
+          label: `${table} × ${n}`,
+          product: table * n,
+          level,
+          counts: factCounts(progress, key),
+          ariaLabel: `${table} × ${n}, level ${level}`,
+        };
+      }),
+    };
+  });
 }
 
 // A cell's lifetime counts, such as "6 × 7: fast 12, slow 3, missed 2".

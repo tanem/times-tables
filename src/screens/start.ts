@@ -6,6 +6,7 @@ import {
 } from '../model/characters';
 import { DRILL_LENGTH } from '../model/drill';
 import { TABLES, tablesList, type Table } from '../model/facts';
+import { renderBadge } from './badge';
 import { renderCharacter } from './character';
 import { renderGem } from './gem';
 
@@ -67,16 +68,6 @@ function renderMeter(share: number): HTMLElement {
   fill.style.width = `${share * 100}%`;
   meter.append(fill);
   return meter;
-}
-
-// A badge, in the top right corner of its table's tile. The tile's name
-// says so, so the mark itself is not read out.
-function renderBadge(): HTMLElement {
-  const badge = document.createElement('span');
-  badge.className = 'badge';
-  badge.setAttribute('aria-hidden', 'true');
-  badge.textContent = '🏅';
-  return badge;
 }
 
 // The balance, in the top right corner. The gem is a picture and the words
@@ -249,6 +240,8 @@ export function renderStart(options: StartOptions): HTMLElement {
   for (const table of TABLES) {
     const tile = renderTile(`${table}s`);
     tile.append(renderMeter(options.knownShare(table)));
+    // A badge sits in the tile's top right corner, and the tile's name
+    // says so.
     if (options.badges.includes(table)) {
       tile.setAttribute('aria-label', `${table}s, badge`);
       tile.append(renderBadge());

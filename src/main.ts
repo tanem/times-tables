@@ -147,14 +147,14 @@ function showParent(): void {
   );
 }
 
-// The document as the drill began. Recording the drill pays the badges and
-// announces the unlocks between it and the document at the end, so a badge
-// or character a migration or an earlier drill brought is never paid or
-// announced again (ADR 0005).
-let atStart = progress;
+// The document as the drill began. Recording the drill reads the badges and
+// the unlocks between it and the document at the end, so a badge or
+// character a migration or an earlier drill brought is never announced
+// (ADR 0005).
+let started = progress;
 
 function beginDrill(tables: Table[]): void {
-  atStart = progress;
+  started = progress;
   showCard(startDrill(tables, levelOf, random), true);
 }
 
@@ -207,9 +207,10 @@ function showFeedback(drill: Drill, outcome: Outcome, gem: boolean): void {
 }
 
 // The drill record is written when the drill ends or is quit. Recording it
-// pays the bonus for a drill faster than last time (ADR 0004), band pay for
-// the drill's band and badge pay for each table it completed (ADR 0005),
-// and hands back what it paid and unlocked, which the end screen shows.
+// pays the bonus for a drill faster than last time (ADR 0004) and band pay
+// for the drill's band (ADR 0005), and hands back what it paid, the badges
+// the drill's answers earned and the characters it unlocked, which the end
+// screen shows.
 function endDrill(drill: Drill): void {
   const record = drillRecord(
     drill,
@@ -217,7 +218,7 @@ function endDrill(drill: Drill): void {
     knownCount(progress),
     paceOf(progress.times),
   );
-  const recorded = recordDrill(progress, record, atStart);
+  const recorded = recordDrill(progress, record, started);
   progress = recorded.progress;
   saveProgress(store, progress);
   show(
@@ -226,7 +227,7 @@ function endDrill(drill: Drill): void {
       character: progress.character,
       faster: recorded.faster,
       bandPay: recorded.bandPay,
-      badges: recorded.badges,
+      newBadges: recorded.newBadges,
       unlocks: recorded.unlocks,
       onHome: showStart,
       onAgain: () => beginDrill(drill.tables),

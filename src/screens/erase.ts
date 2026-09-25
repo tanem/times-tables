@@ -14,9 +14,9 @@ const HOLD = 3000;
 const STALL = 500;
 
 // What the note under the control says: how to erase, and everything that
-// goes, bought items and badges included.
+// goes, badges and owned items included.
 const ERASE_NOTE =
-  'Hold for three seconds to erase every table, fact, drill, gem, badge and bought item.';
+  'Hold for three seconds to erase every table, fact, drill, gem, badge and owned item.';
 
 // The erase ring's radius and the stroke length it takes to go all the way
 // round, in the SVG's own units.

@@ -156,9 +156,9 @@ export type EndOptions = {
   // The band pay the drill's record paid, which a line shows when it is not
   // 0 (ADR 0005).
   bandPay: number;
-  // The tables whose badges the drill earned, in table order, which a line
-  // each shows (ADR 0005).
-  badges: readonly Table[];
+  // The tables whose badges the drill's answers earned and paid for, in
+  // table order, which a line each shows (ADR 0005).
+  newBadges: readonly Table[];
   // The characters the drill's gems unlocked, in unlock order, which a
   // dialog each announces (ADR 0005).
   unlocks: readonly Character[];
@@ -168,10 +168,11 @@ export type EndOptions = {
 
 // Builds the end screen: the character, a heading, the tally of fast, slow
 // and missed, the best streak, the band pay when the band paid any, a line
-// per badge earned, then Home and Go again. The character celebrates by the drill's band, and a run
-// up plays that is longer for a higher band. A drill faster than last time
-// runs the race 0.9 seconds into the celebration, and the words, the proud
-// character and the improvement sweep follow it. Each new character is announced in a dialog with the
+// per badge earned, then Home and Go again. The character celebrates by the
+// drill's band, and a run up plays that is longer for a higher band. A
+// drill faster than last time runs the race 0.9 seconds into the
+// celebration, and the words, the proud character and the improvement
+// sweep follow it. Each new character is announced in a dialog with the
 // fanfare, last of all, the next one following the OK of the one before;
 // leaving by Home or Go again before then brings the dialogs forward, and
 // the leave follows the last OK, so that no unlock goes unannounced.
@@ -241,7 +242,7 @@ export function renderEnd(options: EndOptions): HTMLElement {
   if (options.bandPay > 0) {
     actions.before(renderPay(options.bandPay, 'for this drill'));
   }
-  for (const table of options.badges) {
+  for (const table of options.newBadges) {
     actions.before(renderPay(BADGE_PAY, `for the ${table}s badge`));
   }
 

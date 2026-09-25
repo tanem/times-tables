@@ -77,12 +77,12 @@ async function storedBackup(page: Page): Promise<string | null> {
   return page.evaluate((key) => localStorage.getItem(key), BACKUP_KEY);
 }
 
-test('the note under the erase control says to hold it and names badges and bought items among what goes', async ({
+test('the note under the erase control says to hold it and names badges and owned items among what goes', async ({
   page,
 }) => {
   await openNotFreshOnParent(page);
   await expect(eraseButton(page)).toHaveAccessibleDescription(
-    'Hold for three seconds to erase every table, fact, drill, gem, badge and bought item.',
+    'Hold for three seconds to erase every table, fact, drill, gem, badge and owned item.',
   );
 });
 

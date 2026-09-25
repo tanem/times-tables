@@ -935,8 +935,8 @@ describe('badges', () => {
   });
 });
 
-// A finished drill in the low band that was not faster, so that it pays
-// nothing but its badges.
+// A finished drill in the low band that was not faster, so that recording
+// it pays nothing.
 const plain: DrillRecord = {
   at: '2026-01-03T09:00:00.000Z',
   tables: [7],
@@ -949,39 +949,85 @@ const plain: DrillRecord = {
   median: 19999,
 };
 
-describe('recordDrill paying badges', () => {
-  it('pays 10 gems to earned and the balance for a table the drill completed', () => {
-    const ended = withTablesDone(valid, [7]);
-    const recorded = recordDrill(ended, plain, valid);
-    expect(recorded.badges).toEqual([7]);
-    expect(recorded.progress).toMatchObject({
-      earned: ended.earned + 10,
-      balance: ended.balance + 10,
+// The document with every fact of the given tables at level 4 but the one
+// named, which is at level 3 and has never been higher, so that a fast
+// answer on it completes them.
+function shortOf(
+  progress: Progress,
+  tables: readonly Table[],
+  key: string,
+): Progress {
+  const done = withTablesDone(progress, tables);
+  return {
+    ...done,
+    facts: {
+      ...done.facts,
+      [key]: { level: 3, best: 3, fast: 3, slow: 0, missed: 0 },
+    },
+    earned: done.earned - 1,
+    balance: done.balance - 1,
+  };
+}
+
+describe('applyOutcome paying badges', () => {
+  it('pays 10 gems to earned and the balance, with the fact’s gem, for the table the answer completes', () => {
+    const before = shortOf(valid, [7], '7x8');
+    const after = applyOutcome(before, '7x8', 'fast');
+    expect(badges(after)).toEqual([7]);
+    expect(after).toMatchObject({
+      earned: before.earned + 11,
+      balance: before.balance + 11,
     });
   });
 
-  it('pays 20 for a drill that completes two tables at once', () => {
-    const ended = withTablesDone(valid, [7, 9]);
+  it('pays 20 for an answer that completes two tables at once', () => {
+    // 7 x 9 is in both the 7s and the 9s.
+    const before = shortOf(valid, [7, 9], '7x9');
+    const after = applyOutcome(before, '7x9', 'fast');
+    expect(badges(after)).toEqual([7, 9]);
+    expect(after.earned).toBe(before.earned + 21);
+  });
+
+  it('pays nothing more for a table that already has its badge', () => {
+    const before = withTablesDone(valid, [7], 3);
+    const after = applyOutcome(before, '7x8', 'fast');
+    expect(after.earned).toBe(before.earned);
+  });
+
+  it('keeps the document it makes valid', () => {
+    const after = applyOutcome(shortOf(valid, [7], '7x8'), '7x8', 'fast');
+    expect(read(after)).toEqual(asRead(after));
+  });
+});
+
+describe('recordDrill reporting badges', () => {
+  it('lists the tables badged since the drill began and pays nothing more for them', () => {
+    const ended = withTablesDone(valid, [7]);
     const recorded = recordDrill(ended, plain, valid);
-    expect(recorded.badges).toEqual([7, 9]);
-    expect(recorded.progress.earned).toBe(ended.earned + 20);
+    expect(recorded.newBadges).toEqual([7]);
+    expect(recorded.progress).toMatchObject({
+      earned: ended.earned,
+      balance: ended.balance,
+    });
   });
 
-  it('pays nothing for a table already complete as the drill began', () => {
+  it('lists both tables of a drill that completed two at once', () => {
+    const ended = withTablesDone(valid, [7, 9]);
+    expect(recordDrill(ended, plain, valid).newBadges).toEqual([7, 9]);
+  });
+
+  it('lists no table already complete as the drill began', () => {
     const started = withTablesDone(valid, [7]);
-    const recorded = recordDrill(started, plain, started);
-    expect(recorded.badges).toEqual([]);
-    expect(recorded.progress.earned).toBe(started.earned);
+    expect(recordDrill(started, plain, started).newBadges).toEqual([]);
   });
 
-  it('pays a quit drill for the table it completed', () => {
+  it('lists the table a quit drill completed', () => {
     const ended = withTablesDone(valid, [7]);
     const recorded = recordDrill(ended, { ...plain, quit: true }, valid);
-    expect(recorded.badges).toEqual([7]);
-    expect(recorded.progress.earned).toBe(ended.earned + 10);
+    expect(recorded.newBadges).toEqual([7]);
   });
 
-  it('does not pay a migrated document for a table its levels already complete', () => {
+  it('does not list or pay a table a migrated document’s levels already complete', () => {
     // The 7s' facts pay 44 more than the version 3 document's own, which
     // already hold 6 x 7 at a highest level of 4.
     const { facts } = withTablesDone(valid, [7]);
@@ -991,23 +1037,18 @@ describe('recordDrill paying badges', () => {
     expect(badges(progress)).toEqual([7]);
     expect(progress).toMatchObject({ earned: 71, balance: 71 });
     const recorded = recordDrill(progress, plain, progress);
-    expect(recorded.badges).toEqual([]);
+    expect(recorded.newBadges).toEqual([]);
     expect(recorded.progress.earned).toBe(71);
-  });
-
-  it('keeps the document it makes valid', () => {
-    const { progress } = recordDrill(withTablesDone(valid, [7]), plain, valid);
-    expect(read(progress)).toEqual(asRead(progress));
   });
 });
 
 describe('recordDrill announcing unlocks', () => {
   it('lists every character earned crossed since the drill began, in unlock order', () => {
     const started = { ...freshProgress(), earned: 24, balance: 24 };
-    // 24, 48 from the 2s' facts and 10 for their badge: 82.
+    // 24, and 48 from the 2s' facts: 72.
     const ended = withTablesDone(started, [2]);
     const recorded = recordDrill(ended, { ...plain, tables: [2] }, started);
-    expect(recorded.progress.earned).toBe(82);
+    expect(recorded.progress.earned).toBe(72);
     expect(recorded.unlocks).toEqual(['cat', 'robot']);
   });
 
