@@ -10,7 +10,7 @@ import {
   startDrill,
   type Drill,
 } from './model/drill';
-import { newUnlock } from './model/characters';
+import { newUnlocks } from './model/characters';
 import type { Table } from './model/facts';
 import type { Outcome } from './model/level';
 import { gradeAnswer, paceOf } from './model/pace';
@@ -145,8 +145,8 @@ function showParent(): void {
   );
 }
 
-// The gem total as the drill began. The end screen announces the character
-// unlocked between it and the total at the end (ADR 0004), so a character
+// The gem total as the drill began. The end screen announces the characters
+// unlocked between it and the total at the end (ADR 0005), so a character
 // unlocked at the migration or between drills is never announced.
 let gemsAtStart = 0;
 
@@ -221,7 +221,7 @@ function endDrill(drill: Drill): void {
       drill,
       character: progress.character,
       faster: recorded.faster,
-      unlock: newUnlock(gemsAtStart, progress.gems),
+      unlocks: newUnlocks(gemsAtStart, progress.gems),
       onHome: showStart,
       onAgain: () => beginDrill(drill.tables),
     }),

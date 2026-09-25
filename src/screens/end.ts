@@ -141,9 +141,9 @@ export type EndOptions = {
   // Whether the drill was faster than last time, which the moment shows and
   // the bonus has already been paid for (ADR 0004).
   faster: boolean;
-  // The character the drill's gems unlocked, if any, which the dialog
-  // announces (ADR 0004).
-  unlock: Character | null;
+  // The characters the drill's gems unlocked, in unlock order, which a
+  // dialog each announces (ADR 0005).
+  unlocks: readonly Character[];
   onHome: () => void;
   onAgain: () => void;
 };
@@ -153,10 +153,10 @@ export type EndOptions = {
 // celebrates by the drill's band, and a run up plays that is longer for a
 // higher band. A drill faster than last time runs the race 0.9 seconds into
 // the celebration, and the words, the proud character and the improvement
-// sweep follow it. A new character is announced in a dialog with the
-// fanfare, last of all; leaving by Home or Go again before then brings the
-// dialog forward, and the leave follows OK, so that no unlock goes
-// unannounced.
+// sweep follow it. Each new character is announced in a dialog with the
+// fanfare, last of all, the next one following the OK of the one before;
+// leaving by Home or Go again before then brings the dialogs forward, and
+// the leave follows the last OK, so that no unlock goes unannounced.
 export function renderEnd(options: EndOptions): HTMLElement {
   const { drill, character } = options;
 
@@ -196,8 +196,8 @@ export function renderEnd(options: EndOptions): HTMLElement {
   actions.className = 'actions';
 
   // Leaving the screen takes the moment's timers with it, so that nothing of
-  // it runs or sounds over the screen that follows. A dialog still to come
-  // shows instead, and the leave follows its OK.
+  // it runs or sounds over the screen that follows. Dialogs still to come
+  // show instead, and the leave follows the last one's OK.
   const pending: (() => void)[] = [];
   let announce: ((onClose: () => void) => void) | null = null;
   const leave = (go: () => void) => () => {
@@ -238,21 +238,30 @@ export function renderEnd(options: EndOptions): HTMLElement {
     );
   }
 
-  if (options.unlock) {
-    const { dialog, ok } = renderUnlock(options.unlock);
-    // Once closed by OK or Escape the dialog is taken away, and what follows
-    // is the leave that brought it forward, or focus back on Home, which is
-    // where the dialog said to go.
-    announce = (onClose) => {
-      announce = null;
+  if (options.unlocks.length > 0) {
+    // Once closed by OK or Escape a dialog is taken away and the next
+    // character's shows. After the last, what follows is the leave that
+    // brought the dialogs forward, or focus back on Home, which is where
+    // they said to go.
+    const showFrom = (index: number, onClose: () => void): void => {
+      const character = options.unlocks[index];
+      if (!character) {
+        onClose();
+        return;
+      }
+      const { dialog, ok } = renderUnlock(character);
       dialog.addEventListener('close', () => {
         dialog.remove();
-        onClose();
+        showFrom(index + 1, onClose);
       });
       screen.append(dialog);
       dialog.showModal();
       ok.focus();
       sound.unlock();
+    };
+    announce = (onClose) => {
+      announce = null;
+      showFrom(0, onClose);
     };
     const at = options.faster
       ? RACE_AT + RACE_RUN + DIALOG_AFTER_WORDS
