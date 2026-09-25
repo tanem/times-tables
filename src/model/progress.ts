@@ -1,5 +1,6 @@
 import { BONUS, fasterThanLastTime } from './bonus';
 import {
+  CATALOGUE,
   CROWN,
   isIdOf,
   isItemId,
@@ -209,6 +210,37 @@ export function chooseCharacter(
 ): Progress {
   if (!isUnlocked(character, progress.earned)) return progress;
   return { ...progress, character };
+}
+
+// The document with an item bought: its price off the balance and its id
+// added to what is owned. Earned is left alone, so nothing unlocked is lost
+// (ADR 0005). Owning the sixth hat of the set adds the crown in the same
+// step. A balance short of the price, an item owned already and the crown,
+// which has no price, leave the document as it was. The given document is
+// left as it was.
+export function buy(progress: Progress, id: ItemId): Progress {
+  const { price } = itemOf(id);
+  if (price === null || price > progress.balance) return progress;
+  if (progress.owned.includes(id)) return progress;
+  const owned = [...progress.owned, id];
+  const setDone = SET.every((hat) => owned.includes(hat));
+  if (setDone && !owned.includes(CROWN)) owned.push(CROWN);
+  return { ...progress, balance: progress.balance - price, owned };
+}
+
+// The owned hats, in catalogue order, which puts the crown last.
+export function ownedHats(progress: Progress): HatId[] {
+  return CATALOGUE.flatMap((item) =>
+    item.kind === 'hat' && progress.owned.includes(item.id) ? [item.id] : [],
+  );
+}
+
+// The document with the given hat worn, when it is owned, or with none worn
+// for null; a hat not owned leaves the choice as it was. The given document
+// is left as it was.
+export function chooseHat(progress: Progress, hat: HatId | null): Progress {
+  if (hat !== null && !progress.owned.includes(hat)) return progress;
+  return { ...progress, hat };
 }
 
 // The document with one more answer time kept towards pace (ADR 0002). Only

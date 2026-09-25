@@ -1,5 +1,7 @@
+import type { HatId } from '../model/catalogue';
 import type { Character } from '../model/characters';
 import { schedule } from '../time';
+import { hatArt, wearing } from './hat';
 
 // What the character is doing. Each pose is a CSS animation that plays once,
 // except sit, which bobs for as long as it is on screen, beckon, which waves
@@ -36,7 +38,8 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 // back to front, with the same moving parts under the same class names:
 // head, arm-left, arm-right and wing. The styles animate the parts, so every
 // pose plays on every character. A character without wings flaps its ears,
-// or whatever stands in for them.
+// or whatever stands in for them. Each draws the worn hat last in its head,
+// so the hat is in front and moves with the head in every pose.
 
 const MIRROR = 'transform="translate(200 0) scale(-1 1)"';
 
@@ -101,7 +104,7 @@ function tail({ fill, stroke }: Colours, d: string): string {
     <path fill="none" stroke="${fill}" stroke-width="12" stroke-linecap="round" d="${d}"/>`;
 }
 
-function dragon(): string {
+function dragon(hat: string): string {
   const colours = { fill: '#4cb87a', stroke: '#2f8f5b', belly: '#ffe8a3' };
   const wing =
     '<path class="wing" fill="#ff9f5a" stroke="#d9773a" stroke-width="3" stroke-linejoin="round" d="M66 124 C52 100 32 84 12 82 C17 94 19 103 29 110 C23 113 21 120 25 128 C34 123 41 125 47 132 C52 129 59 130 66 136 Z"/>';
@@ -121,10 +124,11 @@ function dragon(): string {
       <circle cx="91" cy="86" r="2.5" fill="${colours.stroke}"/>
       <circle cx="109" cy="86" r="2.5" fill="${colours.stroke}"/>
       <path fill="none" stroke="#2b2d42" stroke-width="3" stroke-linecap="round" d="M86 96 Q100 108 114 96"/>
+      ${hat}
     </g>`;
 }
 
-function cat(): string {
+function cat(hat: string): string {
   const colours = { fill: '#f7a552', stroke: '#c9722a', belly: '#fff1d6' };
   const ear = `
     <path fill="${colours.fill}" stroke="${colours.stroke}" stroke-width="3" stroke-linejoin="round" d="M60 56 L56 14 L92 40 Z"/>
@@ -141,10 +145,11 @@ function cat(): string {
       ${pair(whiskers)}
       <path fill="#ff7a8a" d="M94 84 L106 84 L100 91 Z"/>
       <path fill="none" stroke="#2b2d42" stroke-width="3" stroke-linecap="round" d="M88 98 Q94 104 100 96 Q106 104 112 98"/>
+      ${hat}
     </g>`;
 }
 
-function robot(): string {
+function robot(hat: string): string {
   const colours = { fill: '#9fb4cc', stroke: '#5b7391', belly: '#e3edf7' };
   const arm = `<rect class="arm-left" x="44" y="118" width="18" height="44" rx="9" fill="${colours.fill}" stroke="${colours.stroke}" stroke-width="3"/>`;
   const bolt = `<rect x="44" y="64" width="10" height="22" rx="4" fill="#ffc93c" stroke="#d99a00" stroke-width="2"/>`;
@@ -171,10 +176,11 @@ function robot(): string {
       <circle cx="122.5" cy="63.5" r="2.2" fill="#ffffff"/>
       <rect x="80" y="90" width="40" height="12" rx="6" fill="#21314a"/>
       <path stroke="#6fe3ff" stroke-width="2" d="M90 91 V101 M100 91 V101 M110 91 V101"/>
+      ${hat}
     </g>`;
 }
 
-function owl(): string {
+function owl(hat: string): string {
   const colours = { fill: '#b07c55', stroke: '#7a5234', belly: '#f6e3c5' };
   const wings = { ...colours, fill: '#8d5f3e' };
   const talons = { ...colours, fill: '#f2a33a', stroke: '#c47a1c' };
@@ -193,10 +199,11 @@ function owl(): string {
       <circle cx="84.5" cy="65.5" r="3" fill="#ffffff"/>
       <circle cx="122.5" cy="65.5" r="3" fill="#ffffff"/>
       <path fill="#f2a33a" stroke="#c47a1c" stroke-width="2" stroke-linejoin="round" d="M92 84 L108 84 L100 100 Z"/>
+      ${hat}
     </g>`;
 }
 
-function unicorn(): string {
+function unicorn(hat: string): string {
   const colours = { fill: '#ffffff', stroke: '#b3a9d9', belly: '#ffe3f1' };
   const ear = `<path fill="${colours.fill}" stroke="${colours.stroke}" stroke-width="3" stroke-linejoin="round" d="M64 50 Q56 26 68 16 Q82 30 82 44 Z"/>`;
   return `
@@ -219,10 +226,13 @@ function unicorn(): string {
       <circle cx="92" cy="90" r="2.5" fill="#c95fa0"/>
       <circle cx="108" cy="90" r="2.5" fill="#c95fa0"/>
       <path fill="none" stroke="#2b2d42" stroke-width="3" stroke-linecap="round" d="M90 99 Q100 107 110 99"/>
+      ${hat}
     </g>`;
 }
 
-function monster(): string {
+// The monster's eye rises higher than the others', so its hat sits a
+// little higher to clear it.
+function monster(hat: string): string {
   const colours = { fill: '#a57be8', stroke: '#6b41b0', belly: '#e2d3fa' };
   const wing = `<path class="wing" fill="#ff8fc7" stroke="#c95fa0" stroke-width="3" stroke-linejoin="round" d="M66 126 C54 106 38 96 20 96 C25 106 27 112 35 117 C30 120 29 126 33 132 C40 128 46 130 51 136 C55 133 61 134 66 138 Z"/>`;
   const horn = `<path fill="#fff1d6" stroke="#d9b877" stroke-width="3" stroke-linejoin="round" d="M66 48 Q54 30 60 14 Q78 24 82 42 Z"/>`;
@@ -242,10 +252,11 @@ function monster(): string {
       <circle cx="106" cy="60" r="3.5" fill="#ffffff"/>
       <path fill="#4a2a80" stroke="#2b2d42" stroke-width="3" stroke-linejoin="round" d="M74 92 Q100 118 126 92 Z"/>
       <path fill="#ffffff" d="M86 94 L92 102 L98 94 Z M104 94 L110 102 L116 94 Z"/>
+      <g transform="translate(0 -6)">${hat}</g>
     </g>`;
 }
 
-const ART: Readonly<Record<Character, () => string>> = {
+const ART: Readonly<Record<Character, (hat: string) => string>> = {
   dragon,
   cat,
   robot,
@@ -327,6 +338,8 @@ function renderSparkles(kind: SparkleKind): HTMLElement {
 export type CharacterOptions = {
   character: Character;
   pose: Pose;
+  // The worn hat, or none.
+  hat?: HatId | null;
   // The sparkles the character gives off, if any.
   sparkles?: SparkleKind;
 };
@@ -341,11 +354,13 @@ export function renderCharacter(options: CharacterOptions): HTMLElement {
   figure.setAttribute('class', `character ${options.pose}`);
   figure.setAttribute('viewBox', '0 0 200 200');
   figure.setAttribute('role', 'img');
+  const { character, hat } = options;
+  const dressed = hat ? wearing(hat) : '';
   figure.setAttribute(
     'aria-label',
-    `The ${options.character}${DOING[options.pose]}`,
+    `The ${character}${dressed}${DOING[options.pose]}`,
   );
-  figure.innerHTML = ART[options.character]();
+  figure.innerHTML = ART[character](hat ? hatArt(hat) : '');
 
   stage.append(figure);
   if (options.sparkles) stage.append(renderSparkles(options.sparkles));

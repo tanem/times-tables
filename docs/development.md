@@ -10,7 +10,7 @@ The end-to-end tests cover the manifest, the precache list and an offline reload
 
 ## Screenshots
 
-`npm run screenshots` builds the app and runs `e2e/screenshots.ts` under `playwright.screenshots.config.ts`: WebKit at an iPad's portrait viewport of 820 × 1180 points at two pixels per point, against the built app served by `vite preview`. It writes the five images the README shows to `docs/screenshots/`: the Start screen, the card, the feedback with the gem an answer paid, the end screen and the Parent view.
+`npm run screenshots` builds the app and runs `e2e/screenshots.ts` under `playwright.screenshots.config.ts`: WebKit at an iPad's portrait viewport of 820 × 1180 points at two pixels per point, against the built app served by `vite preview`. It writes the six images the README shows to `docs/screenshots/`: the Start screen, the Shop, the card, the feedback with the gem an answer paid, the end screen and the Parent view.
 
 The script seeds an invented learner under the end-to-end fixtures' fixed clock and seed, so nothing in the images comes from a real learner. It is not part of `npm run check`: WebKit renders differently across platforms, so a pixel diff would flake. Regenerate the images by hand when the UI changes and commit them, as with the icons.
 

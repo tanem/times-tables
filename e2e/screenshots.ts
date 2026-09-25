@@ -2,6 +2,7 @@ import { fileURLToPath } from 'node:url';
 import type { Page } from '@playwright/test';
 import { pool, type Table } from '../src/model/facts';
 import { BONUS } from '../src/model/bonus';
+import { itemOf, type HatId } from '../src/model/catalogue';
 import { BAND_PAY, bandOf } from '../src/model/drill';
 import type { Level } from '../src/model/level';
 import {
@@ -96,6 +97,12 @@ const AT_LEVEL: Record<Level, number> = { 4: 22, 3: 5, 2: 5, 1: 5, 0: 5 };
 // Two bonuses paid along the way, on top of what the facts paid.
 const BONUSES_PAID = 2;
 
+// The hats the learner has bought, the one they wear, and the one they try
+// on in the Shop.
+const OWNED: HatId[] = ['party-hat', 'wizard-hat', 'pirate-hat'];
+const WORN: HatId = 'wizard-hat';
+const TRIED_ON = 'Top hat';
+
 // The table whose every fact has been at level 4, so that its tile and its
 // grid row show a badge, though some of its facts have slipped since.
 const BADGED: Table = 3;
@@ -137,13 +144,16 @@ function inventedProgress(): Progress {
     0,
   );
   const earned = paid + BONUS * BONUSES_PAID + bandPay + BADGE_PAY;
+  const spent = OWNED.reduce((sum, id) => sum + (itemOf(id).price ?? 0), 0);
   return {
     ...freshProgress(),
     tables: TABLES_ON,
     facts: known,
     earned,
-    balance: earned,
+    balance: earned - spent,
     character: 'owl',
+    owned: OWNED,
+    hat: WORN,
     times: TIMES,
     records: RECORDS,
   };
@@ -156,9 +166,18 @@ async function shoot(page: Page, name: string): Promise<void> {
   });
 }
 
-test('the five screens', async ({ page }) => {
+test('the six screens', async ({ page }) => {
   await seedProgress(page, inventedProgress());
   await shoot(page, 'start');
+
+  // The Shop with a hat not yet bought tried on the owl.
+  await page.getByRole('button', { name: 'Shop', exact: true }).click();
+  await page
+    .getByRole('group', { name: 'Hats' })
+    .getByRole('button', { name: new RegExp(`^${TRIED_ON},`) })
+    .click();
+  await shoot(page, 'shop');
+  await page.getByRole('button', { name: 'Back' }).click();
 
   await openParent(page);
   await shoot(page, 'parent');

@@ -1,3 +1,4 @@
+import type { HatId } from '../model/catalogue';
 import type { Character } from '../model/characters';
 import type { Presentation } from '../model/drill';
 import type { Outcome } from '../model/level';
@@ -41,6 +42,8 @@ export type FeedbackOptions = {
   presentation: Presentation;
   outcome: Outcome;
   character: Character;
+  // The worn hat, or none.
+  hat: HatId | null;
   // How many of this outcome the drill has had, this one included.
   nth: number;
   // Consecutive fast outcomes, this one included.
@@ -94,6 +97,7 @@ export function renderFeedback(options: FeedbackOptions): HTMLElement {
   const figure = renderCharacter({
     character: options.character,
     pose: POSES[outcome],
+    hat: options.hat,
     sparkles: outcome === 'fast' ? 'burst' : undefined,
   });
   screen.append(sum, figure, word);
