@@ -1689,10 +1689,8 @@ button {
 
 /* The backflip, which a fast answer plays once the learner owns it: a
    crouch, then high into the air, over backwards and down again, arms up
-   and wings flapping. It turns about the middle of the character, not its
-   feet, so that it flips in the air. */
+   and wings flapping. */
 .character.backflip {
-  transform-origin: 50% 50%;
   animation: backflip 1.1s ease;
 }
 

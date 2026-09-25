@@ -14,7 +14,8 @@ const WORDS: Readonly<Record<Outcome, readonly string[]>> = {
   missed: ['Next time', 'Tricky one', 'Keep going'],
 };
 
-// What the character does for each outcome.
+// What the character does for each outcome, but for a fast answer once
+// the backflip is owned, which plays the backflip in place of the jump.
 const POSES: Readonly<Record<Outcome, Pose>> = {
   fast: 'jump',
   slow: 'nod',

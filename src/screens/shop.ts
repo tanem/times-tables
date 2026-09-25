@@ -13,7 +13,12 @@ import {
 import type { Character } from '../model/characters';
 import type { ChosenColours } from '../model/progress';
 import { sound } from '../sound';
-import { renderCharacter, renderConfetti, type Pose } from './character';
+import {
+  renderCharacter,
+  renderConfetti,
+  type CharacterOptions,
+  type Pose,
+} from './character';
 import { gemWord, renderBalance, renderGem } from './gem';
 import { renderHat } from './hat';
 import { applyTheme, renderSwatch } from './theme';
@@ -89,7 +94,7 @@ function buttonName(item: Item, owned: boolean): string {
 // button's name says what it is: a hat on its own, a colour variant's
 // character sitting in that colour, a swatch of a theme's colours, or for
 // the pose the chosen character as it is, caught upside down in it.
-function renderPicture(item: Entry, options: ShopOptions): Element {
+function renderPicture(item: Entry, asItIs: AsItIs): Element {
   if (item.kind === 'hat') return renderHat(item.id);
   if (item.kind === 'theme') return renderSwatch(item.id);
   const figure =
@@ -99,15 +104,13 @@ function renderPicture(item: Entry, options: ShopOptions): Element {
           pose: 'sit',
           colour: item.id,
         })
-      : renderCharacter({
-          character: options.character,
-          pose: 'backflip',
-          hat: options.hat,
-          colour: options.colours[options.character],
-        });
+      : renderCharacter({ ...asItIs, pose: item.id });
   figure.setAttribute('aria-hidden', 'true');
   return figure;
 }
+
+// The chosen character as it is: in the hat it wears and its colour.
+type AsItIs = Pick<CharacterOptions, 'character' | 'hat' | 'colour'>;
 
 // Builds the Shop: the balance in the corner, the chosen character, then the
 // items of each kind on sale in catalogue order, each with its price or
@@ -115,10 +118,10 @@ function renderPicture(item: Entry, options: ShopOptions): Element {
 // chooses an item: a hat is tried on the character, a colour variant shows
 // its own character in that colour, in the worn hat, a theme colours the
 // Shop until another item is chosen or the Shop is left, and the pose is
-// played by the character as it is. Only the Buy
-// button on that line buys, and it is disabled while the balance is short.
-// A purchase stays on the Shop. The one that completes the set earns the
-// crown too, and the Shop celebrates it with the crown on the character.
+// played by the character as it is. Only the Buy button on that line buys,
+// and it is disabled while the balance is short. A purchase stays on the
+// Shop. The one that completes the set earns the crown too, and the Shop
+// celebrates it with the crown on the character.
 export function renderShop(options: ShopOptions): HTMLElement {
   let { balance } = options;
   let owned = [...options.owned];
@@ -141,12 +144,12 @@ export function renderShop(options: ShopOptions): HTMLElement {
 
   let balanceLine = renderBalance(balance);
 
-  let figure = renderCharacter({
+  const asItIs: AsItIs = {
     character: options.character,
-    pose: 'sit',
     hat: options.hat,
     colour: options.colours[options.character],
-  });
+  };
+  let figure = renderCharacter({ ...asItIs, pose: 'sit' });
 
   // The character trying on the chosen item: wearing the chosen hat, the
   // chosen colour variant's character in that colour, or playing the chosen
@@ -156,8 +159,9 @@ export function renderShop(options: ShopOptions): HTMLElement {
     const item = chosen === null ? null : itemOf(chosen);
     const character =
       item?.kind === 'colour' ? item.character : options.character;
-    let pose: Pose = item?.kind === 'pose' ? 'backflip' : 'sit';
+    let pose: Pose = 'sit';
     if (celebrating) pose = 'big-jump';
+    else if (item?.kind === 'pose') pose = item.id;
     const next = renderCharacter({
       character,
       pose,
@@ -226,7 +230,7 @@ export function renderShop(options: ShopOptions): HTMLElement {
       const name = document.createElement('span');
       name.className = 'item-name';
       name.textContent = item.name;
-      button.replaceChildren(renderPicture(item, options), name, price);
+      button.replaceChildren(renderPicture(item, asItIs), name, price);
     }
 
     const item = chosen === null ? null : itemOf(chosen);
