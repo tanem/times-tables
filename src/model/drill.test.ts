@@ -322,4 +322,18 @@ describe('bandOf', () => {
     const quit = quitDrill(drillAfter(Array<'fast'>(16).fill('fast')));
     expect(bandOf(quit)).toBe('low');
   });
+
+  // Band pay is to be worked out from the drill record, so the record has to
+  // land in the band the end screen shows (ADR 0005).
+  it('is the same band for the drill record as for the drill', () => {
+    const at = '2026-01-01T09:05:00.000Z';
+    for (const drill of [
+      drillWithFast(15),
+      drillWithFast(8),
+      drillWithFast(7),
+      quitDrill(drillAfter(Array<'fast'>(16).fill('fast'))),
+    ]) {
+      expect(bandOf(drillRecord(drill, at, 0, null))).toBe(bandOf(drill));
+    }
+  });
 });

@@ -3,7 +3,7 @@ import {
   CHARACTERS,
   isCharacter,
   isUnlocked,
-  newUnlock,
+  newUnlocks,
   UNLOCK_AT,
 } from './characters';
 
@@ -56,28 +56,34 @@ describe('isUnlocked', () => {
   });
 });
 
-describe('newUnlock', () => {
+describe('newUnlocks', () => {
   it('names the character the total unlocked as it rose', () => {
-    expect(newUnlock(24, 25)).toBe('cat');
-    expect(newUnlock(168, 170)).toBe('unicorn');
-    expect(newUnlock(239, 261)).toBe('monster');
+    expect(newUnlocks(24, 25)).toEqual(['cat']);
+    expect(newUnlocks(168, 170)).toEqual(['unicorn']);
+    expect(newUnlocks(239, 261)).toEqual(['monster']);
   });
 
   it('names nothing when the total crossed no unlock total', () => {
-    expect(newUnlock(0, 24)).toBe(null);
-    expect(newUnlock(25, 44)).toBe(null);
-    expect(newUnlock(59, 59)).toBe(null);
-    expect(newUnlock(300, 302)).toBe(null);
+    expect(newUnlocks(0, 24)).toEqual([]);
+    expect(newUnlocks(25, 44)).toEqual([]);
+    expect(newUnlocks(59, 59)).toEqual([]);
+    expect(newUnlocks(300, 302)).toEqual([]);
   });
 
   it('does not name a character unlocked before the total rose', () => {
-    expect(newUnlock(25, 30)).toBe(null);
-    expect(newUnlock(0, 0)).toBe(null);
+    expect(newUnlocks(25, 30)).toEqual([]);
+    expect(newUnlocks(0, 0)).toEqual([]);
   });
 
-  // A drill cannot pay enough to cross two unlock totals (ADR 0004), and the
-  // highest is named should it ever happen.
-  it('names the highest when the total crossed more than one', () => {
-    expect(newUnlock(0, 60)).toBe('robot');
+  // Band pay and badge pay let a drill cross two unlock totals (ADR 0005).
+  it('names every character the total crossed, in unlock order', () => {
+    expect(newUnlocks(24, 60)).toEqual(['cat', 'robot']);
+    expect(newUnlocks(0, 240)).toEqual([
+      'cat',
+      'robot',
+      'owl',
+      'unicorn',
+      'monster',
+    ]);
   });
 });
