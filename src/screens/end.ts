@@ -136,18 +136,16 @@ function renderUnlock(character: Character): {
   return { dialog, ok };
 }
 
-// The lines for what the drill paid with its record, under the best streak:
-// the band pay, when the band paid any (ADR 0005). None when it paid
-// nothing.
-function renderPay(bandPay: number): HTMLElement[] {
-  if (bandPay === 0) return [];
+// The line for the band pay the drill's record paid, under the best streak
+// (ADR 0005).
+function renderBandPay(bandPay: number): HTMLElement {
   const line = document.createElement('p');
   line.className = 'pay';
   line.append(
     renderGem(),
     `+${bandPay} ${bandPay === 1 ? 'gem' : 'gems'} for this drill`,
   );
-  return [line];
+  return line;
 }
 
 export type EndOptions = {
@@ -167,11 +165,11 @@ export type EndOptions = {
 };
 
 // Builds the end screen: the character, a heading, the tally of fast, slow
-// and missed, the best streak, what the drill paid, then Home and Go again. The character
-// celebrates by the drill's band, and a run up plays that is longer for a
-// higher band. A drill faster than last time runs the race 0.9 seconds into
-// the celebration, and the words, the proud character and the improvement
-// sweep follow it. Each new character is announced in a dialog with the
+// and missed, the best streak, the band pay when the band paid any, then
+// Home and Go again. The character celebrates by the drill's band, and a run
+// up plays that is longer for a higher band. A drill faster than last time
+// runs the race 0.9 seconds into the celebration, and the words, the proud
+// character and the improvement sweep follow it. Each new character is announced in a dialog with the
 // fanfare, last of all, the next one following the OK of the one before;
 // leaving by Home or Go again before then brings the dialogs forward, and
 // the leave follows the last OK, so that no unlock goes unannounced.
@@ -237,14 +235,8 @@ export function renderEnd(options: EndOptions): HTMLElement {
   again.addEventListener('click', leave(options.onAgain));
 
   actions.append(home, again);
-  screen.append(
-    figure,
-    heading,
-    tally,
-    best,
-    ...renderPay(options.bandPay),
-    actions,
-  );
+  screen.append(figure, heading, tally, best, actions);
+  if (options.bandPay > 0) actions.before(renderBandPay(options.bandPay));
 
   if (options.faster) {
     screen.classList.add('faster');

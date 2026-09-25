@@ -1,19 +1,13 @@
 import type { Character } from './characters';
 
-// What an item is: a hat any character wears, a colour variant of one
-// character, a theme for the app's colours, or the extra pose.
-export type ItemKind = 'hat' | 'colour' | 'theme' | 'pose';
-
-// One thing the Shop sells, at a price in gems (ADR 0005). An item with no
-// price cannot be bought: the crown, which owning the set earns. A colour
-// variant belongs to one character alone.
+// One thing the Shop sells, at a price in gems (ADR 0005): a hat any
+// character wears, a colour variant of one character, a theme for the app's
+// colours, or the extra pose. A hat with no price cannot be bought: the
+// crown, which owning the set earns. A colour variant belongs to one
+// character alone.
 export type Item =
-  | {
-      id: string;
-      kind: 'hat' | 'theme' | 'pose';
-      name: string;
-      price: number | null;
-    }
+  | { id: string; kind: 'hat'; name: string; price: number | null }
+  | { id: string; kind: 'theme' | 'pose'; name: string; price: number }
   | {
       id: string;
       kind: 'colour';
@@ -66,12 +60,16 @@ export const CATALOGUE = [
   { id: 'backflip', kind: 'pose', name: 'Backflip', price: 100 },
 ] as const satisfies readonly Item[];
 
+export type ItemKind = Item['kind'];
+
 type Entry = (typeof CATALOGUE)[number];
 
+// The ids of every item, and of the items of one kind.
 export type ItemId = Entry['id'];
-export type HatId = Extract<Entry, { kind: 'hat' }>['id'];
-export type ColourId = Extract<Entry, { kind: 'colour' }>['id'];
-export type ThemeId = Extract<Entry, { kind: 'theme' }>['id'];
+export type IdOf<K extends ItemKind> = Extract<Entry, { kind: K }>['id'];
+export type HatId = IdOf<'hat'>;
+export type ColourId = IdOf<'colour'>;
+export type ThemeId = IdOf<'theme'>;
 
 // The hat that owning the set earns. It cannot be bought.
 export const CROWN = 'crown' satisfies HatId;
@@ -81,10 +79,21 @@ export const SET: readonly HatId[] = CATALOGUE.flatMap((item) =>
   item.kind === 'hat' && item.price !== null ? [item.id] : [],
 );
 
+// Whether a value is the id of an item in the catalogue.
 export function isItemId(value: unknown): value is ItemId {
   return CATALOGUE.some((item) => item.id === value);
 }
 
+// Whether a value is the id of an item of the given kind.
+export function isIdOf<K extends ItemKind>(
+  value: unknown,
+  kind: K,
+): value is IdOf<K> {
+  return CATALOGUE.some((item) => item.id === value && item.kind === kind);
+}
+
+// The catalogue entry for an id. Every id has one; the throw is for a
+// value that got past the types.
 export function itemOf(id: ItemId): Item {
   const item = CATALOGUE.find((entry) => entry.id === id);
   if (!item) throw new Error(`no item ${id}`);

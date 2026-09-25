@@ -13,6 +13,8 @@
   --missed: #de5a52;
   --track: #dce2f0;
   --sparkle: #ffc93c;
+  /* The words beside a gem paid, on the feedback and the end screen. */
+  --gem-paid: #a86f00;
   /* The fact grid's five levels, red through amber to green, told apart at
      a glance. Each keeps at least 4.5:1 contrast against --ink text. */
   --level-0: #f5a9a3;
@@ -548,7 +550,7 @@ button {
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: clamp(1.5rem, 5vmin, 3rem);
-  color: #a86f00;
+  color: var(--gem-paid);
 }
 
 .feedback .gem-paid .gem {
@@ -620,8 +622,8 @@ button {
   font-size: clamp(1.25rem, 3vmin, 1.75rem);
 }
 
-/* What the drill paid, under the best streak, in the colour of the gem an
-   answer pays on the feedback. */
+/* The band pay, under the best streak, styled as the gem an answer pays on
+   the feedback. */
 .end .pay {
   margin: 0;
   display: flex;
@@ -630,7 +632,7 @@ button {
   font-family: var(--font-heading);
   font-weight: 600;
   font-size: clamp(1.25rem, 3vmin, 1.75rem);
-  color: #a86f00;
+  color: var(--gem-paid);
 }
 
 .end .pay .gem {

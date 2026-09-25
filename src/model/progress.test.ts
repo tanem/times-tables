@@ -211,7 +211,7 @@ describe('parseProgress on items', () => {
     expect(read(document)).toEqual(asRead(document));
   });
 
-  it('reads every item of the first shelf owned, the crown worn', () => {
+  it('reads every item in the catalogue owned, the crown worn', () => {
     const document = {
       ...valid,
       owned: [

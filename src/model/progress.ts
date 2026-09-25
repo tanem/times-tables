@@ -1,6 +1,7 @@
 import { BONUS, fasterThanLastTime } from './bonus';
 import {
   CROWN,
+  isIdOf,
   isItemId,
   itemOf,
   SET,
@@ -89,11 +90,14 @@ export type Progress = {
   records: DrillRecord[];
 };
 
+// A value per character, from an entry for each of the six.
+function fromEntries<T>(entries: [Character, T][]): Record<Character, T> {
+  return Object.fromEntries(entries) as Record<Character, T>;
+}
+
 // Every character with the same value.
 function perCharacter<T>(value: T): Record<Character, T> {
-  return Object.fromEntries(
-    CHARACTERS.map((character) => [character, value]),
-  ) as Record<Character, T>;
+  return fromEntries(CHARACTERS.map((character) => [character, value]));
 }
 
 // The document for a first launch or a fresh start: no table on, nothing
@@ -213,9 +217,9 @@ export type Recorded = {
 export function recordDrill(progress: Progress, record: DrillRecord): Recorded {
   const faster = fasterThanLastTime(progress.records, record);
   const bandPay = BAND_PAY[bandOf(record)];
-  const recorded = { ...progress, records: [...progress.records, record] };
+  const withRecord = { ...progress, records: [...progress.records, record] };
   return {
-    progress: earn(recorded, (faster ? BONUS : 0) + bandPay),
+    progress: earn(withRecord, (faster ? BONUS : 0) + bandPay),
     faster,
     bandPay,
   };
@@ -291,30 +295,25 @@ function validateShop(
   Progress,
   'balance' | 'owned' | 'hat' | 'colours' | 'theme' | 'bond'
 > | null {
-  const { balance, hat, theme } = value;
+  const { balance } = value;
   if (!isCount(balance) || balance > earned) return null;
   const owned = validateOwned(value.owned);
   if (!owned) return null;
-  const ownedOf = (id: unknown, kind: string) =>
-    isItemId(id) && owned.includes(id) && itemOf(id).kind === kind;
-  if (hat !== null && !ownedOf(hat, 'hat')) return null;
-  if (theme !== null && !ownedOf(theme, 'theme')) return null;
-  const colours = validatePerCharacter(value.colours, (colour, character) => {
-    if (colour === null) return true;
-    if (!ownedOf(colour, 'colour')) return false;
-    const item = itemOf(colour as ItemId);
-    return item.kind === 'colour' && item.character === character;
-  });
+  const hat = validateChoice(value.hat, (id) => isIdOf(id, 'hat'), owned);
+  const theme = validateChoice(value.theme, (id) => isIdOf(id, 'theme'), owned);
+  if (hat === undefined || theme === undefined) return null;
+  const colours = validatePerCharacter(
+    value.colours,
+    (colour, character): colour is ColourId | null => {
+      if (colour === null) return true;
+      if (!isIdOf(colour, 'colour') || !owned.includes(colour)) return false;
+      const item = itemOf(colour);
+      return item.kind === 'colour' && item.character === character;
+    },
+  );
   const bond = validatePerCharacter(value.bond, isCount);
   if (!colours || !bond) return null;
-  return {
-    balance,
-    owned,
-    hat: hat as HatId | null,
-    colours: colours as Progress['colours'],
-    theme: theme as ThemeId | null,
-    bond: bond as Progress['bond'],
-  };
+  return { balance, owned, hat, colours, theme, bond };
 }
 
 // Owned item ids: in the catalogue, without repeats, and the crown only
@@ -329,22 +328,33 @@ function validateOwned(value: unknown): ItemId[] | null {
   return [...value];
 }
 
+// A choice among the owned items of one kind: an owned item's id, or null
+// for none of them. Undefined when the value is neither.
+function validateChoice<T extends ItemId>(
+  value: unknown,
+  ofKind: (id: unknown) => id is T,
+  owned: readonly ItemId[],
+): T | null | undefined {
+  if (value === null) return null;
+  if (ofKind(value) && owned.includes(value)) return value;
+  return undefined;
+}
+
 // A value per character: an object with a key for every character and no
 // other, each value passing the check.
-function validatePerCharacter(
+function validatePerCharacter<T>(
   value: unknown,
-  check: (entry: unknown, character: Character) => boolean,
-): Record<Character, unknown> | null {
+  check: (entry: unknown, character: Character) => entry is T,
+): Record<Character, T> | null {
   if (!isObject(value)) return null;
   if (!Object.keys(value).every(isCharacter)) return null;
-  const checked = perCharacter<unknown>(null);
+  const entries: [Character, T][] = [];
   for (const character of CHARACTERS) {
-    if (!(character in value)) return null;
     const entry = value[character];
     if (!check(entry, character)) return null;
-    checked[character] = entry;
+    entries.push([character, entry]);
   }
-  return checked;
+  return fromEntries(entries);
 }
 
 function isObject(value: unknown): value is Record<string, unknown> {

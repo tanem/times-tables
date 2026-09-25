@@ -152,8 +152,8 @@ function renderRecent(
 
 // Builds the Parent view: the trend, the fact grid with its legend and
 // tap-for-counts, this week's practice, the gems earned and left to spend,
-// the recent list, the press-and-hold
-// erase control, and the build version in the foot.
+// the recent list, the press-and-hold erase control, and the build version
+// in the foot.
 // Read-only otherwise: plain typography, no dragon, and the erase ring is
 // the screen's only animation.
 export function renderParent(options: ParentOptions): HTMLElement {

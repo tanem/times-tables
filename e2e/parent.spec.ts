@@ -83,7 +83,7 @@ test('the gems earned and the balance show on one line, with nothing of what was
   await openParent(page);
 
   await expect(page.getByText('Gems: 150 earned, 25 to spend')).toBeVisible();
-  await expect(page.getByText(/hat|ocean|shop/i)).toHaveCount(0);
+  await expect(page.getByText(/\b(hat|ocean|shop)\b/i)).toHaveCount(0);
 });
 
 test('a fresh document shows the empty states, an unlevelled grid and the legend', async ({

@@ -50,7 +50,7 @@ The layout turns with the iPad; these are portrait.
 
 "For parents" at the bottom of the Start screen opens the Parent view. It shows the learner's pace, facts known and share of fast answers against four weeks ago, a chart of pace drill by drill, a grid of every fact coloured by its level, the gems earned and left to spend, and the recent drills. Tap a fact in the grid for its counts.
 
-The Parent view is also where progress is erased. Erasing clears everything: every level, the gems, the characters unlocked and the drill records. There is no undo.
+The Parent view is also where progress is erased. Erasing clears everything: every level, the gems earned and the balance, the characters unlocked and the drill records. There is no undo.
 
 ## Development
 

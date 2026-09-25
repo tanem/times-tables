@@ -70,15 +70,15 @@ function renderMeter(share: number): HTMLElement {
 // The balance, in the top right corner. The gem is a picture and the words
 // say what it is.
 function renderBalance(balance: number): HTMLElement {
-  const total = document.createElement('p');
-  total.className = 'gems';
+  const line = document.createElement('p');
+  line.className = 'gems';
   const count = document.createElement('b');
   count.textContent = String(balance);
   const word = document.createElement('span');
   word.className = 'gems-word';
   word.textContent = balance === 1 ? 'gem' : 'gems';
-  total.append(renderGem(), count, ' ', word);
-  return total;
+  line.append(renderGem(), count, ' ', word);
+  return line;
 }
 
 function capitalised(word: string): string {
@@ -87,9 +87,9 @@ function capitalised(word: string): string {
 
 // One character in the row: a small figure sitting still, pressed when it is
 // the chosen one. A locked one is a grey silhouette with a lock and the
-// earned total that unlocks it, and a tap on it does nothing. The button's name says
-// which character it is, so the figure inside is hidden from a screen
-// reader and does not answer to the masthead's name.
+// earned total that unlocks it, and a tap on it does nothing. The button's
+// name says which character it is, so the figure inside is hidden from a
+// screen reader and does not answer to the masthead's name.
 function renderPick(
   character: Character,
   earned: number,
