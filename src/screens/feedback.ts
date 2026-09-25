@@ -14,7 +14,8 @@ const WORDS: Readonly<Record<Outcome, readonly string[]>> = {
   missed: ['Next time', 'Tricky one', 'Keep going'],
 };
 
-// What the character does for each outcome.
+// What the character does for each outcome, but for a fast answer once
+// the backflip is owned, which plays the backflip in place of the jump.
 const POSES: Readonly<Record<Outcome, Pose>> = {
   fast: 'jump',
   slow: 'nod',
@@ -52,6 +53,9 @@ export type FeedbackOptions = {
   streak: number;
   // Whether the answer paid a gem (ADR 0004), which only a fast one can.
   gem: boolean;
+  // Whether the learner owns the backflip, which a fast answer then plays
+  // in place of the jump.
+  backflip: boolean;
   onAdvance: () => void;
 };
 
@@ -98,7 +102,7 @@ export function renderFeedback(options: FeedbackOptions): HTMLElement {
   // in the top corner and the sum is the biggest thing.
   const figure = renderCharacter({
     character: options.character,
-    pose: POSES[outcome],
+    pose: outcome === 'fast' && options.backflip ? 'backflip' : POSES[outcome],
     hat: options.hat,
     colour: options.colour,
     sparkles: outcome === 'fast' ? 'burst' : undefined,

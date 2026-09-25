@@ -75,6 +75,9 @@ export type ThemeId = IdOf<'theme'>;
 // The hat that owning the set earns. It cannot be bought.
 export const CROWN = 'crown' satisfies HatId;
 
+// The extra pose, which a fast answer plays once it is owned.
+export const BACKFLIP = 'backflip' satisfies IdOf<'pose'>;
+
 // The set: the hats the Shop sells, every hat with a price.
 export const SET: readonly HatId[] = CATALOGUE.flatMap((item) =>
   item.kind === 'hat' && item.price !== null ? [item.id] : [],

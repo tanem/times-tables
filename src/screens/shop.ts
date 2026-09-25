@@ -13,18 +13,27 @@ import {
 import type { Character } from '../model/characters';
 import type { ChosenColours } from '../model/progress';
 import { sound } from '../sound';
-import { renderCharacter, renderConfetti } from './character';
+import {
+  renderCharacter,
+  renderConfetti,
+  type CharacterOptions,
+  type Pose,
+} from './character';
 import { gemWord, renderBalance, renderGem } from './gem';
 import { renderHat } from './hat';
 import { applyTheme, renderSwatch } from './theme';
 
-// The kinds of item the Shop sells so far, in catalogue order, with the
-// heading of each. The rest of the catalogue goes on sale as the app gains
-// the art and the choosing that each kind needs.
-const ON_SALE: readonly { kind: ItemKind; heading: string }[] = [
-  { kind: 'hat', heading: 'Hats' },
-  { kind: 'colour', heading: 'Colours' },
-  { kind: 'theme', heading: 'Themes' },
+// The heading of each kind of item's shelf.
+const HEADINGS: Readonly<Record<ItemKind, string>> = {
+  hat: 'Hats',
+  colour: 'Colours',
+  theme: 'Themes',
+  pose: 'Poses',
+};
+
+// The kinds of item, in catalogue order.
+const KINDS: readonly ItemKind[] = [
+  ...new Set(CATALOGUE.map((item) => item.kind)),
 ];
 
 // What the line under the items says with nothing chosen yet.
@@ -83,28 +92,36 @@ function buttonName(item: Item, owned: boolean): string {
 
 // An item's picture on its button, hidden from a screen reader since the
 // button's name says what it is: a hat on its own, a colour variant's
-// character sitting in that colour, or a swatch of a theme's colours.
-function renderPicture(item: Entry): Element[] {
-  if (item.kind === 'hat') return [renderHat(item.id)];
-  if (item.kind === 'theme') return [renderSwatch(item.id)];
-  if (item.kind === 'colour') {
-    const { character, id: colour } = item;
-    const figure = renderCharacter({ character, pose: 'sit', colour });
-    figure.setAttribute('aria-hidden', 'true');
-    return [figure];
-  }
-  return [];
+// character sitting in that colour, a swatch of a theme's colours, or for
+// the pose the chosen character as it is, caught upside down in it.
+function renderPicture(item: Entry, asItIs: AsItIs): Element {
+  if (item.kind === 'hat') return renderHat(item.id);
+  if (item.kind === 'theme') return renderSwatch(item.id);
+  const figure =
+    item.kind === 'colour'
+      ? renderCharacter({
+          character: item.character,
+          pose: 'sit',
+          colour: item.id,
+        })
+      : renderCharacter({ ...asItIs, pose: item.id });
+  figure.setAttribute('aria-hidden', 'true');
+  return figure;
 }
+
+// The chosen character as it is: in the hat it wears and its colour.
+type AsItIs = Pick<CharacterOptions, 'character' | 'hat' | 'colour'>;
 
 // Builds the Shop: the balance in the corner, the chosen character, then the
 // items of each kind on sale in catalogue order, each with its price or
 // marked as owned, and under them the line for the chosen item. A tap
 // chooses an item: a hat is tried on the character, a colour variant shows
-// its own character in that colour, in the worn hat, and a theme colours the
-// Shop until another item is chosen or the Shop is left. Only the Buy
-// button on that line buys, and it is disabled while the balance is short.
-// A purchase stays on the Shop. The one that completes the set earns the
-// crown too, and the Shop celebrates it with the crown on the character.
+// its own character in that colour, in the worn hat, a theme colours the
+// Shop until another item is chosen or the Shop is left, and the pose is
+// played by the character as it is. Only the Buy button on that line buys,
+// and it is disabled while the balance is short. A purchase stays on the
+// Shop. The one that completes the set earns the crown too, and the Shop
+// celebrates it with the crown on the character.
 export function renderShop(options: ShopOptions): HTMLElement {
   let { balance } = options;
   let owned = [...options.owned];
@@ -127,24 +144,27 @@ export function renderShop(options: ShopOptions): HTMLElement {
 
   let balanceLine = renderBalance(balance);
 
-  let figure = renderCharacter({
+  const asItIs: AsItIs = {
     character: options.character,
-    pose: 'sit',
     hat: options.hat,
     colour: options.colours[options.character],
-  });
+  };
+  let figure = renderCharacter({ ...asItIs, pose: 'sit' });
 
-  // The character in the given pose trying on the chosen item: wearing the
-  // chosen hat, or the chosen colour variant's character in that colour.
-  // Otherwise it is the chosen character as it is, in the hat it wears and
-  // its colour.
+  // The character trying on the chosen item: wearing the chosen hat, the
+  // chosen colour variant's character in that colour, or playing the chosen
+  // pose. Otherwise it is the chosen character as it is, in the hat it wears
+  // and its colour. Celebrating, it jumps high.
   const drawCharacter = (celebrating = false) => {
     const item = chosen === null ? null : itemOf(chosen);
     const character =
       item?.kind === 'colour' ? item.character : options.character;
+    let pose: Pose = 'sit';
+    if (celebrating) pose = 'big-jump';
+    else if (item?.kind === 'pose') pose = item.id;
     const next = renderCharacter({
       character,
-      pose: celebrating ? 'big-jump' : 'sit',
+      pose,
       hat: item?.kind === 'hat' ? item.id : options.hat,
       colour: item?.kind === 'colour' ? item.id : options.colours[character],
       sparkles: celebrating ? 'burst' : undefined,
@@ -154,12 +174,12 @@ export function renderShop(options: ShopOptions): HTMLElement {
   };
 
   const buttons = new Map<ItemId, HTMLButtonElement>();
-  const sections = ON_SALE.map(({ kind, heading: text }) => {
+  const sections = KINDS.map((kind) => {
     const section = document.createElement('section');
     section.className = 'shop-kind';
     const title = document.createElement('h2');
     title.id = `kind-${kind}`;
-    title.textContent = text;
+    title.textContent = HEADINGS[kind];
     const items = document.createElement('div');
     items.className = 'items';
     items.setAttribute('role', 'group');
@@ -210,7 +230,7 @@ export function renderShop(options: ShopOptions): HTMLElement {
       const name = document.createElement('span');
       name.className = 'item-name';
       name.textContent = item.name;
-      button.replaceChildren(...renderPicture(item), name, price);
+      button.replaceChildren(renderPicture(item, asItIs), name, price);
     }
 
     const item = chosen === null ? null : itemOf(chosen);

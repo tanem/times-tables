@@ -79,7 +79,7 @@ test('a theme bought in the Shop is chosen on the Start screen and colours a dri
     theme: null,
   });
 
-  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(startHeading(page)).toBeVisible();
   await expect(page.locator('body')).toHaveCSS(
     'background-color',
@@ -154,7 +154,7 @@ test('a theme tried on in the Shop is not kept', async ({ page }) => {
   );
 
   await item(page, 'Space').click();
-  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(page.locator('body')).toHaveCSS(
     'background-color',
     paperOf('ocean'),
@@ -169,7 +169,7 @@ async function parentPicture(page: Page): Promise<Buffer> {
     fullPage: true,
     animations: 'disabled',
   });
-  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(startHeading(page)).toBeVisible();
   return picture;
 }

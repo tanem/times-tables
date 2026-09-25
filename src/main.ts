@@ -10,7 +10,7 @@ import {
   startDrill,
   type Drill,
 } from './model/drill';
-import type { ThemeId } from './model/catalogue';
+import { BACKFLIP, type ThemeId } from './model/catalogue';
 import type { Table } from './model/facts';
 import type { Outcome } from './model/level';
 import { gradeAnswer, paceOf } from './model/pace';
@@ -269,6 +269,7 @@ function showFeedback(drill: Drill, outcome: Outcome, gem: boolean): void {
       nth: drill[outcome],
       streak: drill.streak,
       gem,
+      backflip: progress.owned.includes(BACKFLIP),
       onAdvance: () => {
         if (isComplete(drill)) endDrill(drill);
         else showCard(present(drill, levelOf, random), false);

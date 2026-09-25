@@ -65,7 +65,7 @@ test('a colour variant bought in the Shop is chosen on the Start screen and show
     colours: { dragon: null },
   });
 
-  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(startHeading(page)).toBeVisible();
   await expect(colourRow(page).getByRole('button')).toHaveCount(2);
   await expect(colourPick(page, 'Own colour')).toHaveAttribute(

@@ -25,6 +25,7 @@
 - **Crown**: the hat that completing the set earns. It cannot be bought.
 - **Colour variant**: an item that recolours one character. It belongs to that character alone, and each character has a chosen colour: its own or an owned variant.
 - **Theme**: an item that changes the app's colours on every screen but the Parent view. There is a default theme, which is not an item, and the learner chooses among the default and the owned themes.
+- **Backflip**: the extra pose, an item. Once owned, the character plays it on the feedback for every fast answer, in place of the jump, whatever the character and hat.
 - **Badge**: the mark a table earns when every one of its facts has reached level 4 at some point. It is kept for good, shows on the table's tile on the Start screen and on the Parent view grid, and pays 10 gems at the answer that earns it. A fact in two tables counts towards both.
 - **Bond**: how many finished drills the learner has done with a character, counted per character. A bond pose opens at 10, 25 and 50, and the Start screen shows a meter between them.
 - **Progress**: everything the app remembers about the learner: the tables they chose, each fact's level, highest level reached and outcome counts, the recent answer times that pace is worked out from, the drill records, the gems earned and the balance, the items owned, the worn hat, each character's chosen colour, the chosen theme, each character's bond and the chosen character.
