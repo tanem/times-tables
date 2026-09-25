@@ -18,12 +18,14 @@ import {
   badges,
   buy,
   chooseCharacter,
+  chooseColour,
   chooseHat,
   factLevel,
   freshProgress,
   keepAnswerTime,
   knownCount,
   knownShare,
+  ownedColours,
   ownedHats,
   recordDrill,
 } from './model/progress';
@@ -119,6 +121,8 @@ function showStart(): void {
       character: progress.character,
       hats: ownedHats(progress),
       hat: progress.hat,
+      colours: progress.colours,
+      ownedColours: (character) => ownedColours(progress, character),
       bond: progress.bond,
       onTablesChange: (tables) => {
         progress = { ...progress, tables };
@@ -130,6 +134,10 @@ function showStart(): void {
       },
       onHatChange: (hat) => {
         progress = chooseHat(progress, hat);
+        saveProgress(store, progress);
+      },
+      onColourChange: (character, colour) => {
+        progress = chooseColour(progress, character, colour);
         saveProgress(store, progress);
       },
       onPractise: beginDrill,
@@ -149,6 +157,7 @@ function showShop(): void {
       owned: progress.owned,
       character: progress.character,
       hat: progress.hat,
+      colours: progress.colours,
       onBuy: (id) => {
         progress = buy(progress, id);
         saveProgress(store, progress);
@@ -227,6 +236,7 @@ function showFeedback(drill: Drill, outcome: Outcome, gem: boolean): void {
       outcome,
       character: progress.character,
       hat: progress.hat,
+      colour: progress.colours[progress.character],
       nth: drill[outcome],
       streak: drill.streak,
       gem,
@@ -258,6 +268,7 @@ function endDrill(drill: Drill): void {
       drill,
       character: progress.character,
       hat: progress.hat,
+      colours: progress.colours,
       faster: recorded.faster,
       bandPay: recorded.bandPay,
       newBadges: recorded.newBadges,

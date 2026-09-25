@@ -1,4 +1,9 @@
-import type { HatId } from '../model/catalogue';
+import {
+  itemOf,
+  variantsOf,
+  type ColourId,
+  type HatId,
+} from '../model/catalogue';
 import type { Character } from '../model/characters';
 import { schedule } from '../time';
 import { hatArt, wearing } from './hat';
@@ -50,6 +55,55 @@ const SVG_NS = 'http://www.w3.org/2000/svg';
 const MIRROR = 'transform="translate(200 0) scale(-1 1)"';
 
 type Colours = { fill: string; stroke: string; belly: string };
+
+// The colours a colour variant changes: the body's fill, outline and belly,
+// and the face, which is the dragon's snout and the cat's muzzle. Wings,
+// horns, crest, eyes and cheeks keep their colours.
+type Palette = Colours & { face: string };
+
+const DRAGON: Palette = {
+  fill: '#4cb87a',
+  stroke: '#2f8f5b',
+  belly: '#ffe8a3',
+  face: '#7fd6a4',
+};
+
+const CAT: Palette = {
+  fill: '#f7a552',
+  stroke: '#c9722a',
+  belly: '#fff1d6',
+  face: '#fff1d6',
+};
+
+// Each colour variant's palette, which recolours its own character's
+// drawing. Adding a variant to the catalogue needs its palette here, and a
+// character's first variant needs its drawing to take a palette.
+const VARIANTS: Readonly<Record<ColourId, Palette>> = {
+  'dragon-blue': {
+    fill: '#4a9be0',
+    stroke: '#2b6dac',
+    belly: '#ffe8a3',
+    face: '#93cbf3',
+  },
+  'dragon-purple': {
+    fill: '#b565c9',
+    stroke: '#7f3a92',
+    belly: '#ffe8a3',
+    face: '#dca6ea',
+  },
+  'cat-grey': {
+    fill: '#a3a8b4',
+    stroke: '#6a707e',
+    belly: '#eef0f4',
+    face: '#eef0f4',
+  },
+  'cat-black': {
+    fill: '#3d3c4a',
+    stroke: '#1d1c26',
+    belly: '#dcd9e6',
+    face: '#dcd9e6',
+  },
+};
 
 // Both of a part: the left one as drawn and the right one mirrored. The
 // mirror sits on a plain group so that the styles can transform the part
@@ -110,8 +164,7 @@ function tail({ fill, stroke }: Colours, d: string): string {
     <path fill="none" stroke="${fill}" stroke-width="12" stroke-linecap="round" d="${d}"/>`;
 }
 
-function dragon(hat: string): string {
-  const colours = { fill: '#4cb87a', stroke: '#2f8f5b', belly: '#ffe8a3' };
+function dragon(hat: string, colours = DRAGON): string {
   const wing =
     '<path class="wing" fill="#ff9f5a" stroke="#d9773a" stroke-width="3" stroke-linejoin="round" d="M66 124 C52 100 32 84 12 82 C17 94 19 103 29 110 C23 113 21 120 25 128 C34 123 41 125 47 132 C52 129 59 130 66 136 Z"/>';
   return `
@@ -125,7 +178,7 @@ function dragon(hat: string): string {
       <path fill="#ffe8a3" stroke="#e8c877" stroke-width="3" stroke-linejoin="round" d="M64 50 Q58 28 70 20 Q80 32 80 44 Z"/>
       <path fill="#ffe8a3" stroke="#e8c877" stroke-width="3" stroke-linejoin="round" d="M136 50 Q142 28 130 20 Q120 32 120 44 Z"/>
       ${skull(colours)}
-      <ellipse cx="100" cy="92" rx="30" ry="18" fill="#7fd6a4"/>
+      <ellipse cx="100" cy="92" rx="30" ry="18" fill="${colours.face}"/>
       ${CHEEKS}${eyes(colours.stroke)}
       <circle cx="91" cy="86" r="2.5" fill="${colours.stroke}"/>
       <circle cx="109" cy="86" r="2.5" fill="${colours.stroke}"/>
@@ -134,8 +187,7 @@ function dragon(hat: string): string {
     </g>`;
 }
 
-function cat(hat: string): string {
-  const colours = { fill: '#f7a552', stroke: '#c9722a', belly: '#fff1d6' };
+function cat(hat: string, colours = CAT): string {
   const ear = `
     <path fill="${colours.fill}" stroke="${colours.stroke}" stroke-width="3" stroke-linejoin="round" d="M60 56 L56 14 L92 40 Z"/>
     <path fill="#ff9aa2" d="M64 46 L62 26 L80 40 Z"/>`;
@@ -146,7 +198,7 @@ function cat(hat: string): string {
     <g class="head">
       ${pair(flaps(ear))}
       ${skull(colours)}
-      <ellipse cx="100" cy="92" rx="24" ry="15" fill="${colours.belly}"/>
+      <ellipse cx="100" cy="92" rx="24" ry="15" fill="${colours.face}"/>
       ${CHEEKS}${eyes(colours.stroke)}
       ${pair(whiskers)}
       <path fill="#ff7a8a" d="M94 84 L106 84 L100 91 Z"/>
@@ -262,7 +314,11 @@ function monster(hat: string): string {
     </g>`;
 }
 
-const ART: Readonly<Record<Character, (hat: string) => string>> = {
+// Each character's drawing, given the hat's drawing and, for a character
+// with colour variants, the palette of the chosen one.
+const ART: Readonly<
+  Record<Character, (hat: string, palette?: Palette) => string>
+> = {
   dragon,
   cat,
   robot,
@@ -346,6 +402,9 @@ export type CharacterOptions = {
   pose: Pose;
   // The worn hat, or none.
   hat?: HatId | null;
+  // The chosen colour variant, one of the character's own, or none for its
+  // own colour.
+  colour?: ColourId | null;
   // The sparkles the character gives off, if any.
   sparkles?: SparkleKind;
 };
@@ -360,13 +419,21 @@ export function renderCharacter(options: CharacterOptions): HTMLElement {
   figure.setAttribute('class', `character ${options.pose}`);
   figure.setAttribute('viewBox', '0 0 200 200');
   figure.setAttribute('role', 'img');
-  const { character, hat } = options;
+  const { character, hat, colour } = options;
+  // Only a variant of the character's own recolours it.
+  const variant =
+    colour && variantsOf(character).includes(colour) ? colour : null;
+  // A variant is named in place of the character: "The blue dragon".
+  const who = variant ? itemOf(variant).name.toLowerCase() : character;
   const dressed = hat ? wearing(hat) : '';
   figure.setAttribute(
     'aria-label',
-    `The ${character}${dressed}${DOING[options.pose]}`,
+    `The ${who}${dressed}${DOING[options.pose]}`,
   );
-  figure.innerHTML = ART[character](hat ? hatArt(hat) : '');
+  figure.innerHTML = ART[character](
+    hat ? hatArt(hat) : '',
+    variant ? VARIANTS[variant] : undefined,
+  );
 
   stage.append(figure);
   if (options.sparkles) stage.append(renderSparkles(options.sparkles));

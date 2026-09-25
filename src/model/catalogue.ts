@@ -62,7 +62,8 @@ export const CATALOGUE = [
 
 export type ItemKind = Item['kind'];
 
-type Entry = (typeof CATALOGUE)[number];
+// One entry of the catalogue, with its id, kind and character as literals.
+export type Entry = (typeof CATALOGUE)[number];
 
 // The ids of every item, and of the items of one kind.
 export type ItemId = Entry['id'];
@@ -90,6 +91,13 @@ export function isIdOf<K extends ItemKind>(
   kind: K,
 ): value is IdOf<K> {
   return CATALOGUE.some((item) => item.id === value && item.kind === kind);
+}
+
+// A character's colour variants, in catalogue order.
+export function variantsOf(character: Character): ColourId[] {
+  return CATALOGUE.flatMap((item) =>
+    item.kind === 'colour' && item.character === character ? [item.id] : [],
+  );
 }
 
 // The catalogue entry for an id. Every id has one; the throw is for a

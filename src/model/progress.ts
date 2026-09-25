@@ -6,6 +6,7 @@ import {
   isItemId,
   itemOf,
   SET,
+  variantsOf,
   type ColourId,
   type HatId,
   type ItemId,
@@ -82,7 +83,7 @@ export type Progress = {
   hat: HatId | null;
   // Each character's chosen colour: an owned variant of that character, or
   // null for its own.
-  colours: Record<Character, ColourId | null>;
+  colours: ChosenColours;
   // The chosen theme, an owned one, or null for the default.
   theme: ThemeId | null;
   // The finished drills done with each character.
@@ -91,6 +92,10 @@ export type Progress = {
   times: number[];
   records: DrillRecord[];
 };
+
+// Each character's chosen colour: a colour variant of it, or null for its
+// own.
+export type ChosenColours = Record<Character, ColourId | null>;
 
 // A value per character, from an entry for each of the six.
 function fromEntries<T>(entries: [Character, T][]): Record<Character, T> {
@@ -243,6 +248,29 @@ export function chooseHat(progress: Progress, hat: HatId | null): Progress {
   return { ...progress, hat };
 }
 
+// A character's owned colour variants, in catalogue order.
+export function ownedColours(
+  progress: Progress,
+  character: Character,
+): ColourId[] {
+  return variantsOf(character).filter((id) => progress.owned.includes(id));
+}
+
+// The document with the given character's colour chosen: an owned variant
+// of that character, or null for its own. Every other character keeps its
+// colour. A variant not owned, or another character's, leaves the choice
+// as it was. The given document is left as it was.
+export function chooseColour(
+  progress: Progress,
+  character: Character,
+  colour: ColourId | null,
+): Progress {
+  if (colour !== null && !ownedColours(progress, character).includes(colour)) {
+    return progress;
+  }
+  return { ...progress, colours: { ...progress.colours, [character]: colour } };
+}
+
 // The document with one more answer time kept towards pace (ADR 0002). Only
 // the times of right answers are ever passed.
 export function keepAnswerTime(progress: Progress, time: number): Progress {
@@ -376,8 +404,7 @@ function validateShop(
     (colour, character): colour is ColourId | null => {
       if (colour === null) return true;
       if (!isIdOf(colour, 'colour') || !owned.includes(colour)) return false;
-      const item = itemOf(colour);
-      return item.kind === 'colour' && item.character === character;
+      return variantsOf(character).includes(colour);
     },
   );
   const bond = validatePerCharacter(value.bond, isCount);

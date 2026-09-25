@@ -203,16 +203,33 @@ button {
   white-space: nowrap;
 }
 
-/* The row of owned hats under the characters, none first, the worn one
-   ringed as the chosen character is. */
-.hats {
+/* The hats and the colours, side by side under the characters, wrapping
+   when they outgrow the line. */
+.wardrobe {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: clamp(4px, 1vmin, 10px) clamp(16px, 4vmin, 40px);
+}
+
+/* The row of owned hats, none first, and the row of the chosen character's
+   colours, its own first, the chosen one in each ringed as the chosen
+   character is. */
+.hats,
+.colours {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
   gap: clamp(4px, 1vmin, 10px);
 }
 
-.hat-pick {
+.wardrobe[hidden],
+.colours[hidden] {
+  display: none;
+}
+
+.hat-pick,
+.colour-pick {
   width: clamp(40px, 7vmin, 60px);
   height: clamp(40px, 7vmin, 60px);
   display: flex;
@@ -225,9 +242,21 @@ button {
   color: var(--muted);
 }
 
-.hat-pick[aria-pressed='true'] {
+.hat-pick[aria-pressed='true'],
+.colour-pick[aria-pressed='true'] {
   border-color: var(--tile);
   background: #e7ecff;
+}
+
+.colour-pick .character-stage {
+  --size: 100%;
+}
+
+/* The figures in the colours and on the Shop's colour variants sit still,
+   as the row of characters does. */
+.colour-pick .character.sit,
+.item .character.sit {
+  animation: none;
 }
 
 .hat-alone {
@@ -1024,6 +1053,10 @@ button {
   width: 80%;
   height: auto;
   aspect-ratio: 4 / 3;
+}
+
+.item .character-stage {
+  --size: calc(var(--item-size) * 0.6);
 }
 
 .item[aria-pressed='true'] {

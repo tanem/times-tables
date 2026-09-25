@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { CATALOGUE, CROWN, isItemId, itemOf, SET } from './catalogue';
+import {
+  CATALOGUE,
+  CROWN,
+  isItemId,
+  itemOf,
+  SET,
+  variantsOf,
+} from './catalogue';
 
 describe('the catalogue', () => {
   it('lists hats at 40 and the crown, colour variants at 25, themes at 60, then the pose at 100, in kind order', () => {
@@ -63,5 +70,16 @@ describe('isItemId', () => {
     expect(isItemId('jetpack')).toBe(false);
     expect(isItemId(40)).toBe(false);
     expect(isItemId(null)).toBe(false);
+  });
+});
+
+describe('variantsOf', () => {
+  it("lists a character's colour variants in catalogue order", () => {
+    expect(variantsOf('dragon')).toEqual(['dragon-blue', 'dragon-purple']);
+    expect(variantsOf('cat')).toEqual(['cat-grey', 'cat-black']);
+  });
+
+  it('lists none for a character without variants', () => {
+    expect(variantsOf('robot')).toEqual([]);
   });
 });

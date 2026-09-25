@@ -62,6 +62,40 @@ export async function expectNoTableOn(page: Page): Promise<void> {
 // enough for a drill to come back to a fact.
 export const SEEDED_TABLES: readonly Table[] = [6, 8, 12];
 
+// A learner with the seeded tables on, 100 gems earned, which unlocks the
+// dragon and the cat, and the given balance, for the Shop's specs. What
+// they own and wear and each character's colour can be set too.
+export function shopper(
+  balance: number,
+  items: Partial<Pick<Progress, 'owned' | 'hat' | 'colours'>> = {},
+): Progress {
+  return {
+    ...freshProgress(),
+    tables: [...SEEDED_TABLES],
+    earned: 100,
+    balance,
+    ...items,
+  };
+}
+
+// Taps Shop on the Start screen and lands on the Shop.
+export async function openShop(page: Page): Promise<void> {
+  await page.getByRole('button', { name: 'Shop', exact: true }).click();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Shop' }),
+  ).toBeVisible();
+}
+
+// The Buy button on the Shop's line for the chosen item.
+export function buyButton(page: Page): Locator {
+  return page.getByRole('button', { name: /^Buy for/ });
+}
+
+// The line under the Shop's shelves that says what the chosen item is.
+export function said(page: Page): Locator {
+  return page.locator('.buy-said');
+}
+
 // The fact on the card or the feedback, read the way the learner reads it.
 export async function factOnScreen(
   page: Page,
@@ -90,8 +124,13 @@ export async function storedProgress(page: Page): Promise<Progress> {
 }
 
 // The character named doing the given thing, as its accessible name says:
-// "The cat jumps", or "The cat" sitting.
-export function character(page: Page, name: Character, doing = ''): Locator {
+// "The cat jumps", or "The cat" sitting. A character in a colour variant is
+// named by the variant: "The black cat".
+export function character(
+  page: Page,
+  name: Character | `${string} ${Character}`,
+  doing = '',
+): Locator {
   return page.getByRole('img', {
     name: doing ? `The ${name} ${doing}` : `The ${name}`,
     exact: true,

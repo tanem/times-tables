@@ -3,12 +3,14 @@ import {
   CROWN,
   itemOf,
   SET,
+  type Entry,
   type HatId,
   type Item,
   type ItemId,
   type ItemKind,
 } from '../model/catalogue';
 import type { Character } from '../model/characters';
+import type { ChosenColours } from '../model/progress';
 import { sound } from '../sound';
 import { renderCharacter, renderConfetti } from './character';
 import { gemWord, renderBalance, renderGem } from './gem';
@@ -19,10 +21,11 @@ import { renderHat } from './hat';
 // the art and the choosing that each kind needs.
 const ON_SALE: readonly { kind: ItemKind; heading: string }[] = [
   { kind: 'hat', heading: 'Hats' },
+  { kind: 'colour', heading: 'Colours' },
 ];
 
 // What the line under the items says with nothing chosen yet.
-const PROMPT = 'Tap a hat to try it on';
+const PROMPT = 'Tap an item to try it on';
 
 // What the line says once owning every hat of the set has earned the crown.
 const SET_DONE = 'You have every hat. The crown is yours!';
@@ -34,9 +37,10 @@ export type ShopOptions = {
   balance: number;
   owned: readonly ItemId[];
   // The chosen character, which tries on the chosen hat, and the hat it
-  // wears until one is chosen.
+  // wears and each character's colour until an item is chosen.
   character: Character;
   hat: HatId | null;
+  colours: Readonly<ChosenColours>;
   // Buys the item and hands back the balance and the owned items after,
   // which are as they were when the purchase could not be made.
   onBuy: (id: ItemId) => Bought;
@@ -69,12 +73,27 @@ function buttonName(item: Item, owned: boolean): string {
   return `${item.name}, ${gems(item.price)}`;
 }
 
+// An item's picture on its button, hidden from a screen reader since the
+// button's name says what it is: a hat on its own, or a colour variant's
+// character sitting in that colour.
+function renderPicture(item: Entry): Element[] {
+  if (item.kind === 'hat') return [renderHat(item.id)];
+  if (item.kind === 'colour') {
+    const { character, id: colour } = item;
+    const figure = renderCharacter({ character, pose: 'sit', colour });
+    figure.setAttribute('aria-hidden', 'true');
+    return [figure];
+  }
+  return [];
+}
+
 // Builds the Shop: the balance in the corner, the chosen character, then the
 // items of each kind on sale in catalogue order, each with its price or
 // marked as owned, and under them the line for the chosen item. A tap
-// chooses an item and a hat is tried on the character; only the Buy button
-// on that line buys, and it is disabled while the balance is short. A
-// purchase stays on the Shop. The one that completes the set earns the
+// chooses an item: a hat is tried on the character, and a colour variant
+// shows its own character in that colour, in the worn hat. Only the Buy
+// button on that line buys, and it is disabled while the balance is short.
+// A purchase stays on the Shop. The one that completes the set earns the
 // crown too, and the Shop celebrates it with the crown on the character.
 export function renderShop(options: ShopOptions): HTMLElement {
   let { balance } = options;
@@ -101,16 +120,22 @@ export function renderShop(options: ShopOptions): HTMLElement {
     character: options.character,
     pose: 'sit',
     hat: options.hat,
+    colour: options.colours[options.character],
   });
 
-  // The character in the given pose wearing the chosen hat, or, with no hat
-  // chosen, the one it wears.
+  // The character in the given pose trying on the chosen item: wearing the
+  // chosen hat, or the chosen colour variant's character in that colour.
+  // Otherwise it is the chosen character as it is, in the hat it wears and
+  // its colour.
   const drawCharacter = (celebrating = false) => {
     const item = chosen === null ? null : itemOf(chosen);
+    const character =
+      item?.kind === 'colour' ? item.character : options.character;
     const next = renderCharacter({
-      character: options.character,
+      character,
       pose: celebrating ? 'big-jump' : 'sit',
       hat: item?.kind === 'hat' ? item.id : options.hat,
+      colour: item?.kind === 'colour' ? item.id : options.colours[character],
       sparkles: celebrating ? 'burst' : undefined,
     });
     figure.replaceWith(next);
@@ -173,11 +198,7 @@ export function renderShop(options: ShopOptions): HTMLElement {
       const name = document.createElement('span');
       name.className = 'item-name';
       name.textContent = item.name;
-      button.replaceChildren(
-        ...(item.kind === 'hat' ? [renderHat(item.id)] : []),
-        name,
-        price,
-      );
+      button.replaceChildren(...renderPicture(item), name, price);
     }
 
     const item = chosen === null ? null : itemOf(chosen);
