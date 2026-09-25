@@ -2,7 +2,7 @@ import type { ColourId, HatId } from '../model/catalogue';
 import type { Character } from '../model/characters';
 import { bandOf, type Band, type Drill } from '../model/drill';
 import type { Table } from '../model/facts';
-import { BADGE_PAY } from '../model/progress';
+import { BADGE_PAY, type ChosenColours } from '../model/progress';
 import { sound } from '../sound';
 import { schedule } from '../time';
 import {
@@ -169,7 +169,7 @@ export type EndOptions = {
   hat: HatId | null;
   // Each character's chosen colour, a variant or null for its own, which
   // it wears wherever it appears on the screen.
-  colours: Readonly<Record<Character, ColourId | null>>;
+  colours: Readonly<ChosenColours>;
   // Whether the drill was faster than last time, which the moment shows and
   // the bonus has already been paid for (ADR 0004).
   faster: boolean;

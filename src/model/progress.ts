@@ -6,6 +6,7 @@ import {
   isItemId,
   itemOf,
   SET,
+  variantsOf,
   type ColourId,
   type HatId,
   type ItemId,
@@ -82,7 +83,7 @@ export type Progress = {
   hat: HatId | null;
   // Each character's chosen colour: an owned variant of that character, or
   // null for its own.
-  colours: Record<Character, ColourId | null>;
+  colours: ChosenColours;
   // The chosen theme, an owned one, or null for the default.
   theme: ThemeId | null;
   // The finished drills done with each character.
@@ -91,6 +92,10 @@ export type Progress = {
   times: number[];
   records: DrillRecord[];
 };
+
+// Each character's chosen colour: a colour variant of it, or null for its
+// own.
+export type ChosenColours = Record<Character, ColourId | null>;
 
 // A value per character, from an entry for each of the six.
 function fromEntries<T>(entries: [Character, T][]): Record<Character, T> {
@@ -248,13 +253,7 @@ export function ownedColours(
   progress: Progress,
   character: Character,
 ): ColourId[] {
-  return CATALOGUE.flatMap((item) =>
-    item.kind === 'colour' &&
-    item.character === character &&
-    progress.owned.includes(item.id)
-      ? [item.id]
-      : [],
-  );
+  return variantsOf(character).filter((id) => progress.owned.includes(id));
 }
 
 // The document with the given character's colour chosen: an owned variant
@@ -405,8 +404,7 @@ function validateShop(
     (colour, character): colour is ColourId | null => {
       if (colour === null) return true;
       if (!isIdOf(colour, 'colour') || !owned.includes(colour)) return false;
-      const item = itemOf(colour);
-      return item.kind === 'colour' && item.character === character;
+      return variantsOf(character).includes(colour);
     },
   );
   const bond = validatePerCharacter(value.bond, isCount);

@@ -1,63 +1,28 @@
 import type { Page, Locator } from '@playwright/test';
 import { SET, type HatId } from '../src/model/catalogue';
-import { freshProgress, type Progress } from '../src/model/progress';
 import { expect, test } from './fixtures';
 import {
   advance,
   answerCard,
   balance,
+  buyButton,
   character,
   confetti,
+  openShop,
   pick,
   practiseButton,
-  SEEDED_TABLES,
+  said,
   seedProgress,
+  shopper,
   startHeading,
   storedProgress,
 } from './helpers';
-
-// A learner with the seeded tables on, 100 gems earned, which unlocks the
-// dragon and the cat, and the given balance. What they own and wear can be
-// set too.
-function learner(
-  balance: number,
-  items: Partial<Pick<Progress, 'owned' | 'hat'>> = {},
-): Progress {
-  return {
-    ...freshProgress(),
-    tables: [...SEEDED_TABLES],
-    earned: 100,
-    balance,
-    ...items,
-  };
-}
-
-// The Shop's own heading.
-function shopHeading(page: Page): Locator {
-  return page.getByRole('heading', { level: 1, name: 'Shop' });
-}
-
-// Taps Shop on the Start screen and lands on the Shop.
-async function openShop(page: Page): Promise<void> {
-  await page.getByRole('button', { name: 'Shop', exact: true }).click();
-  await expect(shopHeading(page)).toBeVisible();
-}
 
 // An item in the Shop by its name alone, whatever its price or mark.
 function item(page: Page, name: string): Locator {
   return page
     .getByRole('group', { name: 'Hats' })
     .getByRole('button', { name: new RegExp(`^${name},`) });
-}
-
-// The Buy button on the line for the chosen item.
-function buyButton(page: Page): Locator {
-  return page.getByRole('button', { name: /^Buy for/ });
-}
-
-// The line under the shelves that says what the chosen item is.
-function said(page: Page): Locator {
-  return page.locator('.buy-said');
 }
 
 // The row of owned hats on the Start screen.
@@ -73,7 +38,7 @@ function hatPick(page: Page, name: string): Locator {
 test('a hat bought in the Shop is chosen on the Start screen and worn in a drill', async ({
   page,
 }) => {
-  await seedProgress(page, learner(100));
+  await seedProgress(page, shopper(100));
   await expect(hatRow(page)).toHaveCount(0);
 
   await openShop(page);
@@ -126,7 +91,7 @@ test('a hat bought in the Shop is chosen on the Start screen and worn in a drill
 });
 
 test('every unlocked character wears the chosen hat', async ({ page }) => {
-  await seedProgress(page, learner(0, { owned: ['wizard-hat'], hat: null }));
+  await seedProgress(page, shopper(0, { owned: ['wizard-hat'], hat: null }));
   await hatPick(page, 'Wizard hat').click();
   await pick(page, 'Cat').click();
   await expect(character(page, 'cat', 'in a wizard hat')).toBeVisible();
@@ -142,7 +107,7 @@ test('every unlocked character wears the chosen hat', async ({ page }) => {
 test('the Shop sells every hat whatever is unlocked, and Buy waits for the balance', async ({
   page,
 }) => {
-  await seedProgress(page, learner(25));
+  await seedProgress(page, shopper(25));
   await openShop(page);
   await expect(
     page.getByRole('group', { name: 'Hats' }).getByRole('button'),
@@ -157,7 +122,7 @@ test('the Shop sells every hat whatever is unlocked, and Buy waits for the balan
 });
 
 test('the crown cannot be bought', async ({ page }) => {
-  await seedProgress(page, learner(100));
+  await seedProgress(page, shopper(100));
   await openShop(page);
   await item(page, 'Crown').click();
   await expect(item(page, 'Crown')).toHaveAccessibleName(
@@ -171,7 +136,7 @@ test('buying the sixth hat completes the set, earns the crown and celebrates', a
   page,
 }) => {
   const five: HatId[] = SET.slice(0, 5);
-  await seedProgress(page, learner(40, { owned: five, hat: 'party-hat' }));
+  await seedProgress(page, shopper(40, { owned: five, hat: 'party-hat' }));
   await openShop(page);
   await item(page, 'Bobble hat').click();
   await buyButton(page).click();

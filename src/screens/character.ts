@@ -1,4 +1,9 @@
-import { itemOf, type ColourId, type HatId } from '../model/catalogue';
+import {
+  itemOf,
+  variantsOf,
+  type ColourId,
+  type HatId,
+} from '../model/catalogue';
 import type { Character } from '../model/characters';
 import { schedule } from '../time';
 import { hatArt, wearing } from './hat';
@@ -415,11 +420,11 @@ export function renderCharacter(options: CharacterOptions): HTMLElement {
   figure.setAttribute('viewBox', '0 0 200 200');
   figure.setAttribute('role', 'img');
   const { character, hat, colour } = options;
-  const variant = colour ? itemOf(colour) : null;
-  const recoloured =
-    variant?.kind === 'colour' && variant.character === character;
+  // Only a variant of the character's own recolours it.
+  const variant =
+    colour && variantsOf(character).includes(colour) ? colour : null;
   // A variant is named in place of the character: "The blue dragon".
-  const who = recoloured ? variant.name.toLowerCase() : character;
+  const who = variant ? itemOf(variant).name.toLowerCase() : character;
   const dressed = hat ? wearing(hat) : '';
   figure.setAttribute(
     'aria-label',
@@ -427,7 +432,7 @@ export function renderCharacter(options: CharacterOptions): HTMLElement {
   );
   figure.innerHTML = ART[character](
     hat ? hatArt(hat) : '',
-    recoloured ? VARIANTS[variant.id] : undefined,
+    variant ? VARIANTS[variant] : undefined,
   );
 
   stage.append(figure);

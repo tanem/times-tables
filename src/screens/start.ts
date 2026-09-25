@@ -8,6 +8,7 @@ import {
 } from '../model/characters';
 import { DRILL_LENGTH } from '../model/drill';
 import { TABLES, tablesList, type Table } from '../model/facts';
+import type { ChosenColours } from '../model/progress';
 import { renderBadge } from './badge';
 import { renderCharacter, type Pose } from './character';
 import { renderBalance } from './gem';
@@ -29,7 +30,7 @@ export type StartOptions = {
   hat: HatId | null;
   // Each character's chosen colour, a variant or null for its own, and
   // each character's owned variants, in catalogue order.
-  colours: Readonly<Record<Character, ColourId | null>>;
+  colours: Readonly<ChosenColours>;
   ownedColours: (character: Character) => readonly ColourId[];
   // The finished drills done with each character, which its meter and its
   // pose on the masthead are read from.
@@ -262,7 +263,7 @@ export function renderStart(options: StartOptions): HTMLElement {
       const pick = renderHatPick(candidate, () => {
         if (candidate === hat) return;
         hat = candidate;
-        drawHat();
+        drawFigures();
         drawCharacter();
         options.onHatChange(hat);
       });
@@ -319,7 +320,7 @@ export function renderStart(options: StartOptions): HTMLElement {
 
   // Dresses every unlocked character in the row in the worn hat and its
   // colour, and marks the hat as chosen in its row.
-  const drawHat = () => {
+  const drawFigures = () => {
     for (const [candidate, pick] of picks) {
       if (isUnlocked(candidate, options.earned)) {
         pick.replaceChildren(renderFigure(candidate, hat, colours[candidate]));
@@ -341,7 +342,7 @@ export function renderStart(options: StartOptions): HTMLElement {
         const pick = renderColourPick(character, candidate, () => {
           if (candidate === colours[character]) return;
           colours[character] = candidate;
-          drawHat();
+          drawFigures();
           drawColours();
           drawCharacter();
           options.onColourChange(character, candidate);
@@ -445,7 +446,7 @@ export function renderStart(options: StartOptions): HTMLElement {
   shop.append(bag, ' Shop');
   shop.addEventListener('click', options.onShop);
 
-  drawHat();
+  drawFigures();
   drawColours();
   update();
   screen.append(

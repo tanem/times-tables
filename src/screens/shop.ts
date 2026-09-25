@@ -3,13 +3,14 @@ import {
   CROWN,
   itemOf,
   SET,
-  type ColourId,
+  type Entry,
   type HatId,
   type Item,
   type ItemId,
   type ItemKind,
 } from '../model/catalogue';
 import type { Character } from '../model/characters';
+import type { ChosenColours } from '../model/progress';
 import { sound } from '../sound';
 import { renderCharacter, renderConfetti } from './character';
 import { gemWord, renderBalance, renderGem } from './gem';
@@ -39,7 +40,7 @@ export type ShopOptions = {
   // wears and each character's colour until an item is chosen.
   character: Character;
   hat: HatId | null;
-  colours: Readonly<Record<Character, ColourId | null>>;
+  colours: Readonly<ChosenColours>;
   // Buys the item and hands back the balance and the owned items after,
   // which are as they were when the purchase could not be made.
   onBuy: (id: ItemId) => Bought;
@@ -75,7 +76,7 @@ function buttonName(item: Item, owned: boolean): string {
 // An item's picture on its button, hidden from a screen reader since the
 // button's name says what it is: a hat on its own, or a colour variant's
 // character sitting in that colour.
-function renderPicture(item: (typeof CATALOGUE)[number]): Element[] {
+function renderPicture(item: Entry): Element[] {
   if (item.kind === 'hat') return [renderHat(item.id)];
   if (item.kind === 'colour') {
     const { character, id: colour } = item;
