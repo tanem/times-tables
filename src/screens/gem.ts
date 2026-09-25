@@ -18,6 +18,11 @@ export function renderGem(): SVGSVGElement {
   return gem;
 }
 
+// The word for a count of gems: "gem" for one, "gems" otherwise.
+export function gemWord(count: number): string {
+  return count === 1 ? 'gem' : 'gems';
+}
+
 // The balance, in the top right corner of the Start screen and the Shop.
 // The gem is a picture and the words say what it is.
 export function renderBalance(balance: number): HTMLElement {
@@ -27,7 +32,7 @@ export function renderBalance(balance: number): HTMLElement {
   count.textContent = String(balance);
   const word = document.createElement('span');
   word.className = 'gems-word';
-  word.textContent = balance === 1 ? 'gem' : 'gems';
+  word.textContent = gemWord(balance);
   line.append(renderGem(), count, ' ', word);
   return line;
 }

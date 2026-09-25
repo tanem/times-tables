@@ -61,8 +61,7 @@ export function hatArt(hat: HatId): string {
 
 // How a hat is named after a character's name: "in a party hat".
 export function wearing(hat: HatId): string {
-  const name = itemOf(hat).name.toLowerCase();
-  return ` in ${/^[aeiou]/.test(name) ? 'an' : 'a'} ${name}`;
+  return ` in a ${itemOf(hat).name.toLowerCase()}`;
 }
 
 // Builds a hat on its own, framed on its brim and crown, sized by the

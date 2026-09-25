@@ -16,26 +16,28 @@ import {
   storedProgress,
 } from './helpers';
 
-// A learner with the seeded tables on, the dragon and the cat unlocked, and
-// the given balance to spend, all of it earned. What they own and wear can
-// be set too.
+// A learner with the seeded tables on, 100 gems earned, which unlocks the
+// dragon and the cat, and the given balance. What they own and wear can be
+// set too.
 function learner(
-  spend: number,
-  more: Partial<Pick<Progress, 'owned' | 'hat'>> = {},
+  balance: number,
+  items: Partial<Pick<Progress, 'owned' | 'hat'>> = {},
 ): Progress {
   return {
     ...freshProgress(),
     tables: [...SEEDED_TABLES],
     earned: 100,
-    balance: spend,
-    ...more,
+    balance,
+    ...items,
   };
 }
 
+// The Shop's own heading.
 function shopHeading(page: Page): Locator {
   return page.getByRole('heading', { level: 1, name: 'Shop' });
 }
 
+// Taps Shop on the Start screen and lands on the Shop.
 async function openShop(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Shop', exact: true }).click();
   await expect(shopHeading(page)).toBeVisible();
@@ -48,6 +50,7 @@ function item(page: Page, name: string): Locator {
     .getByRole('button', { name: new RegExp(`^${name},`) });
 }
 
+// The Buy button on the line for the chosen item.
 function buyButton(page: Page): Locator {
   return page.getByRole('button', { name: /^Buy for/ });
 }
@@ -57,10 +60,12 @@ function said(page: Page): Locator {
   return page.locator('.buy-said');
 }
 
+// The row of owned hats on the Start screen.
 function hatRow(page: Page): Locator {
   return page.getByRole('group', { name: 'Your hat' });
 }
 
+// One hat in that row by its name, or "No hat".
 function hatPick(page: Page, name: string): Locator {
   return hatRow(page).getByRole('button', { name, exact: true });
 }

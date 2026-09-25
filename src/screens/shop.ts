@@ -1,6 +1,7 @@
 import {
   CATALOGUE,
   CROWN,
+  itemOf,
   SET,
   type HatId,
   type Item,
@@ -10,7 +11,7 @@ import {
 import type { Character } from '../model/characters';
 import { sound } from '../sound';
 import { renderCharacter, renderConfetti } from './character';
-import { renderBalance, renderGem } from './gem';
+import { gemWord, renderBalance, renderGem } from './gem';
 import { renderHat } from './hat';
 
 // The kinds of item the Shop sells so far, in catalogue order, with the
@@ -42,19 +43,27 @@ export type ShopOptions = {
   onBack: () => void;
 };
 
+// A count of gems in words: "40 gems".
 function gems(count: number): string {
-  return `${count} ${count === 1 ? 'gem' : 'gems'}`;
+  return `${count} ${gemWord(count)}`;
 }
 
-// What an item's tile says under its name, and after it in the tile's name
-// for a screen reader: owned, its price, or for the crown what earns it.
+// An item's name inside a sentence: "the top hat".
+function named(item: Item): string {
+  return item.name.toLowerCase();
+}
+
+// What an item's button says under the item's name, and after it in the
+// button's name for a screen reader: owned, its price, or for the crown what earns it.
 function status(item: Item, owned: boolean): string {
   if (owned) return 'Owned';
   if (item.price === null) return 'Every hat';
   return String(item.price);
 }
 
-function tileName(item: Item, owned: boolean): string {
+// The item button's name for a screen reader: the item's name and its
+// status.
+function buttonName(item: Item, owned: boolean): string {
   if (owned) return `${item.name}, owned`;
   if (item.price === null) return `${item.name}, earned by every hat`;
   return `${item.name}, ${gems(item.price)}`;
@@ -97,7 +106,7 @@ export function renderShop(options: ShopOptions): HTMLElement {
   // The character in the given pose wearing the chosen hat, or, with no hat
   // chosen, the one it wears.
   const drawCharacter = (celebrating = false) => {
-    const item = CATALOGUE.find((entry) => entry.id === chosen);
+    const item = chosen === null ? null : itemOf(chosen);
     const next = renderCharacter({
       character: options.character,
       pose: celebrating ? 'big-jump' : 'sit',
@@ -108,28 +117,28 @@ export function renderShop(options: ShopOptions): HTMLElement {
     figure = next;
   };
 
-  const tiles = new Map<ItemId, HTMLButtonElement>();
+  const buttons = new Map<ItemId, HTMLButtonElement>();
   const sections = ON_SALE.map(({ kind, heading: text }) => {
     const section = document.createElement('section');
-    section.className = 'shelf';
+    section.className = 'shop-kind';
     const title = document.createElement('h2');
-    title.id = `shelf-${kind}`;
+    title.id = `kind-${kind}`;
     title.textContent = text;
     const items = document.createElement('div');
     items.className = 'items';
     items.setAttribute('role', 'group');
     items.setAttribute('aria-labelledby', title.id);
     for (const item of CATALOGUE.filter((entry) => entry.kind === kind)) {
-      const tile = document.createElement('button');
-      tile.type = 'button';
-      tile.className = 'item';
-      tile.addEventListener('click', () => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'item';
+      button.addEventListener('click', () => {
         chosen = item.id;
         update();
         drawCharacter();
       });
-      tiles.set(item.id, tile);
-      items.append(tile);
+      buttons.set(item.id, button);
+      items.append(button);
     }
     section.append(title, items);
     return section;
@@ -147,16 +156,16 @@ export function renderShop(options: ShopOptions): HTMLElement {
   buy.className = 'buy';
   line.append(said, buy);
 
-  // Draws each tile's price or owned mark, and the line for the chosen
+  // Draws each button's price or owned mark, and the line for the chosen
   // item.
   const update = () => {
     for (const item of CATALOGUE) {
-      const tile = tiles.get(item.id);
-      if (!tile) continue;
+      const button = buttons.get(item.id);
+      if (!button) continue;
       const isOwned = owned.includes(item.id);
-      tile.setAttribute('aria-label', tileName(item, isOwned));
-      tile.setAttribute('aria-pressed', String(item.id === chosen));
-      tile.classList.toggle('owned', isOwned);
+      button.setAttribute('aria-label', buttonName(item, isOwned));
+      button.setAttribute('aria-pressed', String(item.id === chosen));
+      button.classList.toggle('owned', isOwned);
       const price = document.createElement('span');
       price.className = 'item-price';
       if (!isOwned && item.price !== null) price.append(renderGem());
@@ -164,22 +173,22 @@ export function renderShop(options: ShopOptions): HTMLElement {
       const name = document.createElement('span');
       name.className = 'item-name';
       name.textContent = item.name;
-      tile.replaceChildren(
+      button.replaceChildren(
         ...(item.kind === 'hat' ? [renderHat(item.id)] : []),
         name,
         price,
       );
     }
 
-    const item = CATALOGUE.find((entry) => entry.id === chosen);
+    const item = chosen === null ? null : itemOf(chosen);
     buy.hidden = true;
     if (!item) {
       said.textContent = PROMPT;
     } else if (owned.includes(item.id)) {
       said.textContent =
-        item.id === CROWN ? SET_DONE : `You own the ${item.name.toLowerCase()}`;
+        item.id === CROWN ? SET_DONE : `You own the ${named(item)}`;
     } else if (item.price === null) {
-      said.textContent = `Own all ${SET.length} hats to earn the ${item.name.toLowerCase()}`;
+      said.textContent = `Own all ${SET.length} hats to earn the ${named(item)}`;
     } else {
       const short = item.price - balance;
       said.textContent = short > 0 ? `${gems(short)} more to go` : item.name;
@@ -200,12 +209,12 @@ export function renderShop(options: ShopOptions): HTMLElement {
     const nextBalance = renderBalance(balance);
     balanceLine.replaceWith(nextBalance);
     balanceLine = nextBalance;
-    // Buy hides once the item is owned, so focus moves to its tile.
-    tiles.get(chosen)?.focus();
+    // Buy hides once the item is owned, so focus moves to its button.
+    buttons.get(chosen)?.focus();
     if (!hadCrown && owned.includes(CROWN)) {
       chosen = CROWN;
       update();
-      tiles.get(CROWN)?.focus();
+      buttons.get(CROWN)?.focus();
       drawCharacter(true);
       screen.append(renderConfetti());
       sound.unlock();

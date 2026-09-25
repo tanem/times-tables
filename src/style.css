@@ -942,8 +942,8 @@ button {
   font-size: clamp(1.125rem, 2.5vmin, 1.5rem);
 }
 
-/* The Shop: the character, then the shelves of items, then the line for
-   the chosen item. It scrolls if the shelves outgrow the screen. */
+/* The Shop: the character, then the items of each kind on sale, then the
+   line for the chosen item. It scrolls if the items outgrow the screen. */
 .shop {
   position: relative;
   min-height: 100dvh;
@@ -1033,7 +1033,7 @@ button {
   color: var(--go);
 }
 
-/* The line for the chosen item, under the shelves: what it is and Buy. */
+/* The line for the chosen item, under the items: what it is and Buy. */
 .buy-line {
   display: flex;
   flex-direction: column;

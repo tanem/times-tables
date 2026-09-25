@@ -94,7 +94,7 @@ export function isIdOf<K extends ItemKind>(
 
 // The catalogue entry for an id. Every id has one; the throw is for a
 // value that got past the types.
-export function itemOf(id: ItemId): Item {
+export function itemOf(id: ItemId): Entry {
   const item = CATALOGUE.find((entry) => entry.id === id);
   if (!item) throw new Error(`no item ${id}`);
   return item;

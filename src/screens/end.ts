@@ -11,7 +11,7 @@ import {
   type Pose,
   type SparkleKind,
 } from './character';
-import { renderGem } from './gem';
+import { gemWord, renderGem } from './gem';
 
 // How each band celebrates: what the character does, and what goes with
 // it.
@@ -150,7 +150,7 @@ function renderUnlock(
 function renderPay(gems: number, reason: string): HTMLElement {
   const line = document.createElement('p');
   line.className = 'pay';
-  line.append(renderGem(), `+${gems} ${gems === 1 ? 'gem' : 'gems'} ${reason}`);
+  line.append(renderGem(), `+${gems} ${gemWord(gems)} ${reason}`);
   return line;
 }
 

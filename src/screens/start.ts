@@ -196,6 +196,7 @@ export function renderStart(options: StartOptions): HTMLElement {
       const pick = renderHatPick(candidate, () => {
         if (candidate === hat) return;
         hat = candidate;
+        drawHat();
         drawCharacter();
         options.onHatChange(hat);
       });
@@ -242,18 +243,24 @@ export function renderStart(options: StartOptions): HTMLElement {
   let figure: HTMLElement | null = null;
   let nudging: boolean | null = null;
 
-  // Draws the chosen character on the masthead in the worn hat, waving
-  // while the screen nudges, and marks both as chosen in their rows. Every
-  // unlocked character in the row wears the hat too.
-  const drawCharacter = () => {
+  // Dresses every unlocked character in the row in the worn hat, and marks
+  // the hat as chosen in its row.
+  const drawHat = () => {
     for (const [candidate, pick] of picks) {
-      pick.setAttribute('aria-pressed', String(candidate === character));
       if (isUnlocked(candidate, options.earned)) {
         pick.replaceChildren(renderFigure(candidate, hat));
       }
     }
     for (const [candidate, pick] of hatPicks) {
       pick.setAttribute('aria-pressed', String(candidate === hat));
+    }
+  };
+
+  // Draws the chosen character on the masthead in the worn hat, waving
+  // while the screen nudges, and marks it as chosen in the row.
+  const drawCharacter = () => {
+    for (const [candidate, pick] of picks) {
+      pick.setAttribute('aria-pressed', String(candidate === character));
     }
     const next = renderCharacter({
       character,
@@ -334,6 +341,7 @@ export function renderStart(options: StartOptions): HTMLElement {
   shop.append(bag, ' Shop');
   shop.addEventListener('click', options.onShop);
 
+  drawHat();
   update();
   screen.append(
     shop,
