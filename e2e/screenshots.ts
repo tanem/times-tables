@@ -5,6 +5,7 @@ import { BONUS } from '../src/model/bonus';
 import { BAND_PAY, bandOf } from '../src/model/drill';
 import type { Level } from '../src/model/level';
 import {
+  BADGE_PAY,
   freshProgress,
   type DrillRecord,
   type FactProgress,
@@ -95,8 +96,13 @@ const AT_LEVEL: Record<Level, number> = { 4: 22, 3: 5, 2: 5, 1: 5, 0: 5 };
 // Two bonuses paid along the way, on top of what the facts paid.
 const BONUSES_PAID = 2;
 
+// The table whose every fact has been at level 4, so that its tile and its
+// grid row show a badge, though some of its facts have slipped since.
+const BADGED: Table = 3;
+
 // The invented learner's facts: the pool of the tables on, by product, each
-// at the level its rank gives it, with counts to match.
+// at the level its rank gives it, with counts to match. The badged table's
+// facts have all reached level 4 at some point.
 function facts(): Record<string, FactProgress> {
   const byProduct = [...pool(TABLES_ON)].sort((a, b) => a.product - b.product);
   const levels: Level[] = ([4, 3, 2, 1, 0] as const).flatMap((level) =>
@@ -110,9 +116,10 @@ function facts(): Record<string, FactProgress> {
   const result: Record<string, FactProgress> = {};
   byProduct.forEach((fact, index) => {
     const level = levels[index] ?? 0;
+    const badged = fact.a === BADGED || fact.b === BADGED;
     result[fact.key] = {
       level,
-      best: level,
+      best: badged ? 4 : level,
       fast: level * 3 + 1,
       slow: level === 0 ? 1 : 2,
       missed: 4 - level,
@@ -129,7 +136,7 @@ function inventedProgress(): Progress {
     (sum, drill) => sum + BAND_PAY[bandOf(drill)],
     0,
   );
-  const earned = paid + BONUS * BONUSES_PAID + bandPay;
+  const earned = paid + BONUS * BONUSES_PAID + bandPay + BADGE_PAY;
   return {
     ...freshProgress(),
     tables: TABLES_ON,

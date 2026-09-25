@@ -6,6 +6,7 @@ import {
 } from '../model/characters';
 import { DRILL_LENGTH } from '../model/drill';
 import { TABLES, tablesList, type Table } from '../model/facts';
+import { renderBadge } from './badge';
 import { renderCharacter } from './character';
 import { renderGem } from './gem';
 
@@ -13,6 +14,8 @@ export type StartOptions = {
   tables: readonly Table[];
   // The share of a table's facts at level 4, from 0 to 1, for its meter.
   knownShare: (table: Table) => number;
+  // The tables with a badge, which their tiles mark (ADR 0005).
+  badges: readonly Table[];
   // The gems left to spend, which the corner shows, and the gems earned,
   // which the unlocks are read from (ADR 0005).
   balance: number;
@@ -237,6 +240,12 @@ export function renderStart(options: StartOptions): HTMLElement {
   for (const table of TABLES) {
     const tile = renderTile(`${table}s`);
     tile.append(renderMeter(options.knownShare(table)));
+    // A badge sits in the tile's top right corner, and the tile's name
+    // says so.
+    if (options.badges.includes(table)) {
+      tile.setAttribute('aria-label', `${table}s, badge`);
+      tile.append(renderBadge());
+    }
     tile.addEventListener('click', () => {
       if (selected.has(table)) selected.delete(table);
       else selected.add(table);

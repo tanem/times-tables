@@ -14,6 +14,7 @@ import {
   CHARACTERS,
   isCharacter,
   isUnlocked,
+  newUnlocks,
   type Character,
 } from './characters';
 import { BAND_PAY, bandOf } from './drill';
@@ -64,8 +65,8 @@ export type Progress = {
   tables: Table[];
   facts: Record<string, FactProgress>;
   // The gems paid so far: at least the sum of every fact's highest level,
-  // and more by the bonuses and band pay. It never falls, and the unlocks are
-  // read from it (ADR 0004, ADR 0005).
+  // and more by the bonuses, band pay and badge pay. It never falls, and
+  // the unlocks are read from it (ADR 0004, ADR 0005).
   earned: number;
   // What is left of earned after the purchases so far, from 0 to earned. It
   // is stored rather than worked out from the prices of what is owned, so
@@ -159,11 +160,26 @@ export function knownShare(progress: Progress, table: Table): number {
   return known.length / facts.length;
 }
 
+// The gems a table's badge pays, at the answer that earns it (ADR 0005).
+export const BADGE_PAY = 10;
+
+// The tables with a badge, in table order: those whose every fact has a
+// highest level of 4. A fact counts towards both of its tables. A badge is
+// read from the highest levels, which never fall, so it is kept for good
+// and never stored (ADR 0005).
+export function badges(progress: Progress): Table[] {
+  return TABLES.filter((table) =>
+    pool([table]).every((fact) => progress.facts[fact.key]?.best === 4),
+  );
+}
+
 // The document after one outcome on a fact: its level moved and the
 // outcome's lifetime count up by one. A level the fact has not reached
 // before becomes its highest level and pays one gem, to earned and the
-// balance; only a fast outcome raises a level, so nothing else pays. The
-// given document is left as it was.
+// balance, and each table that it completes earns its badge and pays 10
+// more; only a fast outcome raises a level, so nothing else pays. Both are
+// paid at the answer, so that a drill left without a record loses none of
+// them (ADR 0004, ADR 0005). The given document is left as it was.
 export function applyOutcome(
   progress: Progress,
   key: string,
@@ -178,10 +194,10 @@ export function applyOutcome(
     best: firstTime ? level : before.best,
     [outcome]: before[outcome] + 1,
   };
-  return earn(
-    { ...progress, facts: { ...progress.facts, [key]: after } },
-    firstTime ? 1 : 0,
-  );
+  const moved = { ...progress, facts: { ...progress.facts, [key]: after } };
+  if (!firstTime) return moved;
+  const completed = badges(moved).length - badges(progress).length;
+  return earn(moved, 1 + completed * BADGE_PAY);
 }
 
 // The document with the given character chosen, when earned has unlocked
@@ -203,25 +219,40 @@ export function keepAnswerTime(progress: Progress, time: number): Progress {
 
 // What recording a drill paid and why, which the end screen shows: whether
 // the drill was faster than last time, which pays the bonus (ADR 0004), and
-// the band pay (ADR 0005).
+// the band pay; and what the drill brought: the tables whose badges its
+// answers earned, and the characters its gems unlocked, in unlock order
+// (ADR 0005).
 export type Recorded = {
   progress: Progress;
   faster: boolean;
   bandPay: number;
+  newBadges: Table[];
+  unlocks: Character[];
 };
 
 // The document with a record appended, the bonus paid if the drill was
 // faster than last time and band pay paid by the drill's band, with what
-// was paid. A quit drill is in the low band and pays nothing. The given
-// document is left as it was.
-export function recordDrill(progress: Progress, record: DrillRecord): Recorded {
+// was paid. A quit drill is in the low band and pays neither. The badges
+// and unlocks are read between the document as the drill began and the one
+// after all of it was paid, so a badge or character a migration or an
+// earlier drill brought is never announced. The badges were paid at the
+// answers that earned them. The given documents are left as they were.
+export function recordDrill(
+  progress: Progress,
+  record: DrillRecord,
+  started: Progress,
+): Recorded {
   const faster = fasterThanLastTime(progress.records, record);
   const bandPay = BAND_PAY[bandOf(record)];
+  const badgedAtStart = badges(started);
   const withRecord = { ...progress, records: [...progress.records, record] };
+  const paid = earn(withRecord, (faster ? BONUS : 0) + bandPay);
   return {
-    progress: earn(withRecord, (faster ? BONUS : 0) + bandPay),
+    progress: paid,
     faster,
     bandPay,
+    newBadges: badges(paid).filter((table) => !badgedAtStart.includes(table)),
+    unlocks: newUnlocks(started.earned, paid.earned),
   };
 }
 

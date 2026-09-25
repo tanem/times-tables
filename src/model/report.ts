@@ -6,6 +6,7 @@ import { factKey, FACTS, TABLES, tablesList, type Table } from './facts';
 import type { Level } from './level';
 import { PACE_NEEDED, paceOf, TIMES_KEPT } from './pace';
 import {
+  badges,
   factCounts,
   factLevel,
   type DrillRecord,
@@ -298,8 +299,12 @@ export type GridCell = {
   ariaLabel: string;
 };
 
+// One row of the fact grid: a table, with whether it has a badge. The
+// badge is in the row's name, so it is not shown by the mark alone.
 export type GridRow = {
   label: string;
+  badge: boolean;
+  ariaLabel: string;
   cells: GridCell[];
 };
 
@@ -307,20 +312,26 @@ export type GridRow = {
 // column. An overlap fact, such as 6 × 8, reads the same level from whichever
 // row shows it.
 export function gridRows(progress: Progress): GridRow[] {
-  return TABLES.map((table) => ({
-    label: `${table}s`,
-    cells: GRID_COLUMNS.map((n) => {
-      const key = factKey(table, n);
-      const level = factLevel(progress, key);
-      return {
-        label: `${table} × ${n}`,
-        product: table * n,
-        level,
-        counts: factCounts(progress, key),
-        ariaLabel: `${table} × ${n}, level ${level}`,
-      };
-    }),
-  }));
+  const badged = badges(progress);
+  return TABLES.map((table) => {
+    const badge = badged.includes(table);
+    return {
+      label: `${table}s`,
+      badge,
+      ariaLabel: badge ? `${table}s, badge` : `${table}s`,
+      cells: GRID_COLUMNS.map((n) => {
+        const key = factKey(table, n);
+        const level = factLevel(progress, key);
+        return {
+          label: `${table} × ${n}`,
+          product: table * n,
+          level,
+          counts: factCounts(progress, key),
+          ariaLabel: `${table} × ${n}, level ${level}`,
+        };
+      }),
+    };
+  });
 }
 
 // A cell's lifetime counts, such as "6 × 7: fast 12, slow 3, missed 2".

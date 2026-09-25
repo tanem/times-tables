@@ -10,12 +10,12 @@ import {
   startDrill,
   type Drill,
 } from './model/drill';
-import { newUnlocks } from './model/characters';
 import type { Table } from './model/facts';
 import type { Outcome } from './model/level';
 import { gradeAnswer, paceOf } from './model/pace';
 import {
   applyOutcome,
+  badges,
   chooseCharacter,
   factLevel,
   freshProgress,
@@ -109,6 +109,7 @@ function showStart(): void {
     renderStart({
       tables: progress.tables,
       knownShare: (table) => knownShare(progress, table),
+      badges: badges(progress),
       balance: progress.balance,
       earned: progress.earned,
       character: progress.character,
@@ -146,14 +147,14 @@ function showParent(): void {
   );
 }
 
-// The earned total as the drill began. The end screen announces the
-// characters unlocked between it and the total at the end, so a character
-// unlocked at the migration or between drills is never announced (ADR
-// 0004). A drill can unlock more than one (ADR 0005).
-let earnedAtStart = 0;
+// The document as the drill began. Recording the drill reads the badges and
+// the unlocks between it and the document at the end, so a badge or
+// character a migration or an earlier drill brought is never announced
+// (ADR 0005).
+let started = progress;
 
 function beginDrill(tables: Table[]): void {
-  earnedAtStart = progress.earned;
+  started = progress;
   showCard(startDrill(tables, levelOf, random), true);
 }
 
@@ -207,8 +208,9 @@ function showFeedback(drill: Drill, outcome: Outcome, gem: boolean): void {
 
 // The drill record is written when the drill ends or is quit. Recording it
 // pays the bonus for a drill faster than last time (ADR 0004) and band pay
-// for the drill's band (ADR 0005), and hands back what it paid, which the
-// end screen shows.
+// for the drill's band (ADR 0005), and hands back what it paid, the badges
+// the drill's answers earned and the characters it unlocked, which the end
+// screen shows.
 function endDrill(drill: Drill): void {
   const record = drillRecord(
     drill,
@@ -216,7 +218,7 @@ function endDrill(drill: Drill): void {
     knownCount(progress),
     paceOf(progress.times),
   );
-  const recorded = recordDrill(progress, record);
+  const recorded = recordDrill(progress, record, started);
   progress = recorded.progress;
   saveProgress(store, progress);
   show(
@@ -225,7 +227,8 @@ function endDrill(drill: Drill): void {
       character: progress.character,
       faster: recorded.faster,
       bandPay: recorded.bandPay,
-      unlocks: newUnlocks(earnedAtStart, progress.earned),
+      newBadges: recorded.newBadges,
+      unlocks: recorded.unlocks,
       onHome: showStart,
       onAgain: () => beginDrill(drill.tables),
     }),

@@ -13,6 +13,11 @@ const HOLD = 3000;
 // erase on its own.
 const STALL = 500;
 
+// What the note under the control says: how to erase, and everything that
+// goes, badges and owned items included.
+const ERASE_NOTE =
+  'Hold for three seconds to erase every table, fact, drill, gem, badge and owned item.';
+
 // The erase ring's radius and the stroke length it takes to go all the way
 // round, in the SVG's own units.
 const RING_RADIUS = 10;
@@ -131,6 +136,14 @@ export function renderErase(onErase: () => void): HTMLElement {
   button.addEventListener('keyup', cancel);
   button.addEventListener('blur', cancel);
 
-  wrap.append(button);
+  // What goes, and how, under the control. It describes the button, whose
+  // name stays the action alone.
+  const note = document.createElement('p');
+  note.id = 'erase-note';
+  note.className = 'erase-note';
+  note.textContent = ERASE_NOTE;
+  button.setAttribute('aria-describedby', note.id);
+
+  wrap.append(button, note);
   return wrap;
 }

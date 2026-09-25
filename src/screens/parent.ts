@@ -11,6 +11,7 @@ import {
 } from '../model/report';
 import type { Progress } from '../model/progress';
 import type { Day } from '../time';
+import { renderBadge } from './badge';
 import { renderErase } from './erase';
 import { renderTrend } from './trend';
 
@@ -48,8 +49,9 @@ function renderGridHead(): HTMLElement {
 }
 
 // Builds the fact grid, a multiplication square: a row per table under a
-// header of multipliers, each cell a toggle button showing its product,
-// coloured by its level and named by its fact and level. Tapping a cell
+// header of multipliers, a badge beside the label of a table that has one,
+// each cell a toggle button showing its product, coloured by its level and
+// named by its fact and level. Tapping a cell
 // shows its lifetime counts in the given status line; tapping it again
 // clears the line and tapping another replaces it.
 function renderGrid(progress: Progress, status: HTMLElement): HTMLElement {
@@ -63,12 +65,13 @@ function renderGrid(progress: Progress, status: HTMLElement): HTMLElement {
     const rowEl = document.createElement('div');
     rowEl.className = 'grid-row';
     rowEl.setAttribute('role', 'group');
-    rowEl.setAttribute('aria-label', row.label);
+    rowEl.setAttribute('aria-label', row.ariaLabel);
 
     const label = document.createElement('span');
     label.className = 'row-label';
     label.textContent = row.label;
     label.setAttribute('aria-hidden', 'true');
+    if (row.badge) label.append(renderBadge());
 
     const cells = document.createElement('div');
     cells.className = 'cells';

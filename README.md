@@ -33,7 +33,7 @@ A right answer is fast or slow depending on how long it took against the learner
 
 Each fact has a level. A fast answer moves it up, a slow one moves it down, and a missed one takes it back to the start. The next fact is chosen so that facts at a low level come round more often, and no fact is ever retired.
 
-A fact pays a gem the first time it reaches each level. A finished drill pays 3 gems when most of its answers were fast and 1 when a fair share were, and a drill that was faster than the last one on the same tables pays a small bonus. Gems are spent in the Shop. Characters unlock by the gems earned, not the gems left, so spending never locks one again: the cat unlocks at 25 gems earned, the robot at 60, the owl at 110, the unicorn at 170 and the monster at 240, and the dragon is there from the start.
+A fact pays a gem the first time it reaches each level. A finished drill pays 3 gems when most of its answers were fast and 1 when a fair share were, and a drill that was faster than the last one on the same tables pays a small bonus. A table earns a badge once every one of its facts has reached level 4, and the answer that earns it pays 10 gems; the badge stays even if a fact slips later. Gems are spent in the Shop. Characters unlock by the gems earned, not the gems left, so spending never locks one again: the cat unlocks at 25 gems earned, the robot at 60, the owl at 110, the unicorn at 170 and the monster at 240, and the dragon is there from the start.
 
 The terms are defined in [CONTEXT.md](CONTEXT.md), the pace rule in [ADR 0002](docs/adr/0002-pace-rule.md), the gem rule in [ADR 0004](docs/adr/0004-gem-rule.md) and the rule for spending gems in [ADR 0005](docs/adr/0005-spending-gems.md).
 
@@ -50,7 +50,7 @@ The layout turns with the iPad; these are portrait.
 
 "For parents" at the bottom of the Start screen opens the Parent view. It shows the learner's pace, facts known and share of fast answers against four weeks ago, a chart of pace drill by drill, a grid of every fact coloured by its level, the gems earned and left to spend, and the recent drills. Tap a fact in the grid for its counts.
 
-The Parent view is also where progress is erased. Erasing clears everything: every level, the gems earned and the balance, the characters unlocked and the drill records. There is no undo.
+The Parent view is also where progress is erased. Erasing clears everything: every level, the gems earned and the balance, the badges, the items owned, the characters unlocked and the drill records. There is no undo.
 
 ## Development
 
