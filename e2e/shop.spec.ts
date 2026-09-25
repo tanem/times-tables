@@ -62,7 +62,7 @@ test('a hat bought in the Shop is chosen on the Start screen and worn in a drill
     hat: null,
   });
 
-  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
   await expect(startHeading(page)).toBeVisible();
   await expect(balance(page)).toHaveText('60 gems');
   await expect(hatRow(page).getByRole('button')).toHaveCount(2);
@@ -155,7 +155,7 @@ test('buying the sixth hat completes the set, earns the crown and celebrates', a
     owned: [...SET, 'crown'],
   });
 
-  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
   await hatPick(page, 'Crown').click();
   await expect(character(page, 'dragon', 'in a crown')).toBeVisible();
 });

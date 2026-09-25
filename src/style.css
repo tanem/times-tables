@@ -282,6 +282,17 @@ button {
   animation: none;
 }
 
+/* The pose's picture is still too, caught upside down at the top of the
+   backflip. */
+.item .character.backflip {
+  transform: scaleY(-1);
+}
+
+.item .character.backflip,
+.item .character.backflip * {
+  animation: none;
+}
+
 /* A theme's picture: a corner of its page, in its own colours, with a tile
    and a button on it. */
 .swatch-theme {
@@ -1676,6 +1687,24 @@ button {
   animation: flip-flap 4s ease infinite;
 }
 
+/* The backflip, which a fast answer plays once the learner owns it: a
+   crouch, then high into the air, over backwards and down again, arms up
+   and wings flapping. It turns about the middle of the character, not its
+   feet, so that it flips in the air. */
+.character.backflip {
+  transform-origin: 50% 50%;
+  animation: backflip 1.1s ease;
+}
+
+.character.backflip .arm-left,
+.character.backflip .arm-right {
+  animation: lift 1.1s ease;
+}
+
+.character.backflip .wing {
+  animation: flap 0.35s ease-in-out 3;
+}
+
 @keyframes bob {
   0%,
   100% {
@@ -1929,6 +1958,38 @@ button {
   15%,
   25% {
     transform: rotate(0);
+  }
+}
+
+/* Squashing the height to nothing and out again upside down reads as the
+   character turning over backwards, seen from the front, as the twirl's
+   width does for a turn. The crouch and the landing squash towards the
+   middle, so they move down to keep the feet on the ground. */
+@keyframes backflip {
+  0%,
+  100% {
+    transform: translateY(0) scaleY(1);
+  }
+  12% {
+    transform: translateY(6%) scaleY(0.86);
+  }
+  28% {
+    transform: translateY(-12%) scaleY(1);
+  }
+  42% {
+    transform: translateY(-16%) scaleY(0);
+  }
+  55% {
+    transform: translateY(-16%) scaleY(-1);
+  }
+  68% {
+    transform: translateY(-11%) scaleY(0);
+  }
+  84% {
+    transform: translateY(0) scaleY(1);
+  }
+  92% {
+    transform: translateY(4%) scaleY(0.92);
   }
 }
 

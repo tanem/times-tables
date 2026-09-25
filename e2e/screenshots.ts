@@ -183,11 +183,11 @@ test('the six screens', async ({ page }) => {
     .getByRole('button', { name: new RegExp(`^${TRIED_ON},`) })
     .click();
   await shoot(page, 'shop');
-  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
 
   await openParent(page);
   await shoot(page, 'parent');
-  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
 
   await practiseButton(page).click();
   await shoot(page, 'card');

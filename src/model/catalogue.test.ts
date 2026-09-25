@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BACKFLIP,
   CATALOGUE,
   CROWN,
   isItemId,
@@ -44,6 +45,12 @@ describe('the catalogue', () => {
   it('has the ocean and space themes', () => {
     const themes = CATALOGUE.filter((item) => item.kind === 'theme');
     expect(themes.map((item) => item.id)).toEqual(['ocean', 'space']);
+  });
+
+  it('has the backflip as its one pose, at 100', () => {
+    const poses = CATALOGUE.filter((item) => item.kind === 'pose');
+    expect(poses.map((item) => item.id)).toEqual([BACKFLIP]);
+    expect(itemOf(BACKFLIP)).toMatchObject({ name: 'Backflip', price: 100 });
   });
 });
 

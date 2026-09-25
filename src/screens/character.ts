@@ -11,7 +11,8 @@ import { hatArt, wearing } from './hat';
 // What the character is doing. Each pose is a CSS animation that plays once,
 // except sit, which bobs for as long as it is on screen; beckon and the three
 // bond poses, wiggle, twirl and flip, which play every few seconds with a
-// rest between; and proud, which the character moves into and holds.
+// rest between; and proud, which the character moves into and holds. The
+// backflip is the pose the Shop sells.
 export type Pose =
   | 'sit'
   | 'jump'
@@ -24,7 +25,8 @@ export type Pose =
   | 'proud'
   | 'wiggle'
   | 'twirl'
-  | 'flip';
+  | 'flip'
+  | 'backflip';
 
 // What each pose is called, after the character's name, for a learner who
 // cannot see it.
@@ -41,6 +43,7 @@ const DOING: Readonly<Record<Pose, string>> = {
   wiggle: ' wiggles',
   twirl: ' twirls',
   flip: ' flips',
+  backflip: ' does a backflip',
 };
 
 const SVG_NS = 'http://www.w3.org/2000/svg';

@@ -19,12 +19,13 @@
 - **Band pay**: the gems a finished drill pays for its band: top pays 3, middle 1, low nothing. A quit drill pays nothing.
 - **Character**: the figure that reacts to the learner's practice: a dragon, a cat, a robot, an owl, a unicorn or a monster. The dragon is there from the start and each of the others unlocks for good at an earned total. Characters are never bought. The learner chooses among the unlocked ones on the Start screen.
 - **Shop**: the screen, reached from the Start screen, where the learner spends balance on items. Every item is on sale from the first gem, whatever is unlocked.
-- **Item**: one thing the Shop sells at a price in gems: a hat, a colour variant, a theme or the extra pose. Once bought an item is owned for good and cannot be sold back. "Upgrade" and "morph" are avoided.
+- **Item**: one thing the Shop sells at a price in gems: a hat, a colour variant, a theme or the extra pose, the backflip. Once bought an item is owned for good and cannot be sold back. "Upgrade" and "morph" are avoided.
 - **Hat**: an item any unlocked character can wear. One hat is worn at a time, chosen beside the character on the Start screen, and wearing none is always a choice. The worn hat shows wherever the character appears.
 - **Set**: the six hats the Shop sells. Owning all six earns the crown.
 - **Crown**: the hat that completing the set earns. It cannot be bought.
 - **Colour variant**: an item that recolours one character. It belongs to that character alone, and each character has a chosen colour: its own or an owned variant.
 - **Theme**: an item that changes the app's colours on every screen but the Parent view. There is a default theme, which is not an item, and the learner chooses among the default and the owned themes.
+- **Backflip**: the extra pose, an item. Once owned, the character plays it on the feedback for every fast answer, in place of the jump, whatever the character and hat.
 - **Badge**: the mark a table earns when every one of its facts has reached level 4 at some point. It is kept for good, shows on the table's tile on the Start screen and on the Parent view grid, and pays 10 gems at the answer that earns it. A fact in two tables counts towards both.
 - **Bond**: how many finished drills the learner has done with a character, counted per character. A bond pose opens at 10, 25 and 50, and the Start screen shows a meter between them.
 - **Progress**: everything the app remembers about the learner: the tables they chose, each fact's level, highest level reached and outcome counts, the recent answer times that pace is worked out from, the drill records, the gems earned and the balance, the items owned, the worn hat, each character's chosen colour, the chosen theme, each character's bond and the chosen character.

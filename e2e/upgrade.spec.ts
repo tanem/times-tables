@@ -73,7 +73,7 @@ test('a version 1 document is backed up, the app starts fresh and a drill saves 
   await expect(page.getByRole('button', { name: /, level 0$/ })).toHaveCount(
     132,
   );
-  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
 
   await tile(page, '6s').click();
   await practiseButton(page).click();
@@ -219,7 +219,7 @@ test('a version 3 document is migrated with its gems as both earned and the bala
 
   await openParent(page);
   await expect(page.getByText('Gems: 150 earned, 150 to spend')).toBeVisible();
-  await page.getByRole('button', { name: 'Back' }).click();
+  await page.getByRole('button', { name: 'Back', exact: true }).click();
 
   // A fast answer takes a fact of the 6s back to level 3, which it reached
   // before, so it pays nothing: the migration kept every highest level.
